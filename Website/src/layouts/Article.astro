@@ -50,6 +50,7 @@ const sameUtility = blogPosts.filter((p) => p.utility === utilityId).map((p) => 
 const related = (isDocs ? blogNav : [...sameUtility, ...(util ? [{ href: `/utilities/${util.id}/`, label: `About ${util.name}` }] : []), ...docsNav.slice(0, 3)])
   .filter((l, i, a) => l.href !== Astro.url.pathname && a.findIndex((x) => x.href === l.href) === i)
   .slice(0, 5);
+const docsHref = util ? (util.id === 'portpeek' ? '/docs/ports/' : util.status === 'available' ? `/docs/utilities/${util.id}/` : '') : '';
 const label = isDocs ? 'Documentation' : 'Guides';
 const updated = new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 ---
@@ -91,6 +92,7 @@ const updated = new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { year
             <>
               <p><strong>{util.name} gives you the same visibility from your Mac menu bar.</strong> {util.tagline} It is a free, open-source utility inside MacPeek.</p>
               <DownloadCTA />
+              {docsHref && <p class="fine" style="margin-bottom:0"><a href={docsHref}>Read the {util.name} docs</a></p>}
             </>
           ) : (
             <>

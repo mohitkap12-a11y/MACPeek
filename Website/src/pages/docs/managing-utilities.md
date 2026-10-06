@@ -20,4 +20,4 @@ Every utility MacPeek knows about, each with:
 - Your choices are saved on your Mac. Utilities released in a future version appear switched **on** by default, and you can switch them off.
 
 ## Coming soon
-Utilities that are still in development are listed so you can see what is planned. They cannot be switched on until they ship. See [all utilities](/utilities/).
+BatteryPeek (battery health and cycle count) is still in development. It is listed so you can see what is planned, and cannot be switched on until it ships. See the [overview](/docs/utilities/) and [all utilities](/utilities/).

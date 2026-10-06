@@ -52,7 +52,7 @@ tests (`swift test --filter MacPeekCoreTests`) do not need Xcode.
 
 ## Rules
 - Add tests with every change. Parser tests must use fixtures captured from a real Mac, never the live machine.
-- No telemetry, no network calls, no third-party dependencies where native APIs suffice.
+- No telemetry, no network calls except a check the user explicitly triggers (as NetPeek and DNSPeek do), no third-party dependencies where native APIs suffice.
 - Never weaken kill safety (revalidation, SIGTERM-first, explicit force).
 - Don't request permissions you don't need, and don't bypass macOS security controls.
 - Never commit certificates, keys or passwords.

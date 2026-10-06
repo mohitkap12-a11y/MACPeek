@@ -27,7 +27,7 @@ had devices attached.
 "serial", so a serial cannot be displayed, copied or logged.
 
 ## Refresh
-Reads when the screen opens and when you press ⌘R; no polling, no launcher summary. Leaving the screen cancels a running read.
+Reads when the screen opens, then every few seconds (at least 3 s, following the refresh setting) **only while the screen is open**, so plugging or unplugging a device shows up without reopening it. ⌘R reads immediately; there is no launcher summary. Only the newest read may update the screen, and leaving the screen stops polling and cancels a running read.
 
 ## Limits
 - It shows what macOS reports. A device that negotiated a slow speed may be limited by its cable, port or hub: USBPeek shows the

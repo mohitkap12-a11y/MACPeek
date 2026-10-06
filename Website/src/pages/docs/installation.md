@@ -6,7 +6,7 @@ h1: "Installing MacPeek"
 section: docs
 date: "2026-10-06"
 ---
-MacPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel. PortPeek, the port finder, is one of the utilities inside MacPeek.
+MacPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel. MacPeek bundles ten utilities: PortPeek, FileLockPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek, DNSPeek, DisplayPeek, USBPeek and SleepPeek. See the [overview](/docs/utilities/).
 
 ## Steps
 1. Download `MacPeek-x.y.z.dmg` from the [download page](/download/), which links to the latest release once one is published.
@@ -34,4 +34,4 @@ Open **Manage utilities** from the launcher to see every utility, what it reads 
 ## Uninstall
 Quit MacPeek from the menu-bar icon (right-click → Quit), then delete it from Applications. Settings live in `~/Library/Preferences/app.macpeek.MacPeek.plist`.
 
-Next: [how to use PortPeek](/docs/usage/).
+Next: [using MacPeek](/docs/usage/).

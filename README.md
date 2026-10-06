@@ -35,7 +35,7 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
 - Utilities refresh only while their screen is open
-- No account, no telemetry, no network access, no third-party dependencies
+- No account, no telemetry, no cloud, no third-party dependencies. The only network traffic is what you ask for (NetPeek pings, DNSPeek lookups)
 
 ## Install
 Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
@@ -77,8 +77,9 @@ MacPeek runs as your user and never elevates privileges. It can only see and ter
 Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 
 ## Privacy
-No account, no telemetry, no cloud, no network access. MacPeek reads local system information to show it to
-you and never transmits it. Each utility documents exactly what it reads (see Manage utilities).
+No account, no telemetry, no cloud. MacPeek reads local system information to show it to you and never
+transmits it. The only network traffic is what you ask for: NetPeek's pings and DNSPeek's lookups, each run
+only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
 Ten utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
