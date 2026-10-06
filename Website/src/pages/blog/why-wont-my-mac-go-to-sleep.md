@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Article.astro
-title: "Why Won't My Mac Go to Sleep? Find the Sleep Blocker | MacPeek"
+title: "Why Won't My Mac Sleep? Find the Blocker | MacPeek"
 description: "Find what is keeping your Mac awake or waking it up using pmset: read sleep assertions, check the wake log, and fix the usual causes."
 h1: "Why Won't My Mac Go to Sleep?"
 section: blog

@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Article.astro
-title: "Mac Port Manager: See and Free Ports from the Menu Bar | MacPeek"
+title: "Mac Port Manager: See and Free Ports | MacPeek"
 description: "What a good Mac port manager should do: list listening ports, show the owning process, kill safely and stay private. Compare Terminal, Activity Monitor and PortPeek."
 h1: "A Mac Port Manager That Lives in Your Menu Bar"
 section: blog

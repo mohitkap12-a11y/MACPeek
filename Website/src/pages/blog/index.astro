@@ -3,8 +3,18 @@ import Base from '../../layouts/Base.astro';
 import { blogPosts } from '../../site';
 import { byId } from '../../data/utilities';
 const groups = [...new Set(blogPosts.map((p) => p.utility))].map((id) => ({ util: byId(id)!, posts: blogPosts.filter((p) => p.utility === id) }));
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Mac guides',
+  url: new URL('/blog/', Astro.site).toString(),
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: blogPosts.map((p, n) => ({ '@type': 'ListItem', position: n + 1, name: p.label, url: new URL(`/blog/${p.slug}/`, Astro.site).toString() })),
+  },
+};
 ---
-<Base title="Mac Guides: Ports, Displays, USB, Sleep, Battery and Wi-Fi | MacPeek" description="Practical guides for Mac problems: find what is using a port, check monitor refresh rate, see USB devices, why a Mac will not sleep, battery health and Wi-Fi signal.">
+<Base title="Mac Guides: Ports, USB, Sleep, Wi-Fi and More | MacPeek" description="Practical guides for Mac problems: find what is using a port, check monitor refresh rate, see USB devices, why a Mac will not sleep, battery health and Wi-Fi signal." jsonLd={jsonLd}>
   <div class="dx-landing">
     <section class="dx-hero">
       <div class="wrap">

@@ -4,27 +4,53 @@ import LauncherMock from '../components/LauncherMock.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
 import Showcase from '../components/Showcase.astro';
 import { SITE, liveSentence, builtInSentence } from '../site';
-import { comingSoon } from '../data/utilities';
+import { utilities, comingSoon } from '../data/utilities';
 
 const title = 'MacPeek: The Tiny Utilities macOS Should Have Built In';
+const origin = new URL('/', Astro.site).toString();
 const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${origin}#org`,
+    name: 'MacPeek',
+    url: origin,
+    logo: new URL('/favicon-192.png', Astro.site).toString(),
+    sameAs: [SITE.github],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${origin}#website`,
+    name: 'MacPeek',
+    url: origin,
+    inLanguage: 'en',
+    publisher: { '@id': `${origin}#org` },
+  },
   {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: 'MacPeek',
+    url: origin,
+    image: new URL('/og-image.png', Astro.site).toString(),
     applicationCategory: 'UtilitiesApplication',
+    applicationSubCategory: 'System utilities',
     operatingSystem: 'macOS 13 or later',
     description: SITE.description,
+    featureList: utilities.filter((u) => u.status === 'available').map((u) => `${u.name}: ${u.question}`),
+    isAccessibleForFree: true,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     codeRepository: SITE.github,
     license: 'https://opensource.org/licenses/MIT',
+    publisher: { '@id': `${origin}#org` },
+    ...(SITE.hasRelease ? { downloadUrl: SITE.releases } : {}),
   },
   {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     mainEntity: [
       ['What is MacPeek?', 'MacPeek is an open-source collection of small native macOS menu-bar utilities, called Peeks, for inspecting things macOS makes hard to see, such as which process is using a port.'],
-      ['Which utilities are available today?', `${builtInSentence}${SITE.hasRelease ? '' : ' (the first signed release is not published yet)'}. ${comingSoon.length} more are in development: ${comingSoon.map((u) => u.name).join(', ')}.`],
+      ['Which utilities are available today?', `${builtInSentence}${SITE.hasRelease ? '' : ' (the first signed release is not published yet)'}. ${comingSoon.length} more ${comingSoon.length === 1 ? 'is' : 'are'} in development: ${comingSoon.map((u) => u.name).join(', ')}.`],
       ['Does MacPeek send my data anywhere?', 'No. MacPeek has no account and no telemetry, and nothing about your Mac is sent to any server. The only network traffic is a check you start yourself: NetPeek pings your router and DNS servers, and DNSPeek looks up a name you type.'],
       ['Is MacPeek free?', 'Yes. MacPeek is free and open source under the MIT license.'],
     ].map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),

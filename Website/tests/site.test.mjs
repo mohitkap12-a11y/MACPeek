@@ -72,7 +72,8 @@ test('404 page is on-brand', () => {
   const h = html(join(dist, '404.html'));
   assert.match(h, /<title>Page not found \| MacPeek<\/title>/);
   assert.match(h, /Back to MacPeek/);
-  assert.doesNotMatch(h, /PortPeek/, '404 must not use the old brand');
+  // The footer links to every utility (PortPeek is one of them); the page itself must not use the old brand.
+  assert.doesNotMatch(h.replace(/<footer[\s\S]*?<\/footer>/, ''), /PortPeek/, '404 must not use the old brand');
 });
 
 test('no page links to the GitHub latest-release URL while no release exists', () => {

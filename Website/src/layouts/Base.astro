@@ -1,12 +1,20 @@
 ---
 import '../styles/global.css';
 import { SITE, downloadHref } from '../site';
+import { utilities } from '../data/utilities';
 
 interface Props { title: string; description: string; jsonLd?: object | object[]; ogType?: string; noindex?: boolean; }
 const { title, description, jsonLd, ogType = 'website', noindex = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).toString();
 const image = new URL('/og-image.png', Astro.site).toString();
 const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+// Preview deployments must never be indexed (Vercel also sends X-Robots-Tag for them; this is belt and braces).
+const isPreview = process.env.VERCEL_ENV === 'preview';
+const robots = noindex || isPreview ? 'noindex,nofollow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+// Search Console / Bing Webmaster ownership tokens: set GOOGLE_SITE_VERIFICATION / BING_SITE_VERIFICATION in the build env.
+const googleVerify = process.env.GOOGLE_SITE_VERIFICATION;
+const bingVerify = process.env.BING_SITE_VERIFICATION;
+const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
 ---
 <!doctype html>
 <html lang="en" data-theme="dark">
@@ -16,7 +24,9 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="robots" content={robots} />
+    {googleVerify && <meta name="google-site-verification" content={googleVerify} />}
+    {bingVerify && <meta name="msvalidate.01" content={bingVerify} />}
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#07080b" />
     <!-- Dark by default; runs before paint so a saved "light" choice never flashes dark. -->
@@ -29,16 +39,27 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
       })();
     </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-48.png" type="image/png" sizes="48x48" />
+    <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="alternate" type="application/rss+xml" title="MacPeek guides" href="/rss.xml" />
+    <link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt" />
     <meta property="og:site_name" content={SITE.name} />
     <meta property="og:type" content={ogType} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={image} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta property="og:locale" content="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
+    <meta name="twitter:image:alt" content={imageAlt} />
     {ld.map((d) => <script type="application/ld+json" set:html={JSON.stringify(d)} />)}
   </head>
   <body>
@@ -81,6 +102,9 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
         </div>
         <div>
           <a href="/utilities/">Utilities</a><br /><a href="/docs/">Documentation</a><br /><a href="/blog/">Guides</a><br /><a href="/download/">Download</a>
+        </div>
+        <div>
+          {utilities.filter((u) => u.status === 'available').map((u) => <Fragment><a href={`/utilities/${u.id}/`}>{u.name}</a><br /></Fragment>)}
         </div>
         <div>
           <a href={SITE.github}>GitHub</a><br />{SITE.hasRelease && <Fragment><a href={SITE.releases}>Releases</a><br /></Fragment>}<a href="/privacy/">Privacy</a><br /><a href="/security/">Security</a>

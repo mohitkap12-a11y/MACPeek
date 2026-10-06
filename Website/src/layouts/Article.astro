@@ -20,6 +20,8 @@ const jsonLd = [
     datePublished: date,
     dateModified: date,
     mainEntityOfPage: url,
+    inLanguage: 'en',
+    image: new URL('/og-image.png', Astro.site).toString(),
     author: { '@type': 'Organization', name: 'MacPeek contributors' },
     publisher: { '@type': 'Organization', name: 'MacPeek', url: home },
   },
@@ -84,7 +86,7 @@ const updated = new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { year
       <div class="crumbs"><a href="/">Home</a><span aria-hidden="true">/</span><a href={isDocs ? '/docs/' : '/blog/'}>{isDocs ? 'Docs' : 'Guides'}</a></div>
       <h1>{h1 ?? title}</h1>
       <p class="dx-lede">{description}</p>
-      <div class="dx-meta"><span>Updated {updated}</span>{editUrl && <a href={editUrl}>Edit this page on GitHub</a>}</div>
+      <div class="dx-meta"><span>Updated <time datetime={date}>{updated}</time></span>{editUrl && <a href={editUrl}>Edit this page on GitHub</a>}</div>
       <div class="prose"><slot /></div>
       {!isDocs && util && (
         <div class="callout">

@@ -14,6 +14,15 @@ const live = util.status === 'available';
 const url = new URL(Astro.url.pathname, Astro.site).toString();
 const home = new URL('/', Astro.site).toString();
 const guides = util.guides.map((slug) => blogPosts.find((p) => p.slug === slug)).filter(Boolean) as typeof blogPosts;
+const faq: [string, string][] = [
+  [live ? `What does ${util.name} do?` : `What will ${util.name} do?`, util.solution],
+  [`What ${live ? 'does' : 'will'} ${util.name} read from my Mac?`, `${util.reads.join('; ')}.`],
+  [`Does ${util.name} need any permissions?`, util.access],
+  [`Does ${util.name} send my data anywhere?`, util.networkChecks
+    ? `No information about your Mac is sent anywhere, and there is no account and no telemetry. ${util.name} ${live ? 'makes' : 'will make'} network requests only when you ask it to run a check. ${util.networkNote ?? ''}`.trim()
+    : 'No. Everything stays on your Mac: no account, no telemetry, nothing is sent anywhere.'],
+  [`Is ${util.name} free?`, `Yes. ${util.name} is part of MacPeek, which is free and open source under the MIT license.`],
+];
 const jsonLd = [
   {
     '@context': 'https://schema.org',
@@ -25,8 +34,13 @@ const jsonLd = [
     ],
   },
   live
-    ? { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: util.name, applicationCategory: 'UtilitiesApplication', operatingSystem: 'macOS 13 or later', description: util.metaDescription, isPartOf: { '@type': 'SoftwareApplication', name: 'MacPeek' }, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } }
+    ? { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: util.name, url, applicationCategory: 'UtilitiesApplication', operatingSystem: 'macOS 13 or later', description: util.metaDescription, featureList: util.features, isAccessibleForFree: true, isPartOf: { '@type': 'SoftwareApplication', name: 'MacPeek', url: home }, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } }
     : { '@context': 'https://schema.org', '@type': 'WebPage', name: util.metaTitle, description: util.metaDescription, url },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+  },
 ];
 ---
 <Base title={util.metaTitle} description={util.metaDescription} jsonLd={jsonLd}>
@@ -81,13 +95,18 @@ const jsonLd = [
     <ul>{util.reads.map((r) => <li>{r}</li>)}</ul>
     <p><strong>Access it needs:</strong> {util.access}</p>
     {util.networkChecks ? (
-      <p>Nothing about your Mac is sent to any server, and there is no account and no telemetry. {util.name} {live ? 'makes' : 'will make'} network requests only when you ask it to run a check. <a href="/privacy/">Read the full privacy statement</a>.</p>
+      <p>Nothing about your Mac is sent to any server, and there is no account and no telemetry. {util.name} {live ? 'makes' : 'will make'} network requests only when you ask it to run a check. {util.networkNote} <a href="/privacy/">Read the full privacy statement</a>.</p>
     ) : (
       <p>Everything stays on your Mac: no account, no telemetry, no network access. <a href="/privacy/">Read the full privacy statement</a>.</p>
     )}
 
     <h2>Open source</h2>
     <p>MacPeek and every utility in it are MIT-licensed. <a href={SITE.github}>Read the code on GitHub</a>, or <a href={`${SITE.github}/blob/main/CONTRIBUTING.md#adding-a-utility`}>see how a utility is built</a>.</p>
+
+    <h2>Frequently asked questions</h2>
+    {faq.map(([q, a]) => (
+      <Fragment><h3>{q}</h3><p>{a}</p></Fragment>
+    ))}
 
     {guides.length > 0 && (
       <Fragment>

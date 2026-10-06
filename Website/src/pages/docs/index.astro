@@ -1,8 +1,18 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { SITE, docsGroups } from '../../site';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'MacPeek documentation',
+  url: new URL('/docs/', Astro.site).toString(),
+  mainEntity: {
+    '@type': 'ItemList',
+    itemListElement: docsGroups.flatMap((g) => g.links).map((l, n) => ({ '@type': 'ListItem', position: n + 1, name: l.label, url: new URL(l.href, Astro.site).toString() })),
+  },
+};
 ---
-<Base title="MacPeek Documentation: Install, Use, Manage Utilities, Troubleshoot" description="Documentation for MacPeek: install the app, use the launcher, manage utilities, PortPeek guides, permissions, privacy, security and troubleshooting.">
+<Base title="MacPeek Documentation: Install, Use, Troubleshoot" description="Documentation for MacPeek: install the app, use the launcher, manage utilities, PortPeek guides, permissions, privacy, security and troubleshooting." jsonLd={jsonLd}>
   <div class="dx-landing">
     <section class="dx-hero">
       <div class="wrap">
