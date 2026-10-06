@@ -91,6 +91,7 @@ cap wifi_profiler_json system_profiler SPAirPortDataType -json
 cap network_profiler_json system_profiler SPNetworkDataType -json
 cap ping_gateway_3 ping -c 3 -t 5 1.1.1.1
 capsh dns_lookup 'dscacheutil -q host -a name apple.com'
+capsh dig_sample 'dig apple.com A +time=2 +tries=1; echo ---; dig @192.0.2.1 apple.com A +time=1 +tries=1'
 
 # ProcessPeek / EnvPeek / DiskPeek
 # Process list: command NAMES only (comm), never arguments or environments of your real processes.

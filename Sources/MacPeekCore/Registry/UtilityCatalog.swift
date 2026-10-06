@@ -30,10 +30,10 @@ public enum UtilityCatalog {
     public static let netPeek = UtilityInfo(
         id: "netpeek", name: "NetPeek", question: "Is my network connection actually healthy?",
         tagline: "Understand your network connection.",
-        summary: "Shows your active interface, IP addresses, gateway and DNS, plus reachability and latency, and Wi-Fi signal details where macOS allows.",
-        icon: "wifi", category: .everyday, availability: .comingSoon,
-        reads: ["Network interface configuration; latency to your gateway and DNS only when you run a check"],
-        permissions: ["Wi-Fi network name may require Location access on recent macOS versions"]
+        summary: "Shows your active interface, IP addresses, router and DNS servers, Wi-Fi signal details where macOS allows, and, only when you press Run checks, whether your router and DNS servers answer pings. Measured facts are kept apart from inference.",
+        icon: "wifi", category: .everyday, availability: .available,
+        reads: ["Network configuration (route, scutil, networksetup) and Wi-Fi details (system_profiler) while NetPeek is open; pings to your router and DNS servers only when you press Run checks"],
+        permissions: ["None. macOS hides the Wi-Fi network name from apps without Location access, and MacPeek does not request it."]
     )
     public static let batteryPeek = UtilityInfo(
         id: "batterypeek", name: "BatteryPeek", question: "What is my MacBook battery actually doing?",
@@ -87,8 +87,8 @@ public enum UtilityCatalog {
         id: "dnspeek", name: "DNSPeek", question: "Which DNS servers is my Mac using, and do they respond?",
         tagline: "Inspect DNS configuration and resolver behavior.",
         summary: "Read-only view of the active interface, resolver configuration and DNS servers, with lookup latency measured on request. It never changes DNS settings.",
-        icon: "server.rack", category: .developer, availability: .comingSoon,
-        reads: ["System resolver configuration; lookups only when you run a check"],
+        icon: "server.rack", category: .developer, availability: .available,
+        reads: ["The system resolver configuration (scutil --dns); DNS lookups only when you press Run lookup"],
         permissions: ["None"]
     )
 

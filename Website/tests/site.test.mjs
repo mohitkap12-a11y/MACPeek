@@ -20,7 +20,7 @@ const isRedirect = (p) => /http-equiv="refresh"/i.test(html(p));
 const content = () => pages.filter((p) => !p.includes('/404/') && !isRedirect(p));
 
 const UTILS = ['portpeek', 'displaypeek', 'usbpeek', 'netpeek', 'batterypeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek', 'dnspeek'];
-const LIVE = ['portpeek', 'displaypeek', 'usbpeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek'];
+const LIVE = ['portpeek', 'displaypeek', 'usbpeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek', 'netpeek', 'dnspeek'];
 const COMING_SOON = UTILS.filter((u) => !LIVE.includes(u));
 
 test('has expected pages', () => {
@@ -114,7 +114,7 @@ test('honesty: unreleased utilities say Coming soon; only built utilities claim 
 });
 
 test('guides for unreleased utilities do not pitch a download', () => {
-  for (const g of ['how-to-check-macbook-battery-health', 'how-to-check-wifi-signal-strength-on-mac']) {
+  for (const g of ['how-to-check-macbook-battery-health']) {
     const h = html(join(dist, 'blog', g, 'index.html'));
     assert.match(h, /is coming to MacPeek/, `${g}: must say the utility is coming`);
     assert.doesNotMatch(h, /Download MacPeek/, `${g}: must not pitch a download for an unreleased utility`);

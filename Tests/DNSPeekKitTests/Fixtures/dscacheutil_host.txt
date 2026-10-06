@@ -1,0 +1,6 @@
+name: apple.com
+ipv6_address: 2620:149:af0::10
+
+name: apple.com
+ip_address: 17.253.144.10
+

@@ -15,14 +15,14 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **PortPeek** | What is using port 3000? Free it safely. | ✅ Available |
 | **DisplayPeek** | What display configuration am I actually running? | ✅ Available |
 | **USBPeek** | What is connected, and at what speed? | ✅ Available |
-| **NetPeek** | Is my network connection actually healthy? | Coming soon |
+| **NetPeek** | Is my network connection actually healthy? | ✅ Available |
 | **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
 | **SleepPeek** | Why isn't my Mac sleeping? | ✅ Available |
 | **FileLockPeek** | What process is using this file? | ✅ Available |
 | **ProcessPeek** | What exactly is this process? | ✅ Available |
 | **DiskPeek** | Which app is using my disk right now? | ✅ Available |
 | **EnvPeek** | What environment variables does this environment see? | ✅ Available |
-| **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | Coming soon |
+| **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | ✅ Available |
 
 Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
 every utility with a description, what it reads, what access it needs, and an on/off switch. A utility that
@@ -81,9 +81,9 @@ No account, no telemetry, no cloud, no network access. MacPeek reads local syste
 you and never transmits it. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-Eight utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek);
-the remaining ones arrive in phases (see [CHANGELOG.md](CHANGELOG.md)): NetPeek, BatteryPeek and DNSPeek → global
-search, accessibility and localization polish → signed releases.
+Ten utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
+DNSPeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+polish → signed releases.
 
 ## Contributing / License
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Licensed under the [MIT License](LICENSE).

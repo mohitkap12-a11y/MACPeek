@@ -22,6 +22,8 @@ let package = Package(
         .library(name: "ProcessPeekKit", targets: ["ProcessPeekKit"]),
         .library(name: "DiskPeekKit", targets: ["DiskPeekKit"]),
         .library(name: "EnvPeekKit", targets: ["EnvPeekKit"]),
+        .library(name: "DNSPeekKit", targets: ["DNSPeekKit"]),
+        .library(name: "NetPeekKit", targets: ["NetPeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
@@ -33,11 +35,13 @@ let package = Package(
         .target(name: "ProcessPeekKit", dependencies: ["MacPeekCore", "PortPeekKit"], path: "Sources/ProcessPeekKit"),
         .target(name: "DiskPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DiskPeekKit"),
         .target(name: "EnvPeekKit", dependencies: ["MacPeekCore"], path: "Sources/EnvPeekKit"),
+        .target(name: "DNSPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DNSPeekKit"),
+        .target(name: "NetPeekKit", dependencies: ["MacPeekCore", "DNSPeekKit"], path: "Sources/NetPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
-                           "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit"],
+                           "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -79,5 +83,17 @@ let package = Package(
         ),
         .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit"], path: "Tests/DiskPeekKitTests"),
         .testTarget(name: "EnvPeekKitTests", dependencies: ["EnvPeekKit"], path: "Tests/EnvPeekKitTests"),
+        .testTarget(
+            name: "DNSPeekKitTests",
+            dependencies: ["DNSPeekKit", "MacPeekCore"],
+            path: "Tests/DNSPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "NetPeekKitTests",
+            dependencies: ["NetPeekKit", "DNSPeekKit", "MacPeekCore"],
+            path: "Tests/NetPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
     ]
 )

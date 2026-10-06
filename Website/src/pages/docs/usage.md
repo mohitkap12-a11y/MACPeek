@@ -73,6 +73,20 @@ Every value is sampled and labelled that way. Other users' and protected process
 
 Values that look like credentials are hidden until you press **Reveal**. Values stay on screen only: they are never logged or stored, and they are dropped from memory when you leave the screen.
 
+## Using NetPeek
+1. Open **NetPeek**. It shows how your Mac is connected: the active interface, its IPv4 and IPv6 addresses, your router and your DNS servers. It refreshes every few seconds while the screen is open.
+2. On Wi-Fi you also see signal, noise (and the difference between them), channel, standard, link rate and security. macOS hides the network name from apps without Location access, and MacPeek does not ask for it, so the name shows as hidden.
+3. Press **Run checks** to ping your router and each DNS server three times. Results are labelled *Measured or reported* or *Likely (inference)*. A device that ignores pings is not proof of an outage, and NetPeek says so.
+
+Pings go only to your router and DNS servers, only when you press the button.
+
+## Using DNSPeek
+1. Open **DNSPeek**. It lists the DNS servers macOS uses for ordinary lookups, in order, with their interface and reachability, plus search domains and the other resolvers (per-domain, multicast and scoped).
+2. Press **Run lookup** to resolve a name (apple.com by default) the way apps do, then ask each server directly. You see who answered, how fast, and with what status.
+3. Copy the configuration for a support thread.
+
+DNSPeek is read-only: it never changes DNS settings. Only the name you type is queried, only when you press the button.
+
 ## Keyboard and context menu
 - Arrow keys move the selection; `⌘R` refreshes.
 - Right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.
