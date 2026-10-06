@@ -40,7 +40,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         )
 
         let displayStore = DisplayStore(discovery: SystemProfilerDisplayDiscovery())
-        let usbStore = USBStore(discovery: SystemUSBDiscovery())
+        let usbStore = USBStore(discovery: SystemUSBDiscovery(), settings: settings)
         let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
 
         let processStore = ProcessStore(
@@ -71,7 +71,27 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         ])
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings)
+        Self.installEditMenu()
         Log.app.info("MacPeek launched")
+    }
+
+    /// A menu-bar app has no main menu, so ⌘V/⌘C/⌘A/⌘X/⌘Z never reach text fields. An Edit menu (never shown, since the
+    /// app has no menu bar) restores the standard key equivalents.
+    private static func installEditMenu() {
+        let main = NSMenu()
+        let editItem = NSMenuItem()
+        main.addItem(editItem)
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        NSApp.mainMenu = main
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

@@ -19,8 +19,8 @@ public enum DSCacheUtilParser {
     }
 }
 
-/// `dig @server name A +time=2 +tries=1`. The dig output format is documented but was NOT captured from a real Mac
-/// when this was written (see docs/utilities/dnspeek.md); anything unrecognised is reported as such, never guessed.
+/// `dig @server name A +time=2 +tries=1`. Verified against a real capture (DiG 9.10.6: an answer and a timeout);
+/// anything unrecognised is reported as such, never guessed.
 public enum DigParser {
     private static let status = NSRegularExpression.compile(#"status:\s*([A-Z]+)"#)
     private static let answers = NSRegularExpression.compile(#"ANSWER:\s*(\d+)"#)

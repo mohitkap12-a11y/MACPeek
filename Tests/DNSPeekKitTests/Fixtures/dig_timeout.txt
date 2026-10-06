@@ -1,0 +1,4 @@
+; <<>> DiG 9.10.6 <<>> @192.0.2.1 apple.com A +time=1 +tries=1
+; (1 server found)
+;; global options: +cmd
+;; connection timed out; no servers could be reached

@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import Combine
 import MacPeekCore
 import PortPeekKit
 
@@ -10,6 +11,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let router: UtilityRouter
     private let registry: UtilityRegistry
+    private var appearanceObserver: AnyCancellable?
 
     init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings) {
         self.router = router
@@ -26,6 +28,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(registry)
                 .environmentObject(settings)
         )
+
+        // The popover window does not reliably follow NSApp.appearance, so apply the chosen theme to it directly.
+        popover.appearance = settings.appearance.nsAppearance
+        appearanceObserver = settings.$appearance.sink { [weak self] mode in
+            self?.popover.appearance = mode.nsAppearance
+        }
 
         if let button = statusItem.button {
             button.image = MenuBarController.makeIcon()
