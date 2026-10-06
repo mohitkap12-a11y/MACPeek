@@ -8,7 +8,14 @@ import Glibc
 
 /// Source of truth for "what is holding this path". UI code depends on this, never on lsof output.
 public protocol FileLockDiscoveryProtocol: Sendable {
-    func holders(of path: String) async throws -> [FileLockHolder]
+    func scan(path: String) async throws -> FileLockScan
+}
+
+extension FileLockDiscoveryProtocol {
+    /// Convenience when completeness does not matter (e.g. re-checking before a kill).
+    public func holders(of path: String) async throws -> [FileLockHolder] {
+        try await scan(path: path).holders
+    }
 }
 
 public enum FileLockError: Error, LocalizedError, Equatable {
@@ -44,7 +51,7 @@ public struct LsofFileLockDiscovery: FileLockDiscoveryProtocol {
         self.ownPID = ownPID
     }
 
-    public func holders(of path: String) async throws -> [FileLockHolder] {
+    public func scan(path: String) async throws -> FileLockScan {
         guard path.hasPrefix("/") else { throw FileLockError.invalidPath("Enter a full path that starts with “/”.") }
         guard !path.contains("\0") else { throw FileLockError.invalidPath("That path contains an invalid character.") }
 
@@ -68,6 +75,15 @@ public struct LsofFileLockDiscovery: FileLockDiscoveryProtocol {
         if output.status > 1 || (output.status == 1 && output.stdout.isEmpty && !detail.isEmpty) {
             throw FileLockError.commandFailed(detail.isEmpty ? "lsof exited with status \(output.status)" : detail)
         }
-        return FileHolderParser.parse(output.stdout, excludingPID: ownPID)
+        let holders = FileHolderParser.parse(output.stdout, excludingPID: ownPID)
+        // A folder scan walks a whole tree: if lsof warned while doing so, part of it may not have been inspected,
+        // so the result must not be presented as complete. (For a single file the warnings are about unrelated
+        // file systems and do not affect the answer.)
+        var incomplete: String?
+        if isDirectory.boolValue, !detail.isEmpty {
+            let first = detail.split(whereSeparator: \.isNewline).first.map(String.init) ?? detail
+            incomplete = "lsof reported: \(first)"
+        }
+        return FileLockScan(holders: holders, incompleteReason: incomplete)
     }
 }

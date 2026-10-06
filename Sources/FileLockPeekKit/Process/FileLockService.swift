@@ -17,8 +17,13 @@ public struct FileLockService: Sendable {
         self.inspector = inspector
     }
 
+    public func scan(path: String) async throws -> FileLockScan {
+        let scan = try await discovery.scan(path: path)
+        return scan.withHolders(scan.holders.map { $0.withStartTime(inspector.startTime(pid: $0.pid)) })
+    }
+
     public func holders(of path: String) async throws -> [FileLockHolder] {
-        try await discovery.holders(of: path).map { $0.withStartTime(inspector.startTime(pid: $0.pid)) }
+        try await scan(path: path).holders
     }
 }
 
@@ -35,28 +40,48 @@ extension TerminationResult {
 }
 
 /// FileLockPeek's resource: "this process holds this path".
-struct FileLockResource: TerminationResource {
+/// One instance is used for a whole terminate attempt: it remembers who held the path when the target was
+/// checked, so that processes that were *already* holding it are not mistaken for a replacement.
+final class FileLockResource: TerminationResource, @unchecked Sendable {
     let path: String
     let discovery: FileLockDiscoveryProtocol
+    private let lock = NSLock()
+    private var holdersBefore: Set<Int> = []
+
+    init(path: String, discovery: FileLockDiscoveryProtocol) {
+        self.path = path
+        self.discovery = discovery
+    }
 
     static func label(for path: String) -> String { "“\(URL(fileURLWithPath: path).lastPathComponent)”" }
     var label: String { Self.label(for: path) }
 
     func check(pid: Int) async -> ResourceCheck {
         let holders: [FileLockHolder]
-        do { holders = try await discovery.holders(of: path) } catch {
+        do { holders = try await discovery.holders(of: path) } catch FileLockError.notFound {
+            return .gone // the file no longer exists, so nothing can hold it
+        } catch {
             return .unavailable(error.localizedDescription)
         }
+        lock.lock(); holdersBefore = Set(holders.map(\.pid)); lock.unlock()
         guard !holders.isEmpty else { return .gone }
         guard let holder = holders.first(where: { $0.pid == pid }) else { return .changed }
         return .owned(processName: holder.processName)
     }
 
     func releaseState(pid: Int) async -> ReleaseState {
-        guard let holders = try? await discovery.holders(of: path) else { return .stillHeld }
-        if holders.isEmpty { return .released }
+        let holders: [FileLockHolder]
+        do { holders = try await discovery.holders(of: path) } catch FileLockError.notFound {
+            return .released // the holder removed the file as it exited (lock files, temp files, journals)
+        } catch {
+            return .stillHeld // could not tell; keep polling, never claim success
+        }
         if holders.contains(where: { $0.pid == pid }) { return .stillHeld }
-        return .takenOver(pid: holders[0].pid)
+        lock.lock(); let before = holdersBefore; lock.unlock()
+        // Only a process that was NOT holding the path before counts as a replacement. Other processes that
+        // already held it keep holding it; that is not a failure to release by the terminated one.
+        if let newcomer = holders.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }
+        return .released
     }
 }
 

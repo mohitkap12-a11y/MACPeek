@@ -25,9 +25,18 @@ extension PermissionService {
 }
 
 /// PortPeek's resource: one listening socket (PID + address + port + protocol).
-struct PortResource: TerminationResource {
+/// One instance is used for a whole terminate attempt: it remembers who was listening on the port when the target
+/// was checked, so that processes already sharing the port (SO_REUSEPORT workers) are not mistaken for a replacement.
+final class PortResource: TerminationResource, @unchecked Sendable {
     let port: PortInfo
     let discovery: PortDiscoveryProtocol
+    private let lock = NSLock()
+    private var ownersBefore: Set<Int> = []
+
+    init(port: PortInfo, discovery: PortDiscoveryProtocol) {
+        self.port = port
+        self.discovery = discovery
+    }
 
     var label: String { "port \(port.port)" }
 
@@ -41,6 +50,7 @@ struct PortResource: TerminationResource {
             return .unavailable(error.localizedDescription)
         }
         let onPort = owners(scan)
+        lock.lock(); ownersBefore = Set(onPort.map(\.pid)); lock.unlock()
         guard !onPort.isEmpty else { return .gone }
         // The selected *socket* (pid + address) must still exist: a process that closed only the
         // selected address but still listens elsewhere on the port must not be killed for it.
@@ -54,10 +64,10 @@ struct PortResource: TerminationResource {
         guard let scan = try? await discovery.discover() else { return .stillHeld }
         let onPort = owners(scan)
         if onPort.isEmpty { return .released }
-        if !onPort.contains(where: { $0.pid == pid }), let other = onPort.first {
-            return .takenOver(pid: other.pid)
-        }
-        return .stillHeld
+        if onPort.contains(where: { $0.pid == pid }) { return .stillHeld }
+        lock.lock(); let before = ownersBefore; lock.unlock()
+        if let newcomer = onPort.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }
+        return .released // others that were already listening still are; the terminated process let go
     }
 }
 

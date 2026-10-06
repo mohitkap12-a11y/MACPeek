@@ -99,3 +99,19 @@ public struct FileLockHolder: Identifiable, Hashable, Sendable {
 
     public var hasLock: Bool { files.contains { $0.lock != nil } }
 }
+
+/// The outcome of one scan: the holders found, and — when the scan could not see everything — why.
+public struct FileLockScan: Equatable, Sendable {
+    public let holders: [FileLockHolder]
+    /// Set for folder scans when lsof warned it could not inspect part of the tree, so the list may be incomplete.
+    public let incompleteReason: String?
+
+    public init(holders: [FileLockHolder], incompleteReason: String? = nil) {
+        self.holders = holders
+        self.incompleteReason = incompleteReason
+    }
+
+    public func withHolders(_ holders: [FileLockHolder]) -> FileLockScan {
+        FileLockScan(holders: holders, incompleteReason: incompleteReason)
+    }
+}

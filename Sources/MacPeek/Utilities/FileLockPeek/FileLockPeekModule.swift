@@ -14,7 +14,8 @@ final class FileLockPeekModule: UtilityModule {
     }
 
     // No launcher summary: there is nothing to show until the user chooses a path, and nothing to scan.
-    func didDisappear() { store.cancel() }
+    func didAppear() { store.setActive(true) }
+    func didDisappear() { store.setActive(false) }
 
     func makeView() -> AnyView {
         AnyView(FileLockPeekView().environmentObject(store))

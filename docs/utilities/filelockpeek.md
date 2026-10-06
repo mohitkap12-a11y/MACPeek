@@ -39,5 +39,8 @@ not shown, and `sudo lsof` in Terminal shows everything. You can terminate only 
 marked protected.
 
 ## Limits
-- Folder scans include everything inside and can take a moment on large trees.
+- Folder scans include everything inside and can take a moment on large trees. If `lsof` warns that it could not inspect
+  part of the tree, FileLockPeek shows "Results may be incomplete" instead of presenting the list as complete.
+- Several processes can hold the same file. Ending one reports success when *that* process let go; the others (still listed after
+  the rescan) keep holding it, and the banner says how many may remain.
 - A file held open by a process of another user will show "Nothing is holding it open".

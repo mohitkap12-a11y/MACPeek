@@ -15,6 +15,15 @@ struct FileLockPeekView: View {
             pathBar
             Divider()
             if let banner = store.banner { BannerView(banner: banner) }
+            if let warning = store.scanWarning, store.scanError == nil {
+                Label("Results may be incomplete. \(warning)", systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10))
+            }
             content
             Divider()
             footer

@@ -13,6 +13,8 @@ final class FileLockStore: ObservableObject {
     @Published private(set) var holders: [FileLockHolder] = []
     @Published private(set) var isScanning = false
     @Published private(set) var scanError: String?
+    /// Set when a folder scan could not inspect everything, so the list may be incomplete.
+    @Published private(set) var scanWarning: String?
     @Published var selectedID: FileLockHolder.ID?
     @Published private(set) var killingID: FileLockHolder.ID?
     /// Set when SIGTERM did not stop the process: the UI then offers an explicit force-kill.
@@ -26,6 +28,8 @@ final class FileLockStore: ObservableObject {
     private let notifier: NotificationService
     private var scanTask: Task<Void, Never>?
     private var bannerTask: Task<Void, Never>?
+    /// True only while the FileLockPeek screen is on screen. Nothing scans in the background.
+    private var isActive = false
 
     init(service: FileLockService, terminator: FileLockTerminator, permissions: PermissionService,
          settings: AppSettings, notifier: NotificationService) {
@@ -42,16 +46,26 @@ final class FileLockStore: ObservableObject {
 
     // MARK: Scanning
 
-    /// Scans the path in `pathText` (or `path`, which replaces it).
+    /// Scans the path in `pathText` (or `path`, which replaces it). Called from user actions only.
     func scan(path: String? = nil) {
         if let path { pathText = path }
         let cleaned = Self.clean(pathText)
         guard !cleaned.isEmpty else { return }
-        scanTask?.cancel()
-        scanTask = Task { [weak self] in await self?.performScan(cleaned) }
+        startScan(cleaned)
     }
 
     func rescan() { scan() }
+
+    /// Scans exactly `path` without touching the editable text field.
+    private func startScan(_ path: String) {
+        scanTask?.cancel()
+        scanTask = Task { [weak self] in await self?.performScan(path) }
+    }
+
+    func setActive(_ active: Bool) {
+        isActive = active
+        if !active { cancel() }
+    }
 
     /// Called when the screen is left: stop any running lsof.
     func cancel() {
@@ -64,11 +78,13 @@ final class FileLockStore: ObservableObject {
         isScanning = true
         defer { if !Task.isCancelled { isScanning = false } }
         do {
-            let result = try await service.holders(of: path)
+            let scan = try await service.scan(path: path)
             guard !Task.isCancelled else { return }
+            let result = scan.holders
             holders = result
             scannedPath = path
             scanError = nil
+            scanWarning = scan.incompleteReason
             if let id = selectedID, !result.contains(where: { $0.id == id }) { selectedID = nil }
             // A force-kill offer is only valid for the exact process that ignored SIGTERM.
             if let candidate = forceCandidate, !result.contains(where: { Self.isSameProcess($0, candidate) }) {
@@ -79,6 +95,7 @@ final class FileLockStore: ObservableObject {
             if Task.isCancelled { return }
             holders = []
             scannedPath = nil
+            scanWarning = nil
             scanError = error.localizedDescription
             Log.fileLockPeek.error("scan failed: \(error.localizedDescription, privacy: .public)")
         }
@@ -112,6 +129,7 @@ final class FileLockStore: ObservableObject {
 
     private func run(_ holder: FileLockHolder, force: Bool) async {
         guard let path = scannedPath else { return }
+        let holdersBefore = holders.count
         killingID = holder.id
         forceCandidate = nil
         let result = force
@@ -120,20 +138,31 @@ final class FileLockStore: ObservableObject {
         killingID = nil
         Log.fileLockPeek.info("pid \(holder.pid): \(String(describing: result), privacy: .public)")
 
+        let name = URL(fileURLWithPath: path).lastPathComponent
         switch result {
-        case .stillRunning:
+        case .stillRunning where !force:
+            // Graceful request ignored: offer the explicit force kill.
             forceCandidate = holder
             show(Banner(kind: .error, text: result.message(for: holder, path: path)))
+        case .stillRunning:
+            // Even SIGKILL did not end it (rare: e.g. blocked in the kernel). Don't offer the same thing again.
+            show(Banner(kind: .error, text: "\(holder.processName) (PID \(holder.pid)) is still running even after a force kill. It may be stuck in the kernel; try again in a moment."))
         case .terminated:
-            let name = URL(fileURLWithPath: path).lastPathComponent
-            show(Banner(kind: .success, text: "✓ “\(name)” released"))
+            let others = holdersBefore - 1
+            let text = others > 0
+                ? "✓ Terminated \(holder.processName) (PID \(holder.pid)). \(others) other process\(others == 1 ? "" : "es") may still hold “\(name)”."
+                : "✓ “\(name)” released"
+            show(Banner(kind: .success, text: text))
             if settings.showNotifications {
-                notifier.notify(title: "“\(name)” released", body: "\(holder.processName) (PID \(holder.pid)) was terminated.")
+                notifier.notify(title: others > 0 ? "Terminated \(holder.processName)" : "“\(name)” released",
+                                body: "\(holder.processName) (PID \(holder.pid)) was terminated.")
             }
         default:
             show(Banner(kind: result.isSuccess ? .success : .error, text: result.message(for: holder, path: path)))
         }
-        scan()
+        // Refresh the path we just acted on (not whatever is currently typed in the field), and only if the
+        // screen is still open: nothing scans in the background.
+        if isActive { startScan(path) }
     }
 
     private func show(_ banner: Banner) {

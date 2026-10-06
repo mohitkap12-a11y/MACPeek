@@ -95,6 +95,40 @@ final class FileLockTerminationTests: XCTestCase {
         XCTAssertEqual(ok.signals.get(), [SIGKILL])
     }
 
+    func testKillingOneOfSeveralHoldersIsASuccess() async {
+        let a = holder(100), b = holder(200, name: "sqlite3")
+        let inspector = FakeInspector(alive: [100, 200])
+        // sqlite3 already held the file before the kill and still does: that is not a replacement.
+        let result = await terminator(ScriptedFileDiscovery([[a, b], [b]]), inspector).terminate(a, holding: path)
+        XCTAssertEqual(result, .terminated)
+        XCTAssertEqual(inspector.signals.get(), [SIGTERM])
+    }
+
+    func testAHolderThatDeletesTheFileOnExitCountsAsReleased() async {
+        let h = holder(100)
+        let discovery = ScriptedFileDiscovery(steps: [.holders([h]), .fail(FileLockError.notFound(path))])
+        let result = await terminator(discovery, FakeInspector(alive: [100])).terminate(h, holding: path)
+        XCTAssertEqual(result, .terminated, "nothing can hold a path that no longer exists")
+    }
+
+    func testFileAlreadyGoneBeforeTheKillSendsNoSignal() async {
+        let h = holder(100)
+        let gone = ScriptedFileDiscovery(steps: [.fail(FileLockError.notFound(path))])
+        let alive = FakeInspector(alive: [100]), dead = FakeInspector(alive: [])
+        let r1 = await terminator(gone, alive).terminate(h, holding: path)
+        let r2 = await terminator(gone, dead).terminate(h, holding: path)
+        XCTAssertEqual(r1, .resourceAlreadyReleased)
+        XCTAssertEqual(r2, .alreadyExited)
+        XCTAssertTrue(alive.signals.get().isEmpty && dead.signals.get().isEmpty)
+    }
+
+    func testOtherScanErrorsWhileVerifyingNeverCountAsSuccess() async {
+        let h = holder(100)
+        let discovery = ScriptedFileDiscovery(steps: [.holders([h]), .fail(FileLockError.commandFailed("boom"))])
+        let result = await terminator(discovery, FakeInspector(alive: [100])).terminate(h, holding: path)
+        guard case .failed = result else { return XCTFail("expected .failed, got \(result)") }
+    }
+
     func testPermissionDeniedAndScanFailure() async {
         let h = holder(100)
         let denied = FakeInspector(alive: [100]); denied.signalError = EPERM

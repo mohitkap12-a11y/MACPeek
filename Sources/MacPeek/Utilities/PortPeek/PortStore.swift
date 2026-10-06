@@ -103,16 +103,20 @@ final class PortStore: ObservableObject {
         Log.portPeek.info("port \(port.port) pid \(port.pid): \(String(describing: result), privacy: .public)")
 
         switch result {
-        case .stillRunning:
+        case .stillRunning where !force:
             forceCandidate = port
             show(Banner(kind: .error, text: result.message(for: port)))
+        case .stillRunning:
+            // Even SIGKILL did not end it; don't offer the same force kill again.
+            show(Banner(kind: .error, text: "\(port.processName) (PID \(port.pid)) is still running even after a force kill. It may be stuck in the kernel; try again in a moment."))
         case .terminated:
             show(Banner(kind: .success, text: "✓ Port \(port.port) freed"))
             if settings.showNotifications { notifier.notifyFreed(port.port, processName: port.processName, pid: port.pid) }
         default:
             show(Banner(kind: result.isSuccess ? .success : .error, text: result.message(for: port)))
         }
-        await refresh()
+        // Refresh only while the PortPeek screen is open (polling is running); nothing scans in the background.
+        if pollTask != nil { await refresh() }
     }
 
     private func show(_ banner: Banner) {

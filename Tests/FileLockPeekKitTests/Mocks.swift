@@ -30,21 +30,30 @@ final class RecordingRunner: CommandRunning, @unchecked Sendable {
     }
 }
 
-/// Discovery whose results change between calls (last snapshot repeats).
+enum DiscoveryStep {
+    case holders([FileLockHolder])
+    case fail(Error)
+}
+
+/// Discovery whose results change between calls (the last step repeats).
 final class ScriptedFileDiscovery: FileLockDiscoveryProtocol, @unchecked Sendable {
-    private let box: LockedBox<[[FileLockHolder]]>
+    private let box: LockedBox<[DiscoveryStep]>
     let calls = LockedBox(0)
     var failure: Error?
-    init(_ snapshots: [[FileLockHolder]]) { box = LockedBox(snapshots) }
-    func holders(of path: String) async throws -> [FileLockHolder] {
+    init(_ snapshots: [[FileLockHolder]]) { box = LockedBox(snapshots.map { .holders($0) }) }
+    init(steps: [DiscoveryStep]) { box = LockedBox(steps) }
+    func scan(path: String) async throws -> FileLockScan {
         if let failure { throw failure }
         calls.mutate { $0 += 1 }
-        var result: [FileLockHolder] = []
-        box.mutate { snaps in
-            result = snaps.first ?? []
-            if snaps.count > 1 { snaps.removeFirst() }
+        var step: DiscoveryStep = .holders([])
+        box.mutate { steps in
+            step = steps.first ?? .holders([])
+            if steps.count > 1 { steps.removeFirst() }
         }
-        return result
+        switch step {
+        case .holders(let holders): return FileLockScan(holders: holders)
+        case .fail(let error): throw error
+        }
     }
 }
 

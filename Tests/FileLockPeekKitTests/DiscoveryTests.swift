@@ -82,6 +82,24 @@ final class FileLockDiscoveryTests: XCTestCase {
         XCTAssertEqual(holders.count, 1)
     }
 
+    func testFolderScanWithLsofWarningIsMarkedIncomplete() async throws {
+        let warning = "lsof: WARNING: can't stat() apfs file system /System/Volumes/Data\n      Output information may be incomplete."
+        let output = CommandOutput(stdout: try fixture("dir_scan"), stderr: warning, status: 1)
+        let scan = try await LsofFileLockDiscovery(runner: RecordingRunner(output: output)).scan(path: tempDir.path)
+        XCTAssertEqual(scan.holders.count, 3, "holders found are still returned")
+        let reason = try XCTUnwrap(scan.incompleteReason, "a folder scan that warned must not look complete")
+        XCTAssertTrue(reason.contains("can't stat()"), reason)
+    }
+
+    func testWarningsDoNotAffectASingleFileAnswerAndCleanScansAreComplete() async throws {
+        let warn = CommandOutput(stdout: try fixture("file_single"), stderr: "lsof: WARNING: can't stat() fs", status: 1)
+        let fileScan = try await LsofFileLockDiscovery(runner: RecordingRunner(output: warn)).scan(path: tempFile.path)
+        XCTAssertNil(fileScan.incompleteReason)
+        let clean = CommandOutput(stdout: try fixture("dir_scan"), stderr: "", status: 0)
+        let folderScan = try await LsofFileLockDiscovery(runner: RecordingRunner(output: clean)).scan(path: tempDir.path)
+        XCTAssertNil(folderScan.incompleteReason)
+    }
+
     func testRunnerErrorIsWrapped() async {
         let runner = RecordingRunner(); runner.error = CommandError.timedOut("lsof")
         do { _ = try await LsofFileLockDiscovery(runner: runner).holders(of: tempFile.path); XCTFail("expected throw") }
