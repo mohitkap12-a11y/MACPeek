@@ -32,6 +32,7 @@ final class ProcessStore: ObservableObject {
     private var task: Task<Void, Never>?
     private var detailsTask: Task<Void, Never>?
     private var bannerTask: Task<Void, Never>?
+    private var terminationTask: Task<Void, Never>?
     /// True only while the ProcessPeek screen is on screen: nothing reads the process table in the background.
     private var isActive = false
 
@@ -72,6 +73,9 @@ final class ProcessStore: ObservableObject {
         forceCandidate = nil
         banner = nil
         bannerTask?.cancel()
+        terminationTask?.cancel()
+        terminationTask = nil
+        killingPID = nil
     }
 
     private func load() async {
@@ -140,14 +144,23 @@ final class ProcessStore: ObservableObject {
 
     // MARK: Termination
 
-    func terminate(_ entry: ProcessEntry) async { await run(entry, force: false) }
+    /// Termination runs in a store-owned task so leaving the screen cancels it (see `cancel()`).
+    func terminate(_ entry: ProcessEntry) { start(entry, force: false) }
     func dismissForce() { forceCandidate = nil }
 
     /// Force-kills the *original* candidate (never a refreshed row that merely shares its PID); the termination
     /// service revalidates its identity again before sending SIGKILL.
-    func confirmForceTerminate() async {
+    func confirmForceTerminate() {
         guard let candidate = forceCandidate else { return }
-        await run(candidate, force: true)
+        start(candidate, force: true)
+    }
+
+    private func start(_ entry: ProcessEntry, force: Bool) {
+        guard terminationTask == nil else { return }
+        terminationTask = Task { [weak self] in
+            await self?.run(entry, force: force)
+            self?.terminationTask = nil
+        }
     }
 
     private static func isSameProcess(_ current: ProcessEntry?, _ candidate: ProcessEntry) -> Bool {
@@ -160,6 +173,8 @@ final class ProcessStore: ObservableObject {
         forceCandidate = nil
         let result = force ? await terminator.forceTerminate(entry) : await terminator.terminate(entry)
         killingPID = nil
+        // Left the screen mid-wait: no banner, force offer or notification for work the user walked away from.
+        guard !Task.isCancelled else { return }
         Log.processPeek.info("pid \(entry.pid): \(String(describing: result), privacy: .public)")
 
         switch result {

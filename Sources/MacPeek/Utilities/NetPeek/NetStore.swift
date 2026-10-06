@@ -21,6 +21,8 @@ final class NetStore: ObservableObject {
     private var wifiTask: Task<Void, Never>?
     private var checksTask: Task<Void, Never>?
     private var wifiInterface: String?
+    /// Each read gets a number; only the newest read may publish, so a slow earlier read cannot overwrite a later one.
+    private var readGeneration = 0
 
     init(reader: NetworkReading, settings: AppSettings) {
         self.reader = reader
@@ -32,18 +34,30 @@ final class NetStore: ObservableObject {
 
     /// One read, for the launcher summary and manual refresh.
     func refresh() async {
+        readGeneration += 1
+        let generation = readGeneration
         do {
             let result = try await reader.snapshot()
-            guard !Task.isCancelled else { return }
-            if let old = snapshot, old.primary?.name != result.primary?.name { checks = nil }
+            guard !Task.isCancelled, generation == readGeneration else { return }
+            // Measurements describe the router and servers they ran against: drop them (and stop any run) when those change.
+            if let old = snapshot, !Self.sameTargets(old, result) {
+                checksTask?.cancel()
+                checksTask = nil
+                checks = nil
+                isChecking = false
+            }
             snapshot = result
             error = nil
             updateWiFi(for: result)
         } catch {
-            if Task.isCancelled { return }
+            if Task.isCancelled || generation != readGeneration { return }
             self.error = error.localizedDescription
             Log.netPeek.error("read failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private static func sameTargets(_ a: NetSnapshot, _ b: NetSnapshot) -> Bool {
+        a.primary?.name == b.primary?.name && a.gateway == b.gateway && a.dnsServers == b.dnsServers
     }
 
     func reloadWiFi() {
@@ -117,7 +131,7 @@ final class NetStore: ObservableObject {
             defer { if !Task.isCancelled { self.isChecking = false } }
             do {
                 let result = try await self.reader.runChecks(for: snapshot)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, let current = self.snapshot, Self.sameTargets(current, snapshot) else { return }
                 self.checks = result
             } catch {
                 if Task.isCancelled { return }

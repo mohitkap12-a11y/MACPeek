@@ -19,6 +19,8 @@ final class DNSStore: ObservableObject {
     private let reader: DNSReading
     private var loadTask: Task<Void, Never>?
     private var lookupTask: Task<Void, Never>?
+    /// Bumped whenever the configuration changes, so a lookup against the old server list cannot show up under the new one.
+    private var configGeneration = 0
 
     init(reader: DNSReading) {
         self.reader = reader
@@ -56,6 +58,14 @@ final class DNSStore: ObservableObject {
         do {
             let result = try await reader.configuration()
             guard !Task.isCancelled else { return }
+            if let old = configuration, old.activeServers != result.activeServers {
+                configGeneration += 1
+                lookupTask?.cancel()
+                lookupTask = nil
+                isLookingUp = false
+                lookup = nil
+                probes = []
+            }
             configuration = result
             error = nil
         } catch {
@@ -74,6 +84,7 @@ final class DNSStore: ObservableObject {
         probes = []
         lookupError = nil
         isLookingUp = true
+        let generation = configGeneration
         lookupTask = Task { [weak self] in
             guard let self else { return }
             defer { if !Task.isCancelled { self.isLookingUp = false } }
@@ -83,8 +94,14 @@ final class DNSStore: ObservableObject {
                 self.lookup = system
                 var results: [ServerProbe] = []
                 for server in servers.prefix(4) {
-                    let probe = try await self.reader.probe(server: server, name: name)
-                    guard !Task.isCancelled else { return }
+                    let probe: ServerProbe
+                    do {
+                        probe = try await self.reader.probe(server: server, name: name)
+                    } catch DNSError.invalidServer {
+                        // e.g. a link-local resolver printed with a zone id: report it, keep checking the others.
+                        probe = ServerProbe(server: server, outcome: .unavailable("MacPeek can only query plain IP addresses directly."))
+                    }
+                    guard !Task.isCancelled, generation == self.configGeneration else { return }
                     results.append(probe)
                     self.probes = results
                 }

@@ -223,6 +223,10 @@ final class AssessmentTests: XCTestCase {
         XCTAssertEqual(NetworkAssessment.headline(snapshot: snapshot(), checks: routerDown), "Your router did not answer")
         let dnsDown = NetworkChecks(gateway: ping("192.168.1.1", received: 3), dnsServers: [ping("8.8.8.8", received: 0, avg: nil)])
         XCTAssertEqual(NetworkAssessment.headline(snapshot: snapshot(), checks: dnsDown), "Your DNS servers did not answer")
+        let dnsUnchecked = NetworkChecks(gateway: ping("192.168.1.1", received: 3),
+                                         dnsServers: [.skipped(host: "fe80::1", reason: "IPv6 addresses are not checked.")])
+        XCTAssertEqual(NetworkAssessment.headline(snapshot: snapshot(), checks: dnsUnchecked),
+                       "Your router answered, but your DNS servers could not be checked")
     }
 
     func testFindingsKeepFactsAndInferencesApart() {

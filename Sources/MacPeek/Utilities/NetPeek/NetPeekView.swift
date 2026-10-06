@@ -143,7 +143,7 @@ private struct ChecksCard: View {
                     .controlSize(.small)
                     .disabled(store.isChecking || !snapshot.hasDefaultRoute)
             }
-            Text("Sends three pings to your router and to each DNS server. Nothing leaves your network.")
+            Text("Sends three pings to your router and to up to three of your DNS servers (IPv4 only). DNS servers are often outside your home network, such as a public resolver, so those pings do leave it.")
                 .font(.caption2).foregroundStyle(.tertiary)
             if let error = store.checksError { Text(error).font(.caption).foregroundStyle(.orange) }
             ForEach(Array(store.findings.enumerated()), id: \.offset) { _, finding in

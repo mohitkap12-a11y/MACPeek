@@ -176,7 +176,7 @@ private struct ProcessDetailView: View {
                     confirmLabel: "Force Kill",
                     destructive: true,
                     onCancel: { store.dismissForce() },
-                    onConfirm: { Task { await store.confirmForceTerminate() } }
+                    onConfirm: { store.confirmForceTerminate() }
                 )
             }
         } else if confirming {
@@ -185,12 +185,12 @@ private struct ProcessDetailView: View {
                 confirmLabel: "Terminate",
                 destructive: false,
                 onCancel: { confirming = false },
-                onConfirm: { confirming = false; Task { await store.terminate(entry) } }
+                onConfirm: { confirming = false; store.terminate(entry) }
             )
         } else {
             HStack {
                 Button(role: .destructive) {
-                    if settings.confirmBeforeKill || entry.sessionWarning != nil { confirming = true } else { Task { await store.terminate(entry) } }
+                    if settings.confirmBeforeKill || entry.sessionWarning != nil { confirming = true } else { store.terminate(entry) }
                 } label: {
                     if busy { ProgressView().controlSize(.small) } else { Text("Kill Process") }
                 }

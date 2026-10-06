@@ -26,6 +26,9 @@ public enum NetworkAssessment {
         if case .result(let gateway)? = checks.gateway, !gateway.gotReplies { return "Your router did not answer" }
         let dnsReplies = checks.dnsServers.compactMap { outcome -> PingResult? in if case .result(let r) = outcome { return r }; return nil }
         if !dnsReplies.isEmpty, dnsReplies.allSatisfy({ !$0.gotReplies }) { return "Your DNS servers did not answer" }
+        if !checks.dnsServers.isEmpty, dnsReplies.isEmpty {
+            return "Your router answered, but your DNS servers could not be checked"
+        }
         return "Connection looks healthy"
     }
 
