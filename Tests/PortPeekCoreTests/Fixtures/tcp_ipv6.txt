@@ -1,0 +1,13 @@
+p921
+cpostgres
+Lmohit
+f7
+tIPv6
+PTCP
+n[::1]:5432
+TST=LISTEN
+f8
+tIPv4
+PTCP
+n127.0.0.1:5432
+TST=LISTEN

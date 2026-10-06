@@ -1,0 +1,16 @@
+---
+// A CSS illustration of the popover (not a real screenshot). Replace with a real capture after the first release.
+---
+<div class="mock" role="img" aria-label="Illustration of the PortPeek menu bar popover listing ports 3000, 5173, 5432 and 6379 with the node process on port 3000 expanded and a Kill Process button">
+  <div class="bar"><span>PortPeek</span><span aria-hidden="true">⟳ &nbsp;⚙</span></div>
+  <div class="search" aria-hidden="true">🔎 Search ports, processes or PIDs…</div>
+  <div class="row open" aria-hidden="true"><b>3000</b><span>node<small>PID 18432</small></span><i>TCP</i></div>
+  <div class="detail" aria-hidden="true">
+    <div class="kv"><span>Address</span><span>127.0.0.1:3000</span><span>State</span><span>LISTEN</span><span>Status</span><span style="color:var(--ok)">✓ Can terminate</span></div>
+    <span class="kill">Kill Process</span>
+  </div>
+  <div class="row" aria-hidden="true"><b>5173</b><span>node<small>PID 19283</small></span><i>TCP</i></div>
+  <div class="row" aria-hidden="true"><b>5432</b><span>postgres<small>PID 921</small></span><i>TCP</i></div>
+  <div class="row" aria-hidden="true"><b>6379</b><span>redis-server<small>PID 1042</small></span><i>TCP</i></div>
+  <div class="foot" aria-hidden="true"><span>4 listening ports</span><span>Updated just now</span></div>
+</div>

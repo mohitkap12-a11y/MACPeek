@@ -1,0 +1,36 @@
+import Foundation
+
+/// Discovers listening sockets visible to the current user via `lsof`.
+/// No elevated privileges are requested: sockets owned by other users are simply not listed.
+public struct LsofPortDiscovery: PortDiscoveryProtocol {
+    public static let arguments = [
+        "-nP",                 // no DNS / port-name lookups (fast, numeric)
+        "+c", "0",             // full command names
+        "-iTCP", "-sTCP:LISTEN",
+        "-iUDP",
+        "-FpcLftPnT",          // machine-readable field output
+    ]
+
+    private let runner: CommandRunning
+    private let lsofPath: String
+
+    public init(runner: CommandRunning = ShellCommand(), lsofPath: String = "/usr/sbin/lsof") {
+        self.runner = runner
+        self.lsofPath = lsofPath
+    }
+
+    public func discover() async throws -> [PortInfo] {
+        let output: CommandOutput
+        do {
+            output = try await runner.run(lsofPath, Self.arguments)
+        } catch {
+            throw PortDiscoveryError.commandFailed(error.localizedDescription)
+        }
+        // lsof exits 1 when nothing matches; that is an empty list, not a failure.
+        if output.status > 1 && output.stdout.isEmpty {
+            let detail = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw PortDiscoveryError.commandFailed(detail.isEmpty ? "lsof exited with status \(output.status)" : detail)
+        }
+        return PortParser.parse(output.stdout)
+    }
+}

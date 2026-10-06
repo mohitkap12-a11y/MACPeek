@@ -1,0 +1,61 @@
+---
+import '../styles/global.css';
+import { SITE } from '../site';
+
+interface Props { title: string; description: string; jsonLd?: object | object[]; ogType?: string; noindex?: boolean; }
+const { title, description, jsonLd, ogType = 'website', noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+const image = new URL('/og-image.png', Astro.site).toString();
+const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+    {ld.map((d) => <script type="application/ld+json" set:html={JSON.stringify(d)} />)}
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/"><img src="/favicon.svg" width="24" height="24" alt="" />PortPeek</a>
+        <nav class="main" aria-label="Primary">
+          <a href="/#features" class="hide-sm">Features</a>
+          <a href="/docs/">Docs</a>
+          <a href="/blog/">Guides</a>
+          <a href={SITE.github}>GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="site">
+      <div class="wrap cols">
+        <div>
+          <strong>PortPeek</strong><br />Free &amp; open source (MIT). No account. No telemetry.<br />
+          Not affiliated with Apple. macOS is a trademark of Apple Inc.
+        </div>
+        <div>
+          <a href="/docs/">Documentation</a><br /><a href="/docs/privacy/">Privacy</a><br /><a href="/blog/">Guides</a><br />
+          <a href={SITE.github}>Source on GitHub</a><br /><a href={SITE.releases}>Releases</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
