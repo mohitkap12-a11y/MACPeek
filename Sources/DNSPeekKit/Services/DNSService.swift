@@ -34,6 +34,9 @@ public enum NetworkInput {
     }
 
     public static func isIPv6(_ value: String) -> Bool {
+        // Zone ids (`fe80::1%en0`) are rejected on purpose: some libc versions accept
+        // them, and nothing but a plain address should ever reach `dig`/`ping`.
+        guard !value.contains("%") else { return false }
         var address = in6_addr()
         return value.withCString { inet_pton(AF_INET6, $0, &address) } == 1
     }
