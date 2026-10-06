@@ -3,6 +3,9 @@ import AppKit
 import MacPeekCore
 import PortPeekKit
 import FileLockPeekKit
+import DisplayPeekKit
+import USBPeekKit
+import SleepPeekKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
@@ -31,8 +34,15 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             notifier: notifier
         )
 
+        let displayStore = DisplayStore(discovery: SystemProfilerDisplayDiscovery())
+        let usbStore = USBStore(discovery: SystemUSBDiscovery())
+        let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
+
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
+            DisplayPeekModule(store: displayStore),
+            USBPeekModule(store: usbStore),
+            SleepPeekModule(store: sleepStore),
             FileLockPeekModule(store: fileLockStore),
         ])
         let router = UtilityRouter(registry: registry)

@@ -8,5 +8,8 @@ enum Log {
     static let app = Logger(subsystem: subsystem, category: "MacPeek")
     static let portPeek = Logger(subsystem: subsystem, category: "MacPeek.PortPeek")
     static let fileLockPeek = Logger(subsystem: subsystem, category: "MacPeek.FileLockPeek")
+    static let displayPeek = Logger(subsystem: subsystem, category: "MacPeek.DisplayPeek")
+    static let usbPeek = Logger(subsystem: subsystem, category: "MacPeek.USBPeek")
+    static let sleepPeek = Logger(subsystem: subsystem, category: "MacPeek.SleepPeek")
 }
 #endif

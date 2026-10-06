@@ -29,6 +29,27 @@ When the popover opens, enabled utilities may take one quick snapshot to fill in
 
 FileLockPeek scans **only when you ask**, and a folder scan includes everything inside it, so large folders can take a moment.
 
+## Using DisplayPeek
+1. Open **DisplayPeek**. It reads your display configuration when the screen opens (use `⌘R` to read again) and does nothing in the background.
+2. Each connected display gets a card: panel resolution, the "looks like" desktop resolution, refresh rate, scaling, main/mirrored/online state, and anything else macOS reports.
+3. Click the copy button on a card to copy its details, without serial numbers.
+
+If macOS does not report a detail, DisplayPeek leaves it out rather than guessing.
+
+## Using USBPeek
+1. Open **USBPeek**. It reads when the screen opens (`⌘R` to read again) and does nothing in the background.
+2. Devices are shown as a tree by USB bus, with hubs and the devices behind them. Click a device for its vendor, vendor:product ID, link speed, declared USB version and class, and copy them.
+3. Thunderbolt / USB4 ports are listed below with their status and speed.
+
+Serial numbers are never read. A device's link speed is what macOS negotiated, which is what to check when a fast drive seems slow.
+
+## Using SleepPeek
+1. Open **SleepPeek**. It shows what is keeping your Mac (or its display) awake, refreshing every few seconds while its screen is open.
+2. Each blocker shows its process, PID, assertion type and how long it has been held. Statements are labelled **Reported by macOS** or **Likely (inference)**.
+3. **Load history** reads recent sleep, wake and background-wake events from the power log. That can take up to a minute, so it only runs when you ask.
+
+SleepPeek is read-only: it never changes a power setting.
+
 ## Keyboard and context menu
 - Arrow keys move the selection; `⌘R` refreshes.
 - Right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.

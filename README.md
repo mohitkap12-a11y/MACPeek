@@ -13,11 +13,11 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | Utility | Answers | Status |
 |---|---|---|
 | **PortPeek** | What is using port 3000? Free it safely. | ✅ Available |
-| **DisplayPeek** | What display configuration am I actually running? | Coming soon |
-| **USBPeek** | What is connected, and at what speed? | Coming soon |
+| **DisplayPeek** | What display configuration am I actually running? | ✅ Available |
+| **USBPeek** | What is connected, and at what speed? | ✅ Available |
 | **NetPeek** | Is my network connection actually healthy? | Coming soon |
 | **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
-| **SleepPeek** | Why isn't my Mac sleeping? | Coming soon |
+| **SleepPeek** | Why isn't my Mac sleeping? | ✅ Available |
 | **FileLockPeek** | What process is using this file? | ✅ Available |
 | **ProcessPeek** | What exactly is this process? | Coming soon |
 | **DiskPeek** | Which app is using my disk right now? | Coming soon |
@@ -81,9 +81,9 @@ No account, no telemetry, no cloud, no network access. MacPeek reads local syste
 you and never transmits it. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-PortPeek ships first; the remaining utilities arrive in phases (see [CHANGELOG.md](CHANGELOG.md)):
-Display/USB/Sleep → Net/Battery → Developer utilities (FileLock, Process, Disk, Env, DNS) → global search,
-accessibility and localization polish → signed releases → website and guides.
+PortPeek, FileLockPeek, DisplayPeek, USBPeek and SleepPeek are built; the remaining utilities arrive in phases
+(see [CHANGELOG.md](CHANGELOG.md)): Net/Battery → Process, Disk, Env and DNS → global search, accessibility and
+localization polish → signed releases.
 
 ## Contributing / License
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Licensed under the [MIT License](LICENSE).

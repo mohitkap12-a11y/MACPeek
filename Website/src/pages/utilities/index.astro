@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import UtilityCard from '../../components/UtilityCard.astro';
-import { utilities, comingSoon } from '../../data/utilities';
+import { utilities, available, comingSoon } from '../../data/utilities';
 import { builtInSentence, comingSoonSample } from '../../site';
 
 const groups = [
@@ -20,7 +20,7 @@ const jsonLd = {
 ---
 <Base
   title="All MacPeek Utilities: Ports, Displays, USB, Network and More"
-  description={`Every MacPeek utility in one place: ${builtInSentence}; ${comingSoon.length} more are coming soon, including ${comingSoonSample}.`}
+  description={`Every MacPeek utility in one place: ${available.length} are built into the app today and ${comingSoon.length} more are coming soon, including ${comingSoonSample}.`}
   jsonLd={jsonLd}
 >
   <div class="wrap article">

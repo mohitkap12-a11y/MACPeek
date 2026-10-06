@@ -16,15 +16,21 @@ let package = Package(
         .library(name: "MacPeekCore", targets: ["MacPeekCore"]),
         .library(name: "PortPeekKit", targets: ["PortPeekKit"]),
         .library(name: "FileLockPeekKit", targets: ["FileLockPeekKit"]),
+        .library(name: "DisplayPeekKit", targets: ["DisplayPeekKit"]),
+        .library(name: "USBPeekKit", targets: ["USBPeekKit"]),
+        .library(name: "SleepPeekKit", targets: ["SleepPeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
         .target(name: "PortPeekKit", dependencies: ["MacPeekCore"], path: "Sources/PortPeekKit"),
         .target(name: "FileLockPeekKit", dependencies: ["MacPeekCore"], path: "Sources/FileLockPeekKit"),
+        .target(name: "DisplayPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DisplayPeekKit"),
+        .target(name: "USBPeekKit", dependencies: ["MacPeekCore"], path: "Sources/USBPeekKit"),
+        .target(name: "SleepPeekKit", dependencies: ["MacPeekCore"], path: "Sources/SleepPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
-            dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit"],
+            dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -38,6 +44,24 @@ let package = Package(
             name: "PortPeekKitTests",
             dependencies: ["PortPeekKit", "MacPeekCore"],
             path: "Tests/PortPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "DisplayPeekKitTests",
+            dependencies: ["DisplayPeekKit", "MacPeekCore"],
+            path: "Tests/DisplayPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "USBPeekKitTests",
+            dependencies: ["USBPeekKit", "MacPeekCore"],
+            path: "Tests/USBPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "SleepPeekKitTests",
+            dependencies: ["SleepPeekKit", "MacPeekCore"],
+            path: "Tests/SleepPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
     ]

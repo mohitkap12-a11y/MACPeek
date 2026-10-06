@@ -14,17 +14,17 @@ public enum UtilityCatalog {
     public static let displayPeek = UtilityInfo(
         id: "displaypeek", name: "DisplayPeek", question: "What display configuration am I actually running?",
         tagline: "Know exactly how your displays are configured.",
-        summary: "Shows each connected display's real resolution, refresh rate, scaling, HDR state and rotation, with one-click copy.",
-        icon: "display", category: .everyday, availability: .comingSoon,
-        reads: ["Display modes and properties from macOS display services"],
+        summary: "Shows each connected display's panel resolution, \"looks like\" resolution, refresh rate and scaling, plus anything else macOS reports about it, with one-click copy. Details macOS does not report are left out, never guessed.",
+        icon: "display", category: .everyday, availability: .available,
+        reads: ["Display properties from macOS (via system_profiler), only while DisplayPeek is open"],
         permissions: ["None"]
     )
     public static let usbPeek = UtilityInfo(
         id: "usbpeek", name: "USBPeek", question: "What is connected, and at what speed?",
         tagline: "See what's connected to your Mac.",
-        summary: "Lists USB and Thunderbolt devices as a tree with vendor, connection type and negotiated link speed. Serial numbers are hidden by default.",
-        icon: "cable.connector", category: .everyday, availability: .comingSoon,
-        reads: ["USB and Thunderbolt device information from the I/O registry"],
+        summary: "Lists connected USB devices as a tree with vendor and the link speed macOS reports, plus the status of your Thunderbolt / USB4 ports. Serial numbers are never read.",
+        icon: "cable.connector", category: .everyday, availability: .available,
+        reads: ["USB devices from the I/O registry (ioreg) and Thunderbolt port status (system_profiler), only while USBPeek is open"],
         permissions: ["None"]
     )
     public static let netPeek = UtilityInfo(
@@ -47,8 +47,8 @@ public enum UtilityCatalog {
         id: "sleeppeek", name: "SleepPeek", question: "Why isn't my Mac sleeping?",
         tagline: "Find out why your Mac isn't sleeping.",
         summary: "Read-only diagnostics: active sleep assertions and the processes behind them, plus recent wake times and reasons. Verified facts are kept apart from inference.",
-        icon: "moon.zzz", category: .everyday, availability: .comingSoon,
-        reads: ["Power-management assertions and the recent sleep/wake log"],
+        icon: "moon.zzz", category: .everyday, availability: .available,
+        reads: ["Power-management assertions and settings (pmset); the sleep/wake log only when you ask for it"],
         permissions: ["None"]
     )
     public static let fileLockPeek = UtilityInfo(

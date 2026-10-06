@@ -1,0 +1,32 @@
+{
+  "SPDisplaysDataType" : [
+    {
+      "_name" : "Apple M2",
+      "spdisplays_mtlgpufamilysupport" : "spdisplays_metal4",
+      "spdisplays_ndrvs" : [
+        {
+          "_name" : "LG HDR WQHD",
+          "_spdisplays_display-product-id" : "7756",
+          "_spdisplays_display-serial-number" : "<redacted>",
+          "_spdisplays_display-vendor-id" : "1e6d",
+          "_spdisplays_display-week" : "2",
+          "_spdisplays_display-year" : "2023",
+          "_spdisplays_displayID" : "1",
+          "_spdisplays_pixels" : "3440 x 1440",
+          "_spdisplays_resolution" : "3440 x 1440 @ 100.00Hz",
+          "spdisplays_main" : "spdisplays_yes",
+          "spdisplays_mirror" : "spdisplays_off",
+          "spdisplays_online" : "spdisplays_yes",
+          "spdisplays_pixelresolution" : "spdisplays_uwqhd",
+          "spdisplays_resolution" : "3440 x 1440 @ 100.00Hz",
+          "spdisplays_rotation" : "spdisplays_supported"
+        }
+      ],
+      "spdisplays_vendor" : "sppci_vendor_Apple",
+      "sppci_bus" : "spdisplays_builtin",
+      "sppci_cores" : "10",
+      "sppci_device_type" : "spdisplays_gpu",
+      "sppci_model" : "Apple M2"
+    }
+  ]
+}
