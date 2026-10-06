@@ -37,4 +37,4 @@ Reads when the screen opens and when you press ⌘R; no polling, no launcher sum
   defensively and an unreadable section shows "Thunderbolt information is not available on this Mac".
 
 ## Verified against
-A Mac mini (Mac14,3) with two hubs and a mouse. Fixtures: `Tests/USBPeekKitTests/Fixtures/`.
+A Mac mini (Mac14,3) with three hubs and a mouse. Fixtures: `Tests/USBPeekKitTests/Fixtures/`.

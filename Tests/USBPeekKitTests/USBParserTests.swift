@@ -9,7 +9,8 @@ final class USBParserTests: XCTestCase {
         let buses = try parsed()
         XCTAssertEqual(buses.count, 3)
         XCTAssertEqual(buses.map(\.busNumber), [0, 1, 2])
-        XCTAssertEqual(buses.map(\.deviceCount), [0, 0, 3])
+        XCTAssertEqual(buses.map(\.deviceCount), [0, 1, 3])
+        XCTAssertEqual(buses[1].devices.map(\.name), ["USB2.1 Hub"])
         let bus = buses[2]
         XCTAssertEqual(bus.title, "USB bus 2")
         XCTAssertEqual(bus.controllerClass, "AppleEmbeddedUSBXHCIASMedia3142")
@@ -129,7 +130,7 @@ final class ThunderboltAndDiscoveryTests: XCTestCase {
             "SPThunderboltDataType": ok(try fixture("mac_mini_thunderbolt")),
         ])
         let snapshot = try await SystemUSBDiscovery(runner: runner).snapshot()
-        XCTAssertEqual(snapshot.deviceCount, 3)
+        XCTAssertEqual(snapshot.deviceCount, 4)
         XCTAssertEqual(snapshot.thunderboltPorts.count, 2)
         XCTAssertNil(snapshot.thunderboltNote)
         XCTAssertEqual(runner.calls[0].0, "/usr/sbin/ioreg")
@@ -143,7 +144,7 @@ final class ThunderboltAndDiscoveryTests: XCTestCase {
             "SPThunderboltDataType": failed("no thunderbolt"),
         ])
         let snapshot = try await SystemUSBDiscovery(runner: runner).snapshot()
-        XCTAssertEqual(snapshot.deviceCount, 3)
+        XCTAssertEqual(snapshot.deviceCount, 4)
         XCTAssertTrue(snapshot.thunderboltPorts.isEmpty)
         XCTAssertNotNil(snapshot.thunderboltNote)
     }
