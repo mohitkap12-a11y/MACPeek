@@ -4,6 +4,14 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **NetPeek**: active interface, IPv4/IPv6 addresses, router and DNS servers, Wi-Fi signal/noise/channel/standard/link rate
+  (macOS hides the network name without Location access, and NetPeek says so), and, only when you press Run checks, pings
+  to your router and DNS servers. Measured facts are labelled apart from inference.
+- **DNSPeek**: the DNS servers macOS uses (from `scutil --dns`), search domains, per-domain, multicast and scoped resolvers,
+  and, only when you press Run lookup, a lookup through macOS plus a direct query to each server. Read-only.
+- **ProcessPeek: Kill Process** with the same safe flow as PortPeek and FileLockPeek: confirm, re-check name and kernel start
+  time (a reused PID is never signalled), SIGTERM, verify exit, then an explicit Force Kill. Ending `loginwindow` or the user
+  `launchd` always asks first. Protected processes cannot be killed.
 - **ProcessPeek**: a searchable process list; open a process for its path, parent, user, start time, CPU and memory,
   command line, listening ports and children (jump between them). Read-only; the command line is read only on request.
 - **DiskPeek**: per-process disk read/write rates and totals, sampled with `proc_pid_rusage` only while its screen is

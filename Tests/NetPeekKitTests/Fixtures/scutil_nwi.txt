@@ -1,0 +1,17 @@
+Network information
+
+IPv4 network interface information
+     en1 : flags      : 0x7 (IPv4,IPv6,DNS)
+           address    : 192.168.68.106
+           reach      : 0x00000002 (Reachable)
+
+   REACH : flags 0x00000002 (Reachable)
+
+IPv6 network interface information
+     en1 : flags      : 0x7 (IPv4,IPv6,DNS)
+           address    : fd00:1234:5678:9abc:1111:2222:3333:4444
+           reach      : 0x00000002 (Reachable)
+
+   REACH : flags 0x00000002 (Reachable)
+
+Network interfaces: en1

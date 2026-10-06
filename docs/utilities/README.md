@@ -11,3 +11,5 @@ which statements are verified OS facts versus inference.
 - [ProcessPeek](processpeek.md)
 - [DiskPeek](diskpeek.md)
 - [EnvPeek](envpeek.md)
+- [NetPeek](netpeek.md)
+- [DNSPeek](dnspeek.md)

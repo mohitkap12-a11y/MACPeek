@@ -9,6 +9,8 @@ import SleepPeekKit
 import ProcessPeekKit
 import DiskPeekKit
 import EnvPeekKit
+import DNSPeekKit
+import NetPeekKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
@@ -41,9 +43,19 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let usbStore = USBStore(discovery: SystemUSBDiscovery())
         let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
 
-        let processStore = ProcessStore(lister: PSProcessLister())
+        let processStore = ProcessStore(
+            lister: PSProcessLister(),
+            terminator: ProcessTerminator(),
+            permissions: PermissionService(),
+            settings: settings,
+            notifier: notifier
+        )
         let diskStore = DiskStore(reader: SystemDiskIOReader(), settings: settings)
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
+
+        let dnsReader = SystemDNSReader()
+        let dnsStore = DNSStore(reader: dnsReader)
+        let netStore = NetStore(reader: SystemNetworkReader(dns: dnsReader), settings: settings)
 
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
@@ -54,6 +66,8 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             ProcessPeekModule(store: processStore),
             DiskPeekModule(store: diskStore),
             EnvPeekModule(store: envStore),
+            NetPeekModule(store: netStore),
+            DNSPeekModule(store: dnsStore),
         ])
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings)

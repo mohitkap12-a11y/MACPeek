@@ -19,9 +19,12 @@ public struct ProcessEntry: Identifiable, Equatable, Sendable {
     /// the binary's real path. It can be a relative path, a login shell's `-zsh`, or any name the process chose.
     /// It can contain spaces.
     public let executable: String
+    /// The process start time as the kernel reports it (seconds). Together with the PID it identifies one process
+    /// for as long as it lives, which is what lets Kill refuse a PID that has been reused. Nil when unknown.
+    public let identityStartTime: TimeInterval?
 
     public init(pid: Int, ppid: Int, uid: Int, user: String, state: String, startTime: Date?, elapsed: String,
-                cpuPercent: Double, residentKB: Int, executable: String) {
+                cpuPercent: Double, residentKB: Int, executable: String, identityStartTime: TimeInterval? = nil) {
         self.pid = pid
         self.ppid = ppid
         self.uid = uid
@@ -32,6 +35,21 @@ public struct ProcessEntry: Identifiable, Equatable, Sendable {
         self.cpuPercent = cpuPercent
         self.residentKB = residentKB
         self.executable = executable
+        self.identityStartTime = identityStartTime
+    }
+
+    public func withIdentity(_ identityStartTime: TimeInterval?) -> ProcessEntry {
+        ProcessEntry(pid: pid, ppid: ppid, uid: uid, user: user, state: state, startTime: startTime, elapsed: elapsed,
+                     cpuPercent: cpuPercent, residentKB: residentKB, executable: executable, identityStartTime: identityStartTime)
+    }
+
+    /// Ending these ends the user's whole login session, so Kill says so before asking for confirmation.
+    public var sessionWarning: String? {
+        switch name {
+        case "loginwindow": return "Ending loginwindow logs you out and closes all your apps."
+        case "launchd": return "Ending your user launchd ends your whole session and closes all your apps."
+        default: return nil
+        }
     }
 
     /// The last path component (`/Applications/Foo.app/Contents/MacOS/Foo` → `Foo`; `-zsh` stays `-zsh`).

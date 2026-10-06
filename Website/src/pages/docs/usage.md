@@ -55,7 +55,9 @@ SleepPeek is read-only: it never changes a power setting.
 2. Search by name, PID, user or path. The filter menu sorts by name, CPU, memory or PID and can include other users' processes (your own are shown by default).
 3. Open a process to see its PID, user, start time, how long it has been running, CPU and memory, how it was launched (its command name), its full command line, its listening ports (yours only), its parent and its children. Click the parent or a child to jump to it.
 
-The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only. ProcessPeek is read-only: it never ends a process.
+The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only.
+
+**Kill Process** works like PortPeek's: MacPeek confirms (configurable), re-checks that the PID is still the same process (name and start time, so a reused PID is never hit), asks it to quit with SIGTERM and confirms it exited. If it ignores the request you can choose an explicit **Force Kill**. Ending `loginwindow` or your user `launchd` always asks first, because it ends your session. Nothing is ever ended for you.
 
 ## Using DiskPeek
 1. Open **DiskPeek**. It takes a first sample, and the rates appear after the second one, a couple of seconds later.
@@ -70,6 +72,20 @@ Every value is sampled and labelled that way. Other users' and protected process
 3. Search names and values, copy a name, value or `NAME=value`, and open `PATH` entry by entry to spot duplicates, missing folders and relative entries.
 
 Values that look like credentials are hidden until you press **Reveal**. Values stay on screen only: they are never logged or stored, and they are dropped from memory when you leave the screen.
+
+## Using NetPeek
+1. Open **NetPeek**. It shows how your Mac is connected: the active interface, its IPv4 and IPv6 addresses, your router and your DNS servers. It refreshes every few seconds while the screen is open.
+2. On Wi-Fi you also see signal, noise (and the difference between them), channel, standard, link rate and security. macOS hides the network name from apps without Location access, and MacPeek does not ask for it, so the name shows as hidden.
+3. Press **Run checks** to ping your router and each DNS server three times. Results are labelled *Measured or reported* or *Likely (inference)*. A device that ignores pings is not proof of an outage, and NetPeek says so.
+
+Pings go only to your router and DNS servers, only when you press the button.
+
+## Using DNSPeek
+1. Open **DNSPeek**. It lists the DNS servers macOS uses for ordinary lookups, in order, with their interface and reachability, plus search domains and the other resolvers (per-domain, multicast and scoped).
+2. Press **Run lookup** to resolve a name (apple.com by default) the way apps do, then ask each server directly. You see who answered, how fast, and with what status.
+3. Copy the configuration for a support thread.
+
+DNSPeek is read-only: it never changes DNS settings. Only the name you type is queried, only when you press the button.
 
 ## Keyboard and context menu
 - Arrow keys move the selection; `⌘R` refreshes.

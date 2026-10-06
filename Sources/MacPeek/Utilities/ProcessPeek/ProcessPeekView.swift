@@ -1,5 +1,6 @@
 #if os(macOS)
 import SwiftUI
+import MacPeekCore
 import ProcessPeekKit
 import PortPeekKit
 
@@ -11,6 +12,7 @@ struct ProcessPeekView: View {
         VStack(spacing: 0) {
             searchBar
             Divider()
+            if let banner = store.banner { BannerView(banner: banner) }
             content
             Divider()
             footer
@@ -129,7 +131,12 @@ private struct ProcessRow: View {
 
 private struct ProcessDetailView: View {
     @EnvironmentObject private var store: ProcessStore
+    @EnvironmentObject private var settings: AppSettings
     let entry: ProcessEntry
+    @State private var confirming = false
+
+    private var capability: TerminationCapability { store.capability(for: entry) }
+    private var busy: Bool { store.killingPID == entry.pid }
 
     private var rows: [(label: String, value: String)] {
         var rows: [(label: String, value: String)] = [
@@ -152,9 +159,54 @@ private struct ProcessDetailView: View {
             commandLine
             ports
             children
+            capabilityLabel
+            actions
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 10)
+    }
+
+    @ViewBuilder private var actions: some View {
+        if store.forceCandidate?.pid == entry.pid {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(entry.name) did not exit after a graceful request (SIGTERM). Force-killing ends it immediately and it cannot save its state.")
+                    .font(.caption).foregroundStyle(.secondary)
+                KillConfirmationView(
+                    title: "Force kill PID \(entry.pid)?",
+                    confirmLabel: "Force Kill",
+                    destructive: true,
+                    onCancel: { store.dismissForce() },
+                    onConfirm: { store.confirmForceTerminate() }
+                )
+            }
+        } else if confirming {
+            KillConfirmationView(
+                title: "Terminate \(entry.name) (PID \(entry.pid))?" + (entry.sessionWarning.map { " " + $0 } ?? ""),
+                confirmLabel: "Terminate",
+                destructive: false,
+                onCancel: { confirming = false },
+                onConfirm: { confirming = false; store.terminate(entry) }
+            )
+        } else {
+            HStack {
+                Button(role: .destructive) {
+                    if settings.confirmBeforeKill || entry.sessionWarning != nil { confirming = true } else { store.terminate(entry) }
+                } label: {
+                    if busy { ProgressView().controlSize(.small) } else { Text("Kill Process") }
+                }
+                .controlSize(.small)
+                .disabled(busy || capability == .protected)
+                Spacer()
+            }
+        }
+    }
+
+    @ViewBuilder private var capabilityLabel: some View {
+        switch capability {
+        case .canTerminate: Label("Can terminate", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.green)
+        case .permissionRequired: Label("Permission required", systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+        case .protected: Label("Protected/system process", systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary)
+        }
     }
 
     @ViewBuilder private var relation: some View {
