@@ -15,6 +15,9 @@ final class USBStore: ObservableObject {
     private let settings: AppSettings
     private var task: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
+    /// Every read gets a number; only the newest read may publish or clear the spinner, so overlapping poll and
+    /// manual reads cannot overwrite each other.
+    private var readGeneration = 0
 
     init(discovery: USBDiscovering, settings: AppSettings) {
         self.discovery = discovery
@@ -48,16 +51,18 @@ final class USBStore: ObservableObject {
     }
 
     private func load(showSpinner: Bool) async {
+        readGeneration += 1
+        let generation = readGeneration
         if showSpinner { isLoading = true }
-        defer { if !Task.isCancelled { isLoading = false } }
+        defer { if !Task.isCancelled, generation == readGeneration { isLoading = false } }
         do {
             let result = try await discovery.snapshot()
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, generation == readGeneration else { return }
             snapshot = result
             error = nil
             if let id = selectedID, !result.allDevices.contains(where: { $0.id == id }) { selectedID = nil }
         } catch {
-            if Task.isCancelled { return }
+            if Task.isCancelled || generation != readGeneration { return }
             self.error = error.localizedDescription
             Log.usbPeek.error("read failed: \(error.localizedDescription, privacy: .public)")
         }
