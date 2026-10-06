@@ -29,17 +29,34 @@ export const liveSentence = SITE.hasRelease ? `${availableNames} ${be} available
 /** Where "Download" buttons point. */
 export const downloadHref = SITE.hasRelease ? SITE.releases : '/download/';
 
-export const docsNav = [
-  { href: '/docs/installation/', label: 'Installation' },
-  { href: '/docs/usage/', label: 'Using MacPeek' },
-  { href: '/docs/managing-utilities/', label: 'Managing utilities' },
-  { href: '/docs/ports/', label: 'PortPeek: ports' },
-  { href: '/docs/killing-processes/', label: 'PortPeek: killing safely' },
-  { href: '/docs/permissions/', label: 'Permissions' },
-  { href: '/docs/troubleshooting/', label: 'Troubleshooting' },
-  { href: '/privacy/', label: 'Privacy' },
-  { href: '/security/', label: 'Security' },
+/** Documentation sidebar, grouped like a docs site. `docsNav` below is the same list flattened (prev/next, related). */
+export const docsGroups = [
+  {
+    title: 'Getting started',
+    links: [
+      { href: '/docs/installation/', label: 'Installation', blurb: 'Install MacPeek and open it from the menu bar.' },
+      { href: '/docs/usage/', label: 'Using MacPeek', blurb: 'The launcher, search, refresh and settings.' },
+      { href: '/docs/managing-utilities/', label: 'Managing utilities', blurb: 'Choose which utilities appear and in what order.' },
+    ],
+  },
+  {
+    title: 'PortPeek',
+    links: [
+      { href: '/docs/ports/', label: 'Ports PortPeek shows', blurb: 'Which sockets are listed, and why some are missing.' },
+      { href: '/docs/killing-processes/', label: 'Killing safely', blurb: 'Graceful first, identity re-checks, explicit force kill.' },
+    ],
+  },
+  {
+    title: 'Reference',
+    links: [
+      { href: '/docs/permissions/', label: 'Permissions', blurb: 'What each utility can read and do, and what it never asks for.' },
+      { href: '/docs/troubleshooting/', label: 'Troubleshooting', blurb: 'Fixes for the problems people hit most.' },
+      { href: '/privacy/', label: 'Privacy', blurb: 'Exactly what MacPeek reads. Nothing leaves your Mac.' },
+      { href: '/security/', label: 'Security', blurb: 'How MacPeek is built and how to report an issue.' },
+    ],
+  },
 ];
+export const docsNav = docsGroups.flatMap((g) => g.links.map(({ href, label }) => ({ href, label })));
 
 /** Guides (blog). `utility` ties a guide to the Peek that solves the same problem. */
 export const blogPosts = [

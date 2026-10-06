@@ -1,12 +1,55 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { docsNav } from '../../site';
+import { SITE, docsGroups } from '../../site';
 ---
 <Base title="MacPeek Documentation: Install, Use, Manage Utilities, Troubleshoot" description="Documentation for MacPeek: install the app, use the launcher, manage utilities, PortPeek guides, permissions, privacy, security and troubleshooting.">
-  <div class="wrap narrow article">
-    <h1>MacPeek documentation</h1>
-    <p class="lede">Everything you need to install MacPeek, choose your utilities and use them safely.</p>
-    <ul>{docsNav.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
-    <p>Looking for a specific Mac problem? See the <a href="/blog/">guides</a> or browse all <a href="/utilities/">utilities</a>.</p>
+  <div class="dx-landing">
+    <section class="dx-hero">
+      <div class="wrap">
+        <div class="eyebrow">Documentation</div>
+        <h1>Learn MacPeek</h1>
+        <p class="dx-hero-sub">Everything you need to install MacPeek, choose your utilities and use them safely.</p>
+        <div class="cta" style="justify-content:flex-start">
+          <a class="btn primary" href="/docs/installation/">Get started</a>
+          <a class="btn" href="/utilities/">Browse utilities</a>
+          <a class="btn" href={SITE.github}>GitHub</a>
+        </div>
+      </div>
+    </section>
+    <div class="wrap dx-landing-body">
+      <label class="dx-search big"><span class="sr">Filter documentation</span><input type="search" placeholder="Filter documentation…" data-landing-filter autocomplete="off" /></label>
+      {docsGroups.map((g) => (
+        <section class="dx-section" data-group>
+          <h2>{g.title}</h2>
+          <div class="dx-cards">
+            {g.links.map((l) => (
+              <a class="dx-card" href={l.href} data-card>
+                <h3>{l.label}<span aria-hidden="true">→</span></h3>
+                <p>{l.blurb}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+      <p class="dx-empty" hidden>No matches.</p>
+      <section class="dx-section">
+        <h2>Guides</h2>
+        <p>Looking for a specific Mac problem? The <a href="/blog/">guides</a> answer common questions step by step, and every <a href="/utilities/">utility</a> has its own page.</p>
+      </section>
+    </div>
   </div>
+  <script is:inline>
+    (function () {
+      var input = document.querySelector('[data-landing-filter]'); if (!input) return;
+      input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase(), any = false;
+        document.querySelectorAll('[data-group]').forEach(function (g) {
+          var shown = 0;
+          g.querySelectorAll('[data-card]').forEach(function (c) { var ok = !q || c.textContent.toLowerCase().indexOf(q) > -1; c.hidden = !ok; if (ok) shown++; });
+          g.hidden = shown === 0; if (shown) any = true;
+        });
+        document.querySelector('.dx-landing .dx-empty').hidden = any;
+      });
+    })();
+  </script>
 </Base>
