@@ -43,20 +43,30 @@ private final class ProcessBox: @unchecked Sendable {
     func attach(_ process: Process) {
         lock.lock(); defer { lock.unlock() }
         self.process = process
-        if cancelled, process.isRunning { process.terminate() }
+        if cancelled, process.isRunning { stop(process) }
     }
 
     func cancel() {
         lock.lock(); defer { lock.unlock() }
         cancelled = true
-        if let process, process.isRunning { process.terminate() }
+        if let process, process.isRunning { stop(process) }
     }
 
     func timeout() {
         lock.lock(); defer { lock.unlock() }
         guard let process, process.isRunning else { return }
         timedOut = true
+        stop(process)
+    }
+
+    /// SIGTERM first; if the child is still alive a second later, SIGKILL it. Without the
+    /// escalation a child that ignores SIGTERM would keep its pipes open and hang the scan.
+    private func stop(_ process: Process) {
         process.terminate()
+        let pid = process.processIdentifier
+        DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
+            if process.isRunning { kill(pid, SIGKILL) }
+        }
     }
 }
 
