@@ -12,12 +12,12 @@ const docsHref = (u: (typeof list)[number]) => (u.status !== 'available' ? '' : 
   <div class="tabs-wrap">
     <div class="tabs" role="tablist" aria-label="MacPeek utilities">
       {list.map((u, i) => (
-        <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={`panel-${u.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-id={u.id}>{u.name}</button>
+        <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={u.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-id={u.id}>{u.name}</button>
       ))}
     </div>
   </div>
   {list.map((u, i) => (
-    <div class="panel-card" role="tabpanel" id={`panel-${u.id}`} aria-labelledby={`tab-${u.id}`} data-panel={u.id}>
+    <div class="panel-card" role="tabpanel" id={u.id} aria-labelledby={`tab-${u.id}`} data-panel={u.id}>
       <div class="panel-text">
         <span class:list={['tag', { live: u.status === 'available' }]}>{u.status === 'available' ? liveTagLong : 'Coming soon'}</span>
         <h3>{u.name}: {u.tagline}</h3>
@@ -43,7 +43,7 @@ const docsHref = (u: (typeof list)[number]) => (u.status !== 'available' ? '' : 
     if (!root) return;
     var tabs = [].slice.call(root.querySelectorAll('[role=tab]'));
     var panels = [].slice.call(root.querySelectorAll('[data-panel]'));
-    function select(id, focus, scroll) {
+    function select(id, focus, scroll, updateHash) {
       tabs.forEach(function (t) {
         var on = t.getAttribute('data-id') === id;
         t.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -57,19 +57,26 @@ const docsHref = (u: (typeof list)[number]) => (u.status !== 'available' ? '' : 
       });
       panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== id; });
       if (scroll) root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Keep the URL shareable: the chosen utility is the hash (no extra history entries).
+      if (updateHash && history.replaceState) history.replaceState(null, '', '#' + id);
     }
+    function known(id) { return tabs.some(function (t) { return t.getAttribute('data-id') === id; }); }
     root.classList.add('is-tabs');
     tabs.forEach(function (t, i) {
-      t.addEventListener('click', function () { select(t.getAttribute('data-id')); });
+      t.addEventListener('click', function () { select(t.getAttribute('data-id'), false, false, true); });
       t.addEventListener('keydown', function (e) {
         var n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
         if (n < 0) return;
         e.preventDefault();
-        select(tabs[(n + tabs.length) % tabs.length].getAttribute('data-id'), true);
+        select(tabs[(n + tabs.length) % tabs.length].getAttribute('data-id'), true, false, true);
       });
     });
+    // A link like /#portpeek opens that tab and brings the showcase into view (also on later hash changes).
     var start = (location.hash || '').slice(1);
-    var known = tabs.some(function (t) { return t.getAttribute('data-id') === start; });
-    select(known ? start : tabs[0].getAttribute('data-id'), false, false);
+    select(known(start) ? start : tabs[0].getAttribute('data-id'), false, known(start));
+    window.addEventListener('hashchange', function () {
+      var id = (location.hash || '').slice(1);
+      if (known(id)) select(id, false, true);
+    });
   })();
 </script>

@@ -278,10 +278,14 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 .mobile-menu a:not(.btn):hover { color: var(--text); background: var(--card); }
 .mobile-menu .btn { width: 100%; margin-top: 6px; }
 @media (max-width: 760px) {
-  nav.main a.link, .nav-cta { display: none; }
-  .menu-btn { display: inline-grid; }
-  .mobile-menu:not([hidden]) { display: block; }
   header.site .bar { padding: 0 8px 0 14px; }
+  /* Without JavaScript the ordinary links stay (and wrap); with it they collapse into the menu. */
+  html:not(.js) header.site .bar { height: auto; min-height: 54px; padding-block: 6px; border-radius: 24px; }
+  html:not(.js) nav.main { flex-wrap: wrap; justify-content: flex-end; }
+  html:not(.js) .menu-btn { display: none; }
+  .js nav.main a.link, .js .nav-cta { display: none; }
+  .js .menu-btn { display: inline-grid; }
+  .mobile-menu:not([hidden]) { display: block; }
 }
 
 /* ---- Utilities showcase: scrollable tab strip + one panel at a time ---- */

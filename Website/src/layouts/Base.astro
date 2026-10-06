@@ -25,6 +25,7 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
         var t = 'dark';
         try { var s = localStorage.getItem('portpeek-theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
         document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.add('js');
       })();
     </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
