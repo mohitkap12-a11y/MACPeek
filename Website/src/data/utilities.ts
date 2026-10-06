@@ -30,6 +30,8 @@ export interface Utility {
   access: string;
   /** True if the utility makes network requests when the user runs a check (so "no network access" would be false). */
   networkChecks?: boolean;
+  /** Where the user-triggered requests go, in plain words (shown in the FAQ and the privacy section). */
+  networkNote?: string;
   guides: string[]; // blog slugs
   preview: Preview;
 }
@@ -159,6 +161,7 @@ export const utilities: Utility[] = [
     reads: ['Network configuration (route, scutil, networksetup) and Wi-Fi details (system_profiler) while NetPeek is open; pings to your router and DNS servers only when you press Run checks'],
     access: 'None. macOS hides the Wi-Fi network name from apps without Location access, and MacPeek does not request it.',
     networkChecks: true,
+    networkNote: 'Pings go to your router and up to three of your DNS servers, which are often outside your home network (a public resolver or your ISP).',
     guides: ['how-to-check-wifi-signal-strength-on-mac'],
     preview: {
       title: 'NetPeek',
@@ -392,6 +395,7 @@ export const utilities: Utility[] = [
     reads: ['The system resolver configuration (scutil --dns); DNS lookups only when you press Run lookup'],
     access: 'None.',
     networkChecks: true,
+    networkNote: 'The name you type is sent to your Mac\'s DNS servers, which are often outside your home network (a public resolver or your ISP).',
     guides: ['how-to-check-dns-servers-on-mac'],
     preview: {
       title: 'DNSPeek',

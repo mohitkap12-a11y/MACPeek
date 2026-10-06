@@ -10,8 +10,10 @@ const site = process.env.SITE_URL || 'https://www.macpeekapp.com';
 // lastmod only where it is true: Markdown pages carry their own date in frontmatter. Other pages omit it.
 function lastmodFor(pathname) {
   const rel = pathname.replace(/^\/|\/$/g, '');
-  const file = new URL(`./src/pages/${rel}.md`, import.meta.url);
-  if (!rel || !existsSync(file)) return undefined;
+  if (!rel) return undefined;
+  // A page is either <rel>.md or <rel>/index.md.
+  const file = [`./src/pages/${rel}.md`, `./src/pages/${rel}/index.md`].map((p) => new URL(p, import.meta.url)).find((f) => existsSync(f));
+  if (!file) return undefined;
   const m = readFileSync(file, 'utf8').match(/^date: "(\d{4}-\d{2}-\d{2})"/m);
   return m ? new Date(m[1]).toISOString() : undefined;
 }

@@ -11,6 +11,7 @@ export const GET: APIRoute = ({ site }) => {
       `## ${u.name}${live ? '' : ' (coming soon, not released)'}`,
       `URL: ${new URL(`/utilities/${u.id}/`, site)}`,
       `Question it answers: ${u.question}`,
+      `Availability: ${live ? (SITE.hasRelease ? 'available in the latest MacPeek release' : 'built into the MacPeek source; the first signed release is not published yet, so there is no download')  : 'planned, not released'}`,
       '',
       `The problem: ${u.problem}`,
       '',

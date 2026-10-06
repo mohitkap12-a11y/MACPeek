@@ -21,7 +21,9 @@ const indexable = pages.filter((p) => !isRedirectStub(html(p)) && !isNoindex(htm
 const origin = new URL(html(join(dist, 'index.html')).match(/<link rel="canonical" href="([^"]+)"/)[1]).origin;
 
 test('canonical origin is the production domain', () => {
-  assert.equal(origin, 'https://www.macpeekapp.com');
+  // The default is the production domain; a SITE_URL build (staging) must use its own origin consistently.
+  const expected = process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : 'https://www.macpeekapp.com';
+  assert.equal(origin, expected);
 });
 
 test('indexable pages: one h1, unique title ≤ 60 chars, unique description, canonical to themselves', () => {
@@ -119,5 +121,5 @@ test('the 404 page is noindex and not in the sitemap', () => {
 test('vercel.json 301s the old privacy URL and keeps trailing slashes', () => {
   const v = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.equal(v.trailingSlash, true);
-  assert.ok(v.redirects.some((r) => r.source.startsWith('/docs/privacy') && r.destination === '/privacy/' && r.permanent === true));
+  assert.ok(v.redirects.some((r) => r.source.startsWith('/docs/privacy') && r.destination === '/privacy/' && r.statusCode === 301));
 });

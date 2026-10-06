@@ -22,6 +22,7 @@ for (const f of files) {
   if (!title || title.length > 70) errors.push(`${f}: title missing or >70 chars (${title?.length})`);
   if (!description || description.length < 70 || description.length > 175) errors.push(`${f}: description length ${description?.length} not in 70–175`);
   if (!h1) errors.push(`${f}: missing h1`);
+  if (!/^date: "\d{4}-\d{2}-\d{2}"$/m.test(m[1])) errors.push(`${f}: missing date (needed for lastmod, the feed and structured data)`);
   if (titles.has(title)) errors.push(`${f}: duplicate title with ${titles.get(title)}`); titles.set(title, f);
   if (descs.has(description)) errors.push(`${f}: duplicate description with ${descs.get(description)}`); descs.set(description, f);
 }

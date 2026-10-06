@@ -1,8 +1,8 @@
 {
   "trailingSlash": true,
   "redirects": [
-    { "source": "/docs/privacy", "destination": "/privacy/", "permanent": true },
-    { "source": "/docs/privacy/", "destination": "/privacy/", "permanent": true }
+    { "source": "/docs/privacy", "destination": "/privacy/", "statusCode": 301 },
+    { "source": "/docs/privacy/", "destination": "/privacy/", "statusCode": 301 }
   ],
   "headers": [
     {
