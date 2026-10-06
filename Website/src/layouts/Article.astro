@@ -1,10 +1,10 @@
 ---
 import Base from './Base.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
-import { SITE, docsNav, blogNav, blogPosts } from '../site';
+import { SITE, docsGroups, docsNav, blogNav, blogPosts } from '../site';
 import { byId } from '../data/utilities';
 
-const { frontmatter } = Astro.props;
+const { frontmatter, headings = [], file = '' } = Astro.props;
 const { title, description, section = 'blog', h1, date = '2026-10-06', utility: utilityId } = frontmatter;
 const util = utilityId ? byId(utilityId) : undefined;
 const isDocs = section === 'docs';
@@ -33,27 +33,66 @@ const jsonLd = [
     ],
   },
 ];
-const nav = isDocs ? docsNav : blogNav;
+const groups = isDocs
+  ? docsGroups.map((g) => ({ title: g.title, links: g.links.map(({ href, label }) => ({ href, label })) }))
+  : [...new Set(blogPosts.map((p) => p.utility))].map((id) => ({
+      title: byId(id)?.name ?? id,
+      links: blogPosts.filter((p) => p.utility === id).map((p) => ({ href: `/blog/${p.slug}/`, label: p.label })),
+    }));
+const flat = isDocs ? docsNav : blogNav;
+const here = flat.findIndex((l) => l.href === Astro.url.pathname);
+const prev = here > 0 ? flat[here - 1] : undefined;
+const next = here >= 0 && here < flat.length - 1 ? flat[here + 1] : undefined;
+const toc = (headings as { depth: number; slug: string; text: string }[]).filter((h) => h.depth === 2 || h.depth === 3);
+const rel = String(file).includes('/Website/') ? String(file).split('/Website/')[1] : '';
+const editUrl = rel ? `${SITE.github}/edit/main/Website/${rel}` : '';
 const sameUtility = blogPosts.filter((p) => p.utility === utilityId).map((p) => ({ href: `/blog/${p.slug}/`, label: p.label }));
 const related = (isDocs ? blogNav : [...sameUtility, ...(util ? [{ href: `/utilities/${util.id}/`, label: `About ${util.name}` }] : []), ...docsNav.slice(0, 3)])
   .filter((l, i, a) => l.href !== Astro.url.pathname && a.findIndex((x) => x.href === l.href) === i)
   .slice(0, 5);
+const docsHref = util ? (util.id === 'portpeek' ? '/docs/ports/' : util.status === 'available' ? `/docs/utilities/${util.id}/` : '') : '';
+const label = isDocs ? 'Documentation' : 'Guides';
+const updated = new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 ---
 <Base title={title} description={description} jsonLd={jsonLd} ogType="article">
-  <div class="wrap docs-layout">
-    <aside class="docs-nav" aria-label={isDocs ? 'Documentation' : 'Guides'}>
-      {nav.map((l) => <a href={l.href} aria-current={l.href === Astro.url.pathname ? 'page' : undefined}>{l.label}</a>)}
+  <div class="wrap dx">
+    <details class="dx-mobile">
+      <summary><span>{label}</span><span class="dx-chev" aria-hidden="true">Menu ▾</span></summary>
+      <div class="dx-side-inner">
+        <label class="dx-search"><span class="sr">Filter {label.toLowerCase()}</span><input type="search" placeholder={`Filter ${label.toLowerCase()}…`} data-dx-filter autocomplete="off" /></label>
+        {groups.map((g) => (
+          <div class="dx-group">
+            <div class="dx-group-title">{g.title}</div>
+            {g.links.map((l) => <a href={l.href} aria-current={l.href === Astro.url.pathname ? 'page' : undefined}>{l.label}</a>)}
+          </div>
+        ))}
+      </div>
+    </details>
+    <aside class="dx-side" aria-label={label}>
+      <div class="dx-side-inner">
+        <label class="dx-search"><span class="sr">Filter {label.toLowerCase()}</span><input type="search" placeholder={`Filter ${label.toLowerCase()}…`} data-dx-filter autocomplete="off" /></label>
+        {groups.map((g) => (
+          <div class="dx-group">
+            <div class="dx-group-title">{g.title}</div>
+            {g.links.map((l) => <a href={l.href} aria-current={l.href === Astro.url.pathname ? 'page' : undefined}>{l.label}</a>)}
+          </div>
+        ))}
+        <p class="dx-empty" hidden>No matches.</p>
+      </div>
     </aside>
-    <article class="article">
-      <div class="crumbs"><a href="/">Home</a> › <a href={isDocs ? '/docs/' : '/blog/'}>{isDocs ? 'Docs' : 'Guides'}</a></div>
+    <article class="dx-main">
+      <div class="crumbs"><a href="/">Home</a><span aria-hidden="true">/</span><a href={isDocs ? '/docs/' : '/blog/'}>{isDocs ? 'Docs' : 'Guides'}</a></div>
       <h1>{h1 ?? title}</h1>
-      <slot />
+      <p class="dx-lede">{description}</p>
+      <div class="dx-meta"><span>Updated {updated}</span>{editUrl && <a href={editUrl}>Edit this page on GitHub</a>}</div>
+      <div class="prose"><slot /></div>
       {!isDocs && util && (
         <div class="callout">
           {util.status === 'available' ? (
             <>
               <p><strong>{util.name} gives you the same visibility from your Mac menu bar.</strong> {util.tagline} It is a free, open-source utility inside MacPeek.</p>
               <DownloadCTA />
+              {docsHref && <p class="fine" style="margin-bottom:0"><a href={docsHref}>Read the {util.name} docs</a></p>}
             </>
           ) : (
             <>
@@ -66,10 +105,67 @@ const related = (isDocs ? blogNav : [...sameUtility, ...(util ? [{ href: `/utili
           )}
         </div>
       )}
+      {(prev || next) && (
+        <nav class="dx-pager" aria-label="Previous and next">
+          {prev ? <a class="prev" href={prev.href}><small>Previous</small><span>← {prev.label}</span></a> : <span />}
+          {next ? <a class="next" href={next.href}><small>Next</small><span>{next.label} →</span></a> : <span />}
+        </nav>
+      )}
       <nav class="related" aria-label="Related">
         <h2>Related</h2>
         <ul>{related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
       </nav>
     </article>
+    <aside class="dx-toc" aria-label="On this page">
+      {toc.length > 0 && (
+        <div class="dx-toc-inner">
+          <div class="dx-group-title">On this page</div>
+          {toc.map((h) => <a href={`#${h.slug}`} class={h.depth === 3 ? 'sub' : ''}>{h.text}</a>)}
+        </div>
+      )}
+    </aside>
   </div>
+  <script is:inline>
+    (function () {
+      // Sidebar filter: hides non-matching links and empty groups.
+      document.querySelectorAll('[data-dx-filter]').forEach(function (input) {
+        var root = input.closest('.dx-side-inner');
+        input.addEventListener('input', function () {
+          var q = input.value.trim().toLowerCase(), any = false;
+          root.querySelectorAll('.dx-group').forEach(function (g) {
+            var shown = 0;
+            g.querySelectorAll('a').forEach(function (a) { var ok = !q || a.textContent.toLowerCase().indexOf(q) > -1; a.hidden = !ok; if (ok) shown++; });
+            g.hidden = shown === 0; if (shown) any = true;
+          });
+          var e = root.querySelector('.dx-empty'); if (e) e.hidden = any;
+        });
+      });
+      // Heading anchors and code-copy buttons.
+      document.querySelectorAll('.prose h2[id], .prose h3[id]').forEach(function (h) {
+        var a = document.createElement('a'); a.href = '#' + h.id; a.className = 'anchor'; a.setAttribute('aria-label', 'Link to this section'); a.textContent = '#'; h.appendChild(a);
+      });
+      document.querySelectorAll('.prose pre').forEach(function (pre) {
+        // Capture the code text before the button is added, so the label can never end up in the copied text.
+        var text = pre.textContent.replace(/\n$/, '');
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+        b.addEventListener('click', function () {
+          var t = text;
+          var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function () {});
+        });
+        pre.appendChild(b);
+      });
+      // Highlight the section being read in "On this page".
+      var links = [].slice.call(document.querySelectorAll('.dx-toc a'));
+      if (links.length && 'IntersectionObserver' in window) {
+        var map = {}; links.forEach(function (l) { map[l.getAttribute('href').slice(1)] = l; });
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { links.forEach(function (l) { l.removeAttribute('aria-current'); }); var l = map[en.target.id]; if (l) l.setAttribute('aria-current', 'true'); }
+          });
+        }, { rootMargin: '-80px 0px -70% 0px' });
+        Object.keys(map).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+      }
+    })();
+  </script>
 </Base>

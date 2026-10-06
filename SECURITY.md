@@ -10,8 +10,9 @@ version, macOS version and reproduction steps. We aim to acknowledge reports wit
 credit reporters who want it once a fix ships (responsible disclosure).
 
 ## Security model
-- **No telemetry, no accounts, no network access.** MacPeek makes no network connections. Port,
-  process and socket information stays on your Mac.
+- **No telemetry, no accounts, no cloud.** Information about your Mac stays on your Mac. The only network
+  traffic is what you ask for: NetPeek pings your router and DNS servers, and DNSPeek looks up a name you type,
+  each only when you press the button.
 - **No privilege elevation.** MacPeek runs as your user and sends signals only to processes your
   user may signal. It never prompts for, stores or requests administrator rights.
 - **Safe termination.** Before any signal the target is re-scanned and its port ownership, process

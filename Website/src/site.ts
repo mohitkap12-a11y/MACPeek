@@ -29,17 +29,49 @@ export const liveSentence = SITE.hasRelease ? `${availableNames} ${be} available
 /** Where "Download" buttons point. */
 export const downloadHref = SITE.hasRelease ? SITE.releases : '/download/';
 
-export const docsNav = [
-  { href: '/docs/installation/', label: 'Installation' },
-  { href: '/docs/usage/', label: 'Using MacPeek' },
-  { href: '/docs/managing-utilities/', label: 'Managing utilities' },
-  { href: '/docs/ports/', label: 'PortPeek: ports' },
-  { href: '/docs/killing-processes/', label: 'PortPeek: killing safely' },
-  { href: '/docs/permissions/', label: 'Permissions' },
-  { href: '/docs/troubleshooting/', label: 'Troubleshooting' },
-  { href: '/privacy/', label: 'Privacy' },
-  { href: '/security/', label: 'Security' },
+/** Documentation sidebar, grouped like a docs site. `docsNav` below is the same list flattened (prev/next, related). */
+export const docsGroups = [
+  {
+    title: 'Getting started',
+    links: [
+      { href: '/docs/installation/', label: 'Installation', blurb: 'Install MacPeek and open it from the menu bar.' },
+      { href: '/docs/usage/', label: 'Using MacPeek', blurb: 'The launcher, search, refresh and settings.' },
+      { href: '/docs/managing-utilities/', label: 'Managing utilities', blurb: 'Choose which utilities appear and in what order.' },
+    ],
+  },
+  {
+    title: 'Utilities',
+    links: [
+      { href: '/docs/utilities/', label: 'Overview', blurb: 'Every utility at a glance and the rules they all follow.' },
+      { href: '/docs/ports/', label: 'PortPeek', blurb: 'Which ports are listening, and why some sockets are missing.' },
+      { href: '/docs/utilities/filelockpeek/', label: 'FileLockPeek', blurb: 'Find the process holding a file or folder open.' },
+      { href: '/docs/utilities/processpeek/', label: 'ProcessPeek', blurb: 'Inspect any process, then end it safely.' },
+      { href: '/docs/utilities/diskpeek/', label: 'DiskPeek', blurb: 'See which processes are reading and writing the disk.' },
+      { href: '/docs/utilities/envpeek/', label: 'EnvPeek', blurb: 'Inspect environment variables and PATH, with secrets hidden.' },
+      { href: '/docs/utilities/netpeek/', label: 'NetPeek', blurb: 'Connection, Wi-Fi signal and on-demand ping checks.' },
+      { href: '/docs/utilities/dnspeek/', label: 'DNSPeek', blurb: 'DNS servers in use, and whether each one answers.' },
+      { href: '/docs/utilities/displaypeek/', label: 'DisplayPeek', blurb: 'Real resolution, refresh rate and scaling per display.' },
+      { href: '/docs/utilities/usbpeek/', label: 'USBPeek', blurb: 'USB and Thunderbolt devices and their negotiated speed.' },
+      { href: '/docs/utilities/sleeppeek/', label: 'SleepPeek', blurb: 'What keeps your Mac awake, and its sleep history.' },
+    ],
+  },
+  {
+    title: 'Safety',
+    links: [
+      { href: '/docs/killing-processes/', label: 'Killing safely', blurb: 'Graceful first, identity re-checks, explicit force kill.' },
+      { href: '/docs/permissions/', label: 'Permissions', blurb: 'What each utility can read and do, and what it never asks for.' },
+    ],
+  },
+  {
+    title: 'Reference',
+    links: [
+      { href: '/docs/troubleshooting/', label: 'Troubleshooting', blurb: 'Fixes for the problems people hit most.' },
+      { href: '/privacy/', label: 'Privacy', blurb: 'Exactly what MacPeek reads. Nothing leaves your Mac.' },
+      { href: '/security/', label: 'Security', blurb: 'How MacPeek is built and how to report an issue.' },
+    ],
+  },
 ];
+export const docsNav = docsGroups.flatMap((g) => g.links.map(({ href, label }) => ({ href, label })));
 
 /** Guides (blog). `utility` ties a guide to the Peek that solves the same problem. */
 export const blogPosts = [
@@ -55,6 +87,10 @@ export const blogPosts = [
   { slug: 'why-wont-my-mac-go-to-sleep', label: "Why won't my Mac go to sleep?", utility: 'sleeppeek' },
   { slug: 'how-to-check-macbook-battery-health', label: 'Check MacBook battery health', utility: 'batterypeek' },
   { slug: 'how-to-check-wifi-signal-strength-on-mac', label: 'Check Wi-Fi signal strength on Mac', utility: 'netpeek' },
+  { slug: 'how-to-find-and-kill-a-process-on-mac', label: 'Find and kill a process on Mac', utility: 'processpeek' },
+  { slug: 'how-to-see-what-is-using-your-disk-on-mac', label: 'See which app is using your disk', utility: 'diskpeek' },
+  { slug: 'how-to-see-environment-variables-on-mac', label: 'See environment variables on Mac', utility: 'envpeek' },
+  { slug: 'how-to-check-dns-servers-on-mac', label: 'Check your DNS servers on Mac', utility: 'dnspeek' },
 ];
 
 export const blogNav = blogPosts.map((p) => ({ href: `/blog/${p.slug}/`, label: p.label }));

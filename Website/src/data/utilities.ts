@@ -115,6 +115,7 @@ export const utilities: Utility[] = [
       'The link speed macOS negotiated (for example 480 Mb/s or 5 Gb/s), the USB version the device declares, and its class',
       'Thunderbolt and USB4 ports with their status and speed, and the devices macOS lists on them',
       'Serial numbers are never read: they cannot be displayed, copied or logged',
+      'Updates every few seconds while open, so plugging or unplugging a device shows up live',
       'Copy device details',
     ],
     how: ['Open USBPeek from the launcher.', 'Browse the device tree and tap a device for its details.', 'Check the link speed next to each device.'],
@@ -282,7 +283,7 @@ export const utilities: Utility[] = [
     how: ['Open ProcessPeek and search for a process.', 'Open a row to read its identity and relationships.', 'Jump to its parent or children.'],
     reads: ['The process list (ps); a process’s command line and listening ports only when you open it'],
     access: 'None to inspect. Some details are unavailable for other users’ processes, and you can terminate only processes your user owns.',
-    guides: [],
+    guides: ['how-to-find-and-kill-a-process-on-mac'],
     preview: {
       title: 'ProcessPeek', search: 'Search processes…',
       rows: [
@@ -315,7 +316,7 @@ export const utilities: Utility[] = [
     how: ['Open DiskPeek from the launcher.', 'Wait one sampling interval for the first rates.', 'Leave the screen and sampling stops.'],
     reads: ['Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open'],
     access: 'None. Other users’ processes are not shown.',
-    guides: [],
+    guides: ['how-to-see-what-is-using-your-disk-on-mac'],
     preview: {
       title: 'DiskPeek',
       rows: [
@@ -346,7 +347,7 @@ export const utilities: Utility[] = [
     how: ['Open EnvPeek from the launcher.', 'Search for a variable, or switch to a process and enter its PID.', 'Copy it, or open PATH entry by entry.'],
     reads: ['MacPeek’s own environment and, where macOS permits, the environment of one process whose PID you enter'],
     access: 'None. Values are shown on screen only and never logged.',
-    guides: [],
+    guides: ['how-to-see-environment-variables-on-mac'],
     preview: {
       title: 'EnvPeek', search: 'PATH',
       rows: [
@@ -378,7 +379,7 @@ export const utilities: Utility[] = [
     reads: ['The system resolver configuration (scutil --dns); DNS lookups only when you press Run lookup'],
     access: 'None.',
     networkChecks: true,
-    guides: [],
+    guides: ['how-to-check-dns-servers-on-mac'],
     preview: {
       title: 'DNSPeek',
       rows: [

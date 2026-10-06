@@ -5,14 +5,28 @@ import { byId } from '../../data/utilities';
 const groups = [...new Set(blogPosts.map((p) => p.utility))].map((id) => ({ util: byId(id)!, posts: blogPosts.filter((p) => p.utility === id) }));
 ---
 <Base title="Mac Guides: Ports, Displays, USB, Sleep, Battery and Wi-Fi | MacPeek" description="Practical guides for Mac problems: find what is using a port, check monitor refresh rate, see USB devices, why a Mac will not sleep, battery health and Wi-Fi signal.">
-  <div class="wrap narrow article">
-    <h1>Mac guides</h1>
-    <p class="lede">Short, practical answers for the things macOS makes hard to see.</p>
-    {groups.map((g) => (
-      <Fragment>
-        <h2>{g.util.name}{g.util.status === 'available' ? '' : ' (coming soon)'}</h2>
-        <ul>{g.posts.map((p) => <li><a href={`/blog/${p.slug}/`}>{p.label}</a></li>)}</ul>
-      </Fragment>
-    ))}
+  <div class="dx-landing">
+    <section class="dx-hero">
+      <div class="wrap">
+        <div class="eyebrow">Guides</div>
+        <h1>Mac guides</h1>
+        <p class="dx-hero-sub">Short, practical answers for the things macOS makes hard to see.</p>
+      </div>
+    </section>
+    <div class="wrap dx-landing-body">
+      {groups.map((g) => (
+        <section class="dx-section">
+          <h2>{g.util.name}{g.util.status === 'available' ? '' : ' (coming soon)'}</h2>
+          <div class="dx-cards">
+            {g.posts.map((p) => (
+              <a class="dx-card" href={`/blog/${p.slug}/`}>
+                <h3>{p.label}<span aria-hidden="true">→</span></h3>
+                <p>{g.util.question}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   </div>
 </Base>

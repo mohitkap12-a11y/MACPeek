@@ -5,7 +5,7 @@ import { utilities } from '../data/utilities';
 ---
 <Base
   title="MacPeek Privacy: No Account, No Telemetry, Data Stays on Your Mac"
-  description="MacPeek is private by design: no account, no telemetry, no network access. See exactly what each utility reads from your Mac and what access it needs."
+  description="MacPeek is private by design: no account, no telemetry, nothing sent to a server. See exactly what each utility reads from your Mac and what access it needs."
   jsonLd={{ '@context': 'https://schema.org', '@type': 'WebPage', name: 'MacPeek privacy', url: new URL('/privacy/', Astro.site).toString() }}
 >
   <div class="wrap narrow article">
@@ -16,13 +16,13 @@ import { utilities } from '../data/utilities';
       <li><strong>No account.</strong> Nothing to sign in to.</li>
       <li><strong>No telemetry or analytics</strong> in the app.</li>
       <li><strong>No cloud service</strong> required or used: no update pings, no crash reporting.</li>
-      <li><strong>No network connection</strong> is used by any shipped feature.</li>
+      <li><strong>No network use in the background.</strong> The only traffic is a check you start yourself: NetPeek pings your router and DNS servers, and DNSPeek looks up a name you type. Both run only when you press the button.</li>
       <li><strong>Local operation.</strong> Data is held in memory to draw the screen and is not written to disk. The only thing stored is your preferences (which utilities are on, refresh interval, toggles) in macOS user defaults.</li>
       <li><strong>Open source.</strong> <a href={SITE.github}>Verify it yourself.</a></li>
     </ul>
 
     <h2>What each utility reads</h2>
-    <p>Utilities marked <em>Coming soon</em> are not in the current release; this is what they are planned to read, and the list will be re-checked against the code before each ships.</p>
+    <p>Utilities marked <em>Coming soon</em> are not in the current release; this is what they are planned to read, and the list will be re-checked against the code before it ships.</p>
     <table>
       <thead><tr><th>Utility</th><th>Reads (locally)</th><th>Access needed</th></tr></thead>
       <tbody>
@@ -35,7 +35,7 @@ import { utilities } from '../data/utilities';
         ))}
       </tbody>
     </table>
-    <p>Two planned utilities, NetPeek and DNSPeek, measure latency and DNS lookups. When they ship they will send test requests <em>only when you ask them to run a check</em>, and never any information about your Mac. Nothing in the current release makes network requests.</p>
+    <p><strong>The two utilities that touch the network.</strong> NetPeek sends three pings to your router and to up to three of your DNS servers when you press <em>Run checks</em>. DNSPeek resolves the name you type, and asks each of your DNS servers for it, when you press <em>Run lookup</em>. Your DNS servers are often outside your home network (a public resolver or your ISP), so those requests do leave it. They carry no information about your Mac beyond what any lookup or ping contains, nothing is stored, and nothing runs when you do not ask.</p>
     <p>MacPeek never asks for administrator rights and never bypasses macOS security controls.</p>
 
     <h2>This website</h2>

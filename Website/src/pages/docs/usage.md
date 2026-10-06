@@ -37,7 +37,7 @@ FileLockPeek scans **only when you ask**, and a folder scan includes everything 
 If macOS does not report a detail, DisplayPeek leaves it out rather than guessing.
 
 ## Using USBPeek
-1. Open **USBPeek**. It reads when the screen opens (`⌘R` to read again) and does nothing in the background.
+1. Open **USBPeek**. It reads when the screen opens and then updates every few seconds while the screen is open, so plugging or unplugging a device shows up without reopening it (`⌘R` reads immediately).
 2. Devices are shown as a tree by USB bus, with hubs and the devices behind them. Click a device for its vendor, vendor:product ID, link speed, declared USB version and class, and copy them.
 3. Thunderbolt / USB4 ports are listed below with their status and speed.
 
@@ -88,8 +88,10 @@ Pings go only to your router and DNS servers, only when you press the button.
 DNSPeek is read-only: it never changes DNS settings. Only the name you type is queried, only when you press the button.
 
 ## Keyboard and context menu
-- Arrow keys move the selection; `⌘R` refreshes.
-- Right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.
+Copy, paste, cut, select all and undo (`⌘C`, `⌘V`, `⌘X`, `⌘A`, `⌘Z`) work in every text field, such as the search boxes and FileLockPeek's path field.
+
+- Arrow keys move the selection; `⌘R` refreshes the open utility.
+- In PortPeek, right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.
 
 ## Settings
-Launch at login, refresh interval (1–10 s), confirm before kill, notifications and appearance (system, light, dark). See [killing processes](/docs/killing-processes/) for how termination works.
+Launch at login, refresh interval (1–10 s, used by the utilities that refresh live: PortPeek, USBPeek, SleepPeek, DiskPeek and NetPeek), confirm before kill, notifications and appearance (system, light, dark). See [killing processes](/docs/killing-processes/) for how termination works.
