@@ -128,6 +128,15 @@ footer.site .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: 
 
 @media (max-width: 900px) { .bento { grid-template-columns: repeat(2, 1fr); } .span2, .span3, .span4 { grid-column: span 2; } .steps { grid-template-columns: 1fr; } .privacy-list { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) { .docs-layout { grid-template-columns: 1fr; gap: 0; } .docs-nav { position: static; padding-top: 20px; display: flex; flex-wrap: wrap; gap: 4px; } nav.main .hide-sm { display: none; } section.block { padding: 64px 0; } .hero { padding-top: 40px; } }
+/* Phones: keep every header control reachable down to 320px by dropping the wordmark (the icon stays). */
+@media (max-width: 480px) {
+  header.site .bar { padding: 0 8px 0 12px; gap: 8px; }
+  .brand-text { display: none; }
+  nav.main { gap: 2px; }
+  nav.main a.link { padding: 7px 9px; }
+  .nav-cta { padding: 8px 13px; }
+  .wrap { padding: 0 16px; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .hero .pill, .hero h1, .hero .lead, .hero .cta, .hero .fine { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
   .hero h1 { animation-delay: .06s; } .hero .lead { animation-delay: .12s; } .hero .cta { animation-delay: .18s; } .hero .fine { animation-delay: .22s; }
