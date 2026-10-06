@@ -1,0 +1,42 @@
+  PID  PPID   UID USER             STAT STARTED                          ELAPSED  %CPU    RSS COMM
+    1     0     0 root             Ss   Mon Oct  5 14:01:58 2026     01-05:36:20   0.0   4880 /sbin/launchd
+ 2095     1     0 root             Ss   Tue Oct  6 16:50:14 2026        02:48:04   0.0   2880 /usr/libexec/fskitd
+ 2260     1   213 _usbmuxd         Ss   Tue Oct  6 16:50:56 2026        02:47:22   0.0   1568 /System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/Resources/usbmuxd
+ 2326     1     0 root             Ss   Tue Oct  6 16:50:58 2026        02:47:20   0.0   2528 /Library/Developer/PrivateFrameworks/CoreDevice.framework/Resources/bin/CoreDeviceDDIUpdaterService
+ 2332     1     0 root             Ss   Tue Oct  6 16:50:58 2026        02:47:20   0.0   2512 /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Resources/bin/simdiskimaged
+ 2398     1   501 <user>      S    Tue Oct  6 16:51:01 2026        02:47:17   0.0   2128 /System/Library/PrivateFrameworks/AMPDevices.framework/Versions/A/Support/AMPDeviceDiscoveryAgent
+ 2427     1   501 <user>      S    Tue Oct  6 16:51:19 2026        02:46:59   0.0   3328 /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/XPCServices/com.apple.CoreSimulator.CoreSimulatorService.xpc/Contents/MacOS/com.apple.CoreSimulator.CoreSimulatorService
+ 2428     1   501 <user>      S    Tue Oct  6 16:51:19 2026        02:46:59   0.0   2832 /Library/Developer/PrivateFrameworks/CoreDevice.framework/Versions/A/XPCServices/CoreDeviceService.xpc/Contents/MacOS/CoreDeviceService
+ 2429     1   501 <user>      S    Tue Oct  6 16:51:19 2026        02:46:59   0.0   3312 /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/XPCServices/SimulatorTrampoline.xpc/Contents/MacOS/SimulatorTrampoline
+ 2430     1   501 <user>      S    Tue Oct  6 16:51:19 2026        02:46:59   0.0   2000 /Library/Apple/System/Library/PrivateFrameworks/RemotePairing.framework/Versions/A/XPCServices/remotepairingd.xpc/Contents/MacOS/remotepairingd
+ 2432     1   501 <user>      S    Tue Oct  6 16:51:19 2026        02:46:59   0.0   2800 /usr/libexec/fskit_agent
+ 2435     1   501 <user>      Ss   Tue Oct  6 16:51:19 2026        02:46:59   0.0   2192 /Library/Developer/PrivateFrameworks/CoreDevice.framework/Versions/A/PrivateApplications/CoreDeviceExtensions.app/Contents/Extensions/DeviceFS.appex/Contents/MacOS/DeviceFS
+ 2439     1   501 <user>      Ss   Tue Oct  6 16:51:20 2026        02:46:58   0.0   2512 /Library/Developer/PrivateFrameworks/CoreDevice.framework/Versions/A/PrivateApplications/CoreDeviceExtensions.app/Contents/Extensions/DeviceFS.appex/Contents/MacOS/DeviceFS
+ 4039     1   501 <user>      S    Tue Oct  6 17:15:19 2026        02:22:59   0.0   3616 /System/Library/PrivateFrameworks/SyncedDefaults.framework/Support/syncdefaultsd
+ 4582     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.3   6336 /usr/libexec/logd
+ 4584     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0    672 /usr/libexec/smd
+ 4585     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   3040 /usr/libexec/UserEventAgent
+ 4587     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.6   2176 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd
+ 4588     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   2976 /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoted
+ 4592     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   2784 /usr/sbin/systemstats
+ 4596     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.1   4272 /usr/libexec/configd
+ 4598     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.1   4544 /System/Library/CoreServices/powerd.bundle/powerd
+ 4599     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0    624 /usr/libexec/IOMFB_bics_daemon
+ 4603     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   1664 /usr/libexec/remoted
+ 4607     1   306 _corespeechd     Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0    912 /System/Library/PrivateFrameworks/CoreSpeech.framework/corespeechd_system
+ 4609     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   1360 /usr/libexec/watchdogd
+ 4612     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.3   9840 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds
+ 4614     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   2144 /usr/libexec/kernelmanagerd
+ 4615     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0   3184 /usr/libexec/diskarbitrationd
+ 4619     1     0 root             Ss   Mon Oct  5 20:26:29 2026        23:11:49   0.0    208 /usr/sbin/syslogd
+ 4658     1   501 <user>      Ss   Mon Oct  5 20:26:30 2026        23:11:48   3.0  13504 /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow
+ 4798     1     0 root             Ss   Mon Oct  5 20:26:31 2026        23:11:47   0.0   1808 /System/Library/CoreServices/Software Update.app/Contents/Resources/suhelperd
+ 4799     1     0 root             Ss   Mon Oct  5 20:26:31 2026        23:11:47   0.0   3152 /Library/Application Support/Logitech.localized/LogiOptionsPlus/logioptionsplus_agent.app/Contents/Frameworks/logioptionsplus_updater.app/Contents/MacOS/logioptionsplus_updater
+ 4890     1   501 <user>      S    Mon Oct  5 20:26:33 2026        23:11:45  37.0 208560 /Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge
+ 4973  4890   501 <user>      S    Mon Oct  5 20:26:34 2026        23:11:44   8.8  54304 /Applications/Microsoft Edge.app/Contents/Frameworks/Microsoft Edge Framework.framework/Versions/154.0.4258.37/Helpers/Microsoft Edge Helper.app/Contents/MacOS/Microsoft Edge Helper
+ 4975  4890   501 <user>      S    Mon Oct  5 20:26:34 2026        23:11:44  11.1  41104 /Applications/Microsoft Edge.app/Contents/Frameworks/Microsoft Edge Framework.framework/Versions/154.0.4258.37/Helpers/Microsoft Edge Helper.app/Contents/MacOS/Microsoft Edge Helper
+ 4983  4890   501 <user>      S    Mon Oct  5 20:26:35 2026        23:11:43   0.0   7808 /Applications/Microsoft Edge.app/Contents/Frameworks/Microsoft Edge Framework.framework/Versions/154.0.4258.37/Helpers/Microsoft Edge Helper.app/Contents/MacOS/Microsoft Edge Helper
+10830 10827   501 <user>      S    Tue Oct  6 18:33:37 2026        01:04:41   0.0    640 -zsh
+13638  4890   501 <user>      S    Tue Oct  6 19:12:23 2026           25:55   0.1  16560 /Applications/Microsoft Edge.app/Contents/Frameworks/Microsoft Edge Framework.framework/Versions/154.0.4258.37/Helpers/Microsoft Edge Helper (Renderer).app/Contents/MacOS/Microsoft Edge Helper (Renderer)
+13640  4890   501 <user>      S    Tue Oct  6 19:12:23 2026           25:55   0.0  13744 /Applications/Microsoft Edge.app/Contents/Frameworks/Microsoft Edge Framework.framework/Versions/154.0.4258.37/Helpers/Microsoft Edge Helper (Renderer).app/Contents/MacOS/Microsoft Edge Helper (Renderer)
+15657 10830   501 <user>      S+   Tue Oct  6 19:34:52 2026           03:26   0.0  20144 .build/out/Products/Debug/MacPeek

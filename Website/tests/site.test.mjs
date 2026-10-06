@@ -20,7 +20,7 @@ const isRedirect = (p) => /http-equiv="refresh"/i.test(html(p));
 const content = () => pages.filter((p) => !p.includes('/404/') && !isRedirect(p));
 
 const UTILS = ['portpeek', 'displaypeek', 'usbpeek', 'netpeek', 'batterypeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek', 'dnspeek'];
-const LIVE = ['portpeek', 'displaypeek', 'usbpeek', 'sleeppeek', 'filelockpeek'];
+const LIVE = ['portpeek', 'displaypeek', 'usbpeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek'];
 const COMING_SOON = UTILS.filter((u) => !LIVE.includes(u));
 
 test('has expected pages', () => {

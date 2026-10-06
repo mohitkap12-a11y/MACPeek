@@ -11,5 +11,9 @@ enum Log {
     static let displayPeek = Logger(subsystem: subsystem, category: "MacPeek.DisplayPeek")
     static let usbPeek = Logger(subsystem: subsystem, category: "MacPeek.USBPeek")
     static let sleepPeek = Logger(subsystem: subsystem, category: "MacPeek.SleepPeek")
+    static let processPeek = Logger(subsystem: subsystem, category: "MacPeek.ProcessPeek")
+    static let diskPeek = Logger(subsystem: subsystem, category: "MacPeek.DiskPeek")
+    // EnvPeek deliberately never logs variable names or values, only that a read failed.
+    static let envPeek = Logger(subsystem: subsystem, category: "MacPeek.EnvPeek")
 }
 #endif

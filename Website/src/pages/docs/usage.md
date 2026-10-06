@@ -50,6 +50,27 @@ Serial numbers are never read. A device's link speed is what macOS negotiated, w
 
 SleepPeek is read-only: it never changes a power setting.
 
+## Using ProcessPeek
+1. Open **ProcessPeek**. It reads the process list when the screen opens (`⌘R` to read again) and does nothing in the background.
+2. Search by name, PID, user or path. The filter menu sorts by name, CPU, memory or PID and can include other users' processes (your own are shown by default).
+3. Open a process to see its PID, user, start time, how long it has been running, CPU and memory, how it was launched (its command name), its full command line, its listening ports (yours only), its parent and its children. Click the parent or a child to jump to it.
+
+The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only. ProcessPeek is read-only: it never ends a process.
+
+## Using DiskPeek
+1. Open **DiskPeek**. It takes a first sample, and the rates appear after the second one, a couple of seconds later.
+2. Each row is a process with its read and write rate over the last interval and the total since you opened DiskPeek. Order them by what is busy right now or by the total.
+3. Leave the screen and sampling stops. Returning starts from a fresh baseline.
+
+Every value is sampled and labelled that way. Other users' and protected processes cannot be read; DiskPeek shows how many it skipped.
+
+## Using EnvPeek
+1. Open **EnvPeek**. **This app** shows MacPeek's own environment, which is usually *not* the environment of your terminal.
+2. Switch to **A process**, enter a PID (ProcessPeek shows PIDs) and press **Inspect** to read that process's environment. macOS only allows this for your own processes, and hides it for protected system processes.
+3. Search names and values, copy a name, value or `NAME=value`, and open `PATH` entry by entry to spot duplicates, missing folders and relative entries.
+
+Values that look like credentials are hidden until you press **Reveal**. Values stay on screen only: they are never logged or stored, and they are dropped from memory when you leave the screen.
+
 ## Keyboard and context menu
 - Arrow keys move the selection; `⌘R` refreshes.
 - Right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.
