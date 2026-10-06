@@ -10,8 +10,8 @@ public enum PortSearch {
             .map(String.init)
         guard !tokens.isEmpty else { return ports }
 
-        let matches = ports.filter { port in
-            tokens.allSatisfy { matches(port, token: $0) }
+        let hits = ports.filter { port in
+            tokens.allSatisfy { token in Self.matches(port, token: token) }
         }
         // Exact port / PID hits first; stable otherwise.
         let first = tokens[0]
@@ -20,9 +20,9 @@ public enum PortSearch {
             if String(p.pid) == first { return 1 }
             return 2
         }
-        return matches.enumerated()
+        return hits.enumerated()
             .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
-            .map(\.element)
+            .map { $0.element }
     }
 
     static func matches(_ port: PortInfo, token: String) -> Bool {
