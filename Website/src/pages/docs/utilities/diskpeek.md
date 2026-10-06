@@ -18,7 +18,7 @@ The busiest processes by disk activity. Each row shows its **read and write rate
 
 ## How it is measured
 macOS keeps cumulative disk counters for every process. DiskPeek subtracts consecutive samples, every few seconds, only while its screen is open.
-- A counter that goes *down* means the PID now belongs to a different process, so DiskPeek starts over for it. You never see negative or absurd values.
+- If a process's counters go *down* (for example because the PID now belongs to a different process), DiskPeek starts a new baseline for it instead of guessing. You never see negative or absurd values.
 - A process that appears between samples started inside the interval, so everything it did counts.
 
 ## Good to know

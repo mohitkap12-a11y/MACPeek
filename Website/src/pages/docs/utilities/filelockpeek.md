@@ -24,7 +24,7 @@ Choose a file or folder and FileLockPeek lists the processes that have it open. 
 2. Select a process to copy its PID or the path, **Reveal in Finder**, or **Kill Process**.
 3. Press `⌘R` to scan again. MacPeek also rescans after a kill.
 
-Killing uses the same safe steps as everywhere in MacPeek: see [killing safely](/docs/killing-processes/). After the process exits, MacPeek checks the file is really free, and says so if another process now holds it.
+Killing uses the same safe steps as everywhere in MacPeek: see [killing safely](/docs/killing-processes/). After the process exits, MacPeek checks that it no longer holds the path, and says so if a different process now holds it. Other processes that already held the file may still hold it: they stay listed after the rescan, and the message says how many may remain.
 
 ## Good to know
 - It **scans only when you ask**. A folder scan includes everything inside, so a large folder can take a moment. If macOS could not inspect part of the tree, you see "Results may be incomplete".

@@ -221,7 +221,7 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 .prose a { text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .prose img { border-radius: 12px; border: 1px solid var(--line); }
 .prose hr { border: 0; border-top: 1px solid var(--line); margin: 2.4em 0; }
-.prose table { display: table; width: 100%; font-size: 14.5px; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 1.6em 0; }
+.prose table { display: block; width: max-content; min-width: 50%; max-width: 100%; overflow-x: auto; font-size: 14.5px; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 12px; margin: 1.6em 0; }
 .prose th, .prose td { border: 0; border-bottom: 1px solid var(--line); padding: 10px 14px; vertical-align: top; }
 .prose tr:last-child td { border-bottom: 0; }
 .prose th { background: var(--card); font-weight: 650; font-size: 13px; letter-spacing: .02em; color: var(--muted); }
