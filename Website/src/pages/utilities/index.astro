@@ -1,0 +1,40 @@
+---
+import Base from '../../layouts/Base.astro';
+import UtilityCard from '../../components/UtilityCard.astro';
+import { utilities, comingSoon } from '../../data/utilities';
+import { builtInSentence, comingSoonSample } from '../../site';
+
+const groups = [
+  { label: 'Utilities', items: utilities.filter((u) => u.category === 'everyday') },
+  { label: 'Developer', items: utilities.filter((u) => u.category === 'developer') },
+];
+const home = new URL('/', Astro.site).toString();
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: home },
+    { '@type': 'ListItem', position: 2, name: 'Utilities', item: new URL('/utilities/', Astro.site).toString() },
+  ],
+};
+---
+<Base
+  title="All MacPeek Utilities: Ports, Displays, USB, Network and More"
+  description={`Every MacPeek utility in one place: ${builtInSentence}; ${comingSoon.length} more are coming soon, including ${comingSoonSample}.`}
+  jsonLd={jsonLd}
+>
+  <div class="wrap article">
+    <div class="crumbs"><a href="/">Home</a> › Utilities</div>
+    <h1>MacPeek utilities</h1>
+    <p class="lede">Each Peek answers one question about your Mac. {builtInSentence}; the others are in development and are marked <em>Coming soon</em> until they ship.</p>
+    {groups.map((g) => (
+      <Fragment>
+        <h2 class="group-title" style="margin-top:36px">{g.label}</h2>
+        <div class="ugrid">
+          {g.items.map((u) => <UtilityCard u={u} line="question" />)}
+        </div>
+      </Fragment>
+    ))}
+    <p style="margin-top:40px">Want another one? Read <a href="https://github.com/mohitkap12-a11y/MACPeek/blob/main/docs/architecture.md#evaluating-a-new-utility">how we decide what to build</a> and open a request on GitHub.</p>
+  </div>
+</Base>

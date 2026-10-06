@@ -1,9 +1,10 @@
 ---
 layout: ../../layouts/Article.astro
-title: "lsof on Mac: Find a Process by Port (Cheat Sheet) | PortPeek"
+title: "lsof on Mac: Find a Process by Port (Cheat Sheet) | MacPeek"
 description: "A practical lsof cheat sheet for macOS: find the process by port, list all listeners, filter by TCP or UDP, IPv4 or IPv6, and parse the output."
 h1: "lsof on Mac: Find a Process by Port"
 section: blog
+utility: portpeek
 date: "2026-10-06"
 ---
 `lsof` ("list open files") treats network sockets as files, which makes it the standard way to map a port to a process on macOS.
@@ -39,4 +40,4 @@ lsof -nP +c 0 -iTCP -sTCP:LISTEN -FpcLn
 - Plain `-i :3000` also matches outgoing connections to port 3000.
 - No `sudo`, no other users' processes.
 
-Prefer a UI? [PortPeek](/) wraps this in a searchable menu-bar list.
+Prefer a UI? [PortPeek](/utilities/portpeek/) wraps this in a searchable menu-bar list.

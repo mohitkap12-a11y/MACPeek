@@ -7,6 +7,8 @@ const site = process.env.SITE_URL || 'https://portpeek.app';
 export default defineConfig({
   site,
   trailingSlash: 'always',
+  // Privacy moved from /docs/privacy/ to the top-level /privacy/.
+  redirects: { '/docs/privacy/': '/privacy/' },
   build: { format: 'directory' },
   integrations: [sitemap()],
 });

@@ -2,11 +2,11 @@
 import Base from '../../layouts/Base.astro';
 import { docsNav } from '../../site';
 ---
-<Base title="PortPeek Documentation — Install, Use, Troubleshoot" description="Documentation for PortPeek, the macOS menu bar app that finds and kills processes using network ports: installation, usage, permissions, privacy and troubleshooting.">
+<Base title="MacPeek Documentation: Install, Use, Manage Utilities, Troubleshoot" description="Documentation for MacPeek: install the app, use the launcher, manage utilities, PortPeek guides, permissions, privacy, security and troubleshooting.">
   <div class="wrap narrow article">
-    <h1>PortPeek documentation</h1>
-    <p class="lede">Everything you need to install PortPeek, find the process holding a port and free it safely.</p>
+    <h1>MacPeek documentation</h1>
+    <p class="lede">Everything you need to install MacPeek, choose your utilities and use them safely.</p>
     <ul>{docsNav.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
-    <p>Looking for Terminal alternatives? See the <a href="/blog/">guides</a>.</p>
+    <p>Looking for a specific Mac problem? See the <a href="/blog/">guides</a> or browse all <a href="/utilities/">utilities</a>.</p>
   </div>
 </Base>

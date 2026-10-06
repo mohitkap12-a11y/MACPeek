@@ -1,20 +1,25 @@
 ---
 import Base from '../layouts/Base.astro';
-import AppMock from '../components/AppMock.astro';
+import LauncherMock from '../components/LauncherMock.astro';
+import AppShot from '../components/AppShot.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
-import { SITE } from '../site';
+import UtilityCard from '../components/UtilityCard.astro';
+import { SITE, liveTagLong, liveSentence, builtInSentence } from '../site';
+import { utilities, byId, available, comingSoon } from '../data/utilities';
 
-const title = 'PortPeek — Find and Kill the Process Using a Port on Mac';
+const title = 'MacPeek: The Tiny Utilities macOS Should Have Built In';
+const portpeek = byId('portpeek')!;
+const everyday = utilities.filter((u) => u.category === 'everyday');
+const developer = utilities.filter((u) => u.category === 'developer');
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'PortPeek',
-    applicationCategory: 'DeveloperApplication',
+    name: 'MacPeek',
+    applicationCategory: 'UtilitiesApplication',
     operatingSystem: 'macOS 13 or later',
     description: SITE.description,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-    downloadUrl: SITE.releases,
     codeRepository: SITE.github,
     license: 'https://opensource.org/licenses/MIT',
   },
@@ -22,9 +27,10 @@ const jsonLd = [
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     mainEntity: [
-      ['How do I find what is using a port on Mac?', 'Run lsof -nP -iTCP:3000 -sTCP:LISTEN in Terminal, or open PortPeek from the menu bar and search for the port number.'],
-      ['Does PortPeek send my data anywhere?', 'No. PortPeek has no account, no telemetry and makes no network connections. Port and process information never leaves your Mac.'],
-      ['Is PortPeek free?', 'Yes. PortPeek is free and open source under the MIT license.'],
+      ['What is MacPeek?', 'MacPeek is an open-source collection of small native macOS menu-bar utilities, called Peeks, for inspecting things macOS makes hard to see, such as which process is using a port.'],
+      ['Which utilities are available today?', `${builtInSentence}${SITE.hasRelease ? '' : ' (the first signed release is not published yet)'}. ${comingSoon.length} more are in development: ${comingSoon.map((u) => u.name).join(', ')}.`],
+      ['Does MacPeek send my data anywhere?', 'No. MacPeek has no account and no telemetry, and nothing about your Mac is sent to any server. Network utilities such as NetPeek will only send test requests when you ask them to run a check.'],
+      ['Is MacPeek free?', 'Yes. MacPeek is free and open source under the MIT license.'],
     ].map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
   },
 ];
@@ -33,58 +39,82 @@ const jsonLd = [
   <section class="hero">
     <div class="wrap">
       <div class="pill"><i></i> Free &amp; open source · macOS 13+</div>
-      <h1>See what's using your ports.<br /><span class="grad">Kill it in one click.</span></h1>
-      <p class="lead">A lightweight native macOS menu bar app for finding and freeing network ports — no Terminal required.</p>
+      <h1>The tiny utilities<br /><span class="grad">macOS should have built in.</span></h1>
+      <p class="lead">One small menu-bar app with a growing set of focused utilities for finding, inspecting and understanding the things macOS makes hard to see. <strong>{liveSentence}</strong></p>
       <DownloadCTA />
-      <p class="fine">No account · No telemetry · Apple silicon &amp; Intel</p>
-      <AppMock />
+      <p class="fine">No account · No telemetry · No cloud · Apple silicon &amp; Intel</p>
+      <LauncherMock />
     </div>
   </section>
 
-  <section class="block" id="features">
+  <section class="block" id="utilities">
     <div class="wrap">
-      <div class="eyebrow">Why PortPeek</div>
-      <h2>Your port is busy.<br />PortPeek tells you why.</h2>
-      <p class="sub">Everything you need to find a process behind a port and free it. Nothing you don't.</p>
-      <div class="bento">
-        <div class="card span4"><div class="ico">🔎</div><h3>Find ports instantly</h3><p>Listening TCP and UDP ports visible to your user account, IPv4 and IPv6. Search by port, process name, PID or address — results update as you type.</p></div>
-        <div class="card span2"><div class="ico">⚡</div><h3>One-click kill</h3><p>Free a port without opening Terminal.</p></div>
-        <div class="card span2"><div class="ico">🛡️</div><h3>Safe by design</h3><p>Graceful SIGTERM first. The process is re-checked right before it's signalled, so a reused PID is never killed by mistake.</p></div>
-        <div class="card span2"><div class="ico">⌘</div><h3>Native Mac app</h3><p>Swift and SwiftUI. Polls only while open — light on CPU and memory.</p></div>
-        <div class="card span2"><div class="ico">🔓</div><h3>Open source</h3><p>MIT licensed. Read the code, build it, contribute.</p></div>
+      <div class="eyebrow">Utilities</div>
+      <h2>Small tools. One question each.</h2>
+      <p class="sub">Switch on the Peeks you want and switch off the rest. A utility that is off does no work at all.</p>
+      <div class="ugrid">
+        {everyday.map((u) => <UtilityCard u={u} />)}
+      </div>
+      <h3 class="group-title">Developer</h3>
+      <div class="ugrid">
+        {developer.map((u) => <UtilityCard u={u} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="block alt" id="portpeek">
+    <div class="wrap split">
+      <div>
+        <div class="eyebrow">{liveTagLong}</div>
+        <h2>PortPeek: see what's using your ports. Kill it in one click.</h2>
+        <p class="sub" style="margin-bottom:12px">{portpeek.solution}</p>
+        <ul class="checks">
+          {portpeek.features.slice(0, 4).map((f) => <li>{f}</li>)}
+        </ul>
+        <a class="btn" href="/utilities/portpeek/">About PortPeek</a>
+      </div>
+      <div class="visual">
+        <AppShot name="portpeek" alt="PortPeek listing listening ports with the node process on port 3000 expanded and a Kill Process button" preview={portpeek.preview} />
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap center">
+      <div class="eyebrow">How it works</div>
+      <h2>Install once. Peek at anything.</h2>
+      <div class="steps4" style="text-align:left;margin-top:36px">
+        <div class="card step"><h3>Install MacPeek</h3><p>Drag it to Applications. It lives in the menu bar: no Dock icon, no window.</p></div>
+        <div class="card step"><h3>Choose your utilities</h3><p>Open <strong>Manage utilities</strong> to read what each Peek does, what it reads and what access it needs, then switch it on or off.</p></div>
+        <div class="card step"><h3>Peek</h3><p>Click the icon, pick a utility or search for it, and get your answer in seconds.</p></div>
       </div>
     </div>
   </section>
 
   <section class="block alt">
     <div class="wrap center">
-      <div class="eyebrow">Built for developers</div>
-      <h2>Find → Inspect → Kill</h2>
-      <p class="sub">Dev servers, databases, caches, containers — whatever grabbed the port.</p>
-      <div class="ports"><code>3000</code><code>5173</code><code>5432</code><code>6379</code><code>8080</code></div>
-      <div class="steps" style="text-align:left">
-        <div class="card step"><h3>Find</h3><p>Click the menu bar icon and type a port, process or PID.</p></div>
-        <div class="card step"><h3>Inspect</h3><p>See the process, PID, address, state and whether you're allowed to stop it.</p></div>
-        <div class="card step"><h3>Kill</h3><p>Confirm once. PortPeek verifies the process exited and the port is free.</p></div>
-      </div>
-      <p style="margin-top:28px">Prefer Terminal? We wrote the guides too: <a href="/blog/how-to-find-what-is-using-a-port-on-mac/">find what is using a port on Mac</a> and <a href="/blog/how-to-free-port-3000-on-mac/">free port 3000</a>.</p>
+      <div class="eyebrow">Built in the open</div>
+      <h2>Private by design.</h2>
+      <p class="sub">MacPeek reads information from your Mac to show it to you, and never sends it anywhere. <a href="/privacy/">See exactly what each utility reads</a>.</p>
+      <div class="privacy-list"><div>No account</div><div>No telemetry</div><div>No cloud required</div><div>Open source (MIT)</div></div>
     </div>
   </section>
 
   <section class="block">
     <div class="wrap center">
-      <div class="eyebrow">Privacy first</div>
-      <h2>Your Mac's business stays on your Mac.</h2>
-      <p class="sub">PortPeek reads local process and socket information to draw the list, and never transmits it. <a href="/docs/privacy/">See exactly what it reads</a>.</p>
-      <div class="privacy-list"><div>No account</div><div>No telemetry</div><div>No cloud</div><div>No network access</div></div>
+      <div class="eyebrow">For developers and power users</div>
+      <h2>Find → Inspect → Kill.</h2>
+      <p class="sub">Dev servers, databases, caches, containers: PortPeek finds whatever grabbed the port. File locks, processes, disk activity, environment variables and DNS follow.</p>
+      <div class="ports"><code>3000</code><code>5173</code><code>5432</code><code>6379</code><code>8080</code></div>
+      <p>Prefer Terminal? We wrote the guides too: <a href="/blog/how-to-find-what-is-using-a-port-on-mac/">find what is using a port on Mac</a> and <a href="/blog/how-to-free-port-3000-on-mac/">free port 3000</a>.</p>
     </div>
   </section>
 
   <section class="block" style="padding-top:0">
     <div class="wrap">
       <div class="panel">
-        <h2>Download PortPeek</h2>
-        <p class="sub" style="margin-inline:auto">Download the DMG, drag MacPeek to Applications, launch. It appears in your menu bar.</p>
+        <h2>Download MacPeek</h2>
+        <p class="sub" style="margin-inline:auto">Free and open source. Drag MacPeek to Applications and launch it; it appears in your menu bar.</p>
         <DownloadCTA />
         <p class="fine"><a href={SITE.github}>View source on GitHub</a> · <a href="/docs/installation/">Installation guide</a></p>
       </div>

@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Article.astro
-title: "Which Ports PortPeek Shows | PortPeek Docs"
+title: "Which Ports PortPeek Shows | MacPeek Docs"
 description: "What PortPeek lists: listening TCP and UDP sockets on IPv4 and IPv6, wildcard and localhost addresses, and why some sockets are missing."
 h1: "Ports PortPeek shows"
 section: docs

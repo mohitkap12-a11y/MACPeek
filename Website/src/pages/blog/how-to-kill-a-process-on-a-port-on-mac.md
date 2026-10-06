@@ -1,9 +1,10 @@
 ---
 layout: ../../layouts/Article.astro
-title: "How to Kill a Process on a Port on Mac | PortPeek"
+title: "How to Kill a Process on a Port on Mac | MacPeek"
 description: "Kill the process using a port on macOS: find the PID with lsof, stop it with kill, escalate to kill -9 only if needed, and verify the port is free."
 h1: "How to Kill a Process on a Port on Mac"
 section: blog
+utility: portpeek
 date: "2026-10-06"
 ---
 ## Step 1: find the PID

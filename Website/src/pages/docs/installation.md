@@ -9,7 +9,7 @@ date: "2026-10-06"
 MacPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel. PortPeek, the port finder, is one of the utilities inside MacPeek.
 
 ## Steps
-1. Download `MacPeek-x.y.z.dmg` from the [latest release](https://github.com/mohitkap12-a11y/MACPeek/releases/latest).
+1. Download `MacPeek-x.y.z.dmg` from the [download page](/download/), which links to the latest release once one is published.
 2. Open the DMG.
 3. Drag **MacPeek** to **Applications**.
 4. Launch MacPeek.

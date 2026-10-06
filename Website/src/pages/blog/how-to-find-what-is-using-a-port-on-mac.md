@@ -1,9 +1,10 @@
 ---
 layout: ../../layouts/Article.astro
-title: "How to Find What Is Using a Port on Mac | PortPeek"
+title: "How to Find What Is Using a Port on Mac | MacPeek"
 description: "Find which process is using a port on macOS with lsof or netstat, read the output, and see the same answer from your menu bar with PortPeek."
 h1: "How to Find What Is Using a Port on Mac"
 section: blog
+utility: portpeek
 date: "2026-10-06"
 ---
 Seeing `EADDRINUSE` or "port already in use"? Something on your Mac is already listening on that port. Here is how to find out what.

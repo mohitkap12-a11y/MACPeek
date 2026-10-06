@@ -1,0 +1,40 @@
+---
+// Illustration of the MacPeek launcher with every planned utility. The caption names what actually ships (derived from the data).
+import UtilityIcon from './UtilityIcon.astro';
+import { utilities } from '../data/utilities';
+import { availableNames, shipVerb } from '../site';
+const subs: Record<string, string> = {
+  portpeek: '6 active', displaypeek: '2 connected', usbpeek: '5 devices', netpeek: 'Wi-Fi', batterypeek: '92%', sleeppeek: 'No blocker',
+};
+const groups = [
+  { label: 'UTILITIES', items: utilities.filter((u) => u.category === 'everyday') },
+  { label: 'DEVELOPER', items: utilities.filter((u) => u.category === 'developer') },
+];
+---
+<figure class="stage">
+  <div class="menubar" aria-hidden="true">
+    <span>Wi-Fi</span><span>Battery</span>
+    <span class="mb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><path d="M15 15l5 5"/></svg></span>
+    <span>9:41</span>
+  </div>
+  <div class="popover-wrap">
+    <div class="mock launcher" role="img" aria-label="Illustration of the MacPeek launcher listing PortPeek, DisplayPeek, USBPeek, NetPeek, BatteryPeek, SleepPeek, FileLockPeek, ProcessPeek, DiskPeek, EnvPeek and DNSPeek">
+      <div class="bar2" aria-hidden="true"><span>MacPeek</span><span>⚙</span></div>
+      <div class="search" aria-hidden="true">Search utilities…</div>
+      {groups.map((g) => (
+        <Fragment>
+          <div class="sect" aria-hidden="true">{g.label}</div>
+          {g.items.map((u) => (
+            <div class="lrow" aria-hidden="true">
+              <span class="tile"><UtilityIcon utility={u} size={15} /></span>
+              <span class="lname">{u.name}<small>{subs[u.id] ?? u.tagline}</small></span>
+              <span class="chev">›</span>
+            </div>
+          ))}
+        </Fragment>
+      ))}
+      <div class="foot" aria-hidden="true"><span>Manage utilities</span><span>About</span></div>
+    </div>
+  </div>
+  <figcaption class="fine">Illustrative preview of the full launcher. Only {availableNames} {shipVerb} today; the rest are coming soon.</figcaption>
+</figure>

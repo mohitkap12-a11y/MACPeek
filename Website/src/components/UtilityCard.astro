@@ -1,0 +1,13 @@
+---
+import UtilityIcon from './UtilityIcon.astro';
+import { liveTag } from '../site';
+import type { Utility } from '../data/utilities';
+interface Props { u: Utility; line?: 'tagline' | 'question' }
+const { u, line = 'tagline' } = Astro.props;
+const live = u.status === 'available';
+---
+<a class="ucard" href={`/utilities/${u.id}/`}>
+  <span class="uicon"><UtilityIcon utility={u} /></span>
+  <h3>{u.name} <span class:list={['tag', { live }]}>{live ? liveTag : 'Coming soon'}</span></h3>
+  <p>{u[line]}</p>
+</a>
