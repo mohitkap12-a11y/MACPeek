@@ -18,7 +18,7 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **NetPeek** | Is my network connection actually healthy? | Coming soon |
 | **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
 | **SleepPeek** | Why isn't my Mac sleeping? | Coming soon |
-| **FileLockPeek** | What process is using this file? | Coming soon |
+| **FileLockPeek** | What process is using this file? | ✅ Available |
 | **ProcessPeek** | What exactly is this process? | Coming soon |
 | **DiskPeek** | Which app is using my disk right now? | Coming soon |
 | **EnvPeek** | What environment variables does this environment see? | Coming soon |

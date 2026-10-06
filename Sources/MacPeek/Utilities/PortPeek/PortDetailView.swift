@@ -31,7 +31,6 @@ struct PortDetailView: View {
                 forcePrompt
             } else if confirming {
                 KillConfirmationView(
-                    port: port,
                     title: "Terminate \(port.processName) (PID \(port.pid))?",
                     confirmLabel: "Terminate",
                     destructive: false,
@@ -60,7 +59,6 @@ struct PortDetailView: View {
             Text("\(port.processName) did not exit after a graceful request (SIGTERM). Force-killing ends it immediately and it cannot save its state.")
                 .font(.caption).foregroundStyle(.secondary)
             KillConfirmationView(
-                port: port,
                 title: "Force kill PID \(port.pid)?",
                 confirmLabel: "Force Kill",
                 destructive: true,

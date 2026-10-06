@@ -88,7 +88,7 @@ capsh top_sample 'top -l 1 -n 15 -stats pid,command,cpu,mem,state'
 
 # FileLockPeek: hold a temp file open and ask lsof about it (field output, same format PortPeek parses)
 tmp="$(mktemp -t macpeek-lock)"
-( exec 9<>"$tmp"; capsh lsof_file "lsof -F pcLftn -- '$tmp'"; ) 2>/dev/null
+( exec 9<>"$tmp"; capsh lsof_file "lsof -F pcLfaltn -- '$tmp'"; ) 2>/dev/null
 rm -f "$tmp"
 
 # PortPeek reference (live listeners on this Mac; compare with the committed fixtures)

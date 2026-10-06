@@ -1,0 +1,8 @@
+p18432
+cDocker\x20Desktop
+Lmohit
+f23
+au
+l 
+tREG
+n/Users/mohit/data.db

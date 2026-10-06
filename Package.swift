@@ -15,17 +15,25 @@ let package = Package(
         .executable(name: "MacPeek", targets: ["MacPeek"]),
         .library(name: "MacPeekCore", targets: ["MacPeekCore"]),
         .library(name: "PortPeekKit", targets: ["PortPeekKit"]),
+        .library(name: "FileLockPeekKit", targets: ["FileLockPeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
         .target(name: "PortPeekKit", dependencies: ["MacPeekCore"], path: "Sources/PortPeekKit"),
+        .target(name: "FileLockPeekKit", dependencies: ["MacPeekCore"], path: "Sources/FileLockPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
-            dependencies: ["MacPeekCore", "PortPeekKit"],
+            dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
+        .testTarget(
+            name: "FileLockPeekKitTests",
+            dependencies: ["FileLockPeekKit", "MacPeekCore"],
+            path: "Tests/FileLockPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(
             name: "PortPeekKitTests",
             dependencies: ["PortPeekKit", "MacPeekCore"],

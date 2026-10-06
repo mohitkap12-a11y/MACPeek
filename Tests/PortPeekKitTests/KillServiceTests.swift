@@ -138,6 +138,14 @@ final class KillServiceTests: XCTestCase {
         XCTAssertTrue(reason.contains("200"), reason)
     }
 
+    func testKillingOneOfSeveralListenersOnASharedPortIsASuccess() async {
+        // Two workers share the port (SO_REUSEPORT): the other one was already listening, so it is not a replacement.
+        let a = port(3000, pid: 100, address: "*"), b = port(3000, pid: 300, address: "*")
+        let inspector = FakeInspector(alive: [100, 300])
+        let result = await service(ScriptedDiscovery([[a, b], [b]]), inspector).terminate(a)
+        XCTAssertEqual(result, .terminated)
+    }
+
     func testPortStillHeldAfterExitIsReported() async {
         let target = port(3000, pid: 100)
         let inspector = FakeInspector(alive: [100])
