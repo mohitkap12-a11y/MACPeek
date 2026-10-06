@@ -16,7 +16,7 @@ pmset -g assertions
 
 Look at the assertions with a non-zero count, such as `PreventUserIdleSystemSleep` or `PreventUserIdleDisplaySleep`. Below the summary, macOS lists the owner, for example `pid 123(caffeinate)`, and often the reason it gave.
 
-To see assertions being taken and released over time:
+To watch assertions being taken and released over time (this keeps running; press Control-C to stop it):
 
 ```bash
 pmset -g assertionslog

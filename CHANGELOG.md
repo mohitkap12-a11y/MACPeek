@@ -4,6 +4,14 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **DisplayPeek**: each connected display's panel resolution, "looks like" resolution, refresh rate, scaling and the
+  other details macOS reports, with one-click copy (serial numbers excluded). Reads only while its screen is open.
+- **USBPeek**: connected USB devices as a tree by bus (vendor, vendor:product ID, negotiated link speed, declared USB
+  version, class) plus Thunderbolt / USB4 port status. Read from `ioreg` because `system_profiler SPUSBDataType` returned
+  nothing on a Mac with devices attached. Serial numbers are never read.
+- **SleepPeek**: what is keeping the Mac awake (assertions and the processes behind them), macOS's own "prevented by"
+  summary, and, on request, recent sleep/wake events. Read-only; every statement is labelled verified or inference.
+- `scripts/capture-fixtures.sh`: no longer hangs on the streaming `pmset -g assertionslog`; every capture has a time limit.
 - **FileLockPeek**: choose (or drop, or paste) a file or folder and see which of your processes have it open, locked,
   as their working directory, as their executable or memory-mapped; copy PID/path, reveal in Finder, and optionally end a
   holder through the shared safe-termination service. Scans only on request; folder scans are recursive.

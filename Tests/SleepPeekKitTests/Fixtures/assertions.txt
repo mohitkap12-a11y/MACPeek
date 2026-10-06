@@ -1,0 +1,24 @@
+2026-10-06 19:33:25 +0530 
+Assertion status system-wide:
+   BackgroundTask                 0
+   ApplePushServiceTask           0
+   UserIsActive                   1
+   PreventUserIdleDisplaySleep    0
+   SoftwareUpdateTask             0
+   PreventSystemSleep             0
+   PreventSystemSleepSecurityIndicator 0
+   ExternalMedia                  0
+   PreventUserIdleSystemSleep     1
+   NetworkClientActive            0
+Listed by owning process:
+   pid 4647(bluetoothd): [0x00018c2b00018fb8] 00:01:49 PreventUserIdleSystemSleep named: "com.apple.BTStack"  
+   pid 4885(sharingd): [0x00018bb600018fa6] 00:03:45 PreventUserIdleSystemSleep named: "Handoff"  
+   pid 4598(powerd): [0x00017e3d00018b90] 01:01:14 PreventUserIdleSystemSleep named: "Powerd - Prevent sleep while display is on"  
+   pid 4654(WindowServer): [0x00017e3d00098b8e] 00:00:00 UserIsActive named: "com.apple.iohideventsystem.queue.tickle serviceID:100037220 service:AppleUserHIDEventService product:MX Master 3S eventType:17"  
+	Timeout will fire in 600 secs Action=TimeoutActionRelease
+Kernel Assertions: 0x104=USB,MAGICWAKE
+   id=537  level=255 0x4=USB creat= description=com.apple.usb.externaldevice.02100000 owner=USB3.1 Hub
+   id=539  level=255 0x4=USB creat= description=com.apple.usb.externaldevice.02300000 owner=USB2.1 Hub
+   id=6947  level=255 0x100=MAGICWAKE creat= description=en1 owner=IOSkywalkNetworkBSDClient
+   id=19645  level=255 0x4=USB creat= description=com.apple.usb.externaldevice.01100000 owner=USB2.1 Hub
+   id=21319  level=255 0x4=USB creat= description=com.apple.usb.externaldevice.02340000 owner= USB OPTICAL MOUSE

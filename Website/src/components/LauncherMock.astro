@@ -4,7 +4,7 @@ import UtilityIcon from './UtilityIcon.astro';
 import { utilities } from '../data/utilities';
 import { availableNames, shipVerb } from '../site';
 const subs: Record<string, string> = {
-  portpeek: '6 active', displaypeek: '2 connected', usbpeek: '5 devices', netpeek: 'Wi-Fi', batterypeek: '92%', sleeppeek: 'No blocker',
+  portpeek: '6 active', netpeek: 'Wi-Fi', batterypeek: '92%', sleeppeek: 'No blockers',
 };
 const groups = [
   { label: 'UTILITIES', items: utilities.filter((u) => u.category === 'everyday') },
