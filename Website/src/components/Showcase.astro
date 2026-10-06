@@ -1,0 +1,78 @@
+---
+// Tabbed showcase of every utility: a scrollable tab strip, one panel at a time (all panels are in the HTML, so
+// search engines and no-JS visitors see everything; the script only hides the inactive ones).
+import AppShot from './AppShot.astro';
+import { liveTagLong } from '../site';
+import { available, comingSoon } from '../data/utilities';
+
+const list = [...available, ...comingSoon];
+const docsHref = (u: (typeof list)[number]) => (u.status !== 'available' ? '' : u.id === 'portpeek' ? '/docs/ports/' : `/docs/utilities/${u.id}/`);
+---
+<div class="showcase" data-showcase>
+  <div class="tabs-wrap">
+    <div class="tabs" role="tablist" aria-label="MacPeek utilities">
+      {list.map((u, i) => (
+        <button type="button" role="tab" id={`tab-${u.id}`} aria-controls={u.id} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-id={u.id}>{u.name}</button>
+      ))}
+    </div>
+  </div>
+  {list.map((u, i) => (
+    <div class="panel-card" role="tabpanel" id={u.id} aria-labelledby={`tab-${u.id}`} data-panel={u.id}>
+      <div class="panel-text">
+        <span class:list={['tag', { live: u.status === 'available' }]}>{u.status === 'available' ? liveTagLong : 'Coming soon'}</span>
+        <h3>{u.tagline}</h3>
+        <p class="panel-blurb">{u.blurb}</p>
+        <div class="panel-links">
+          <a class="btn small" href={`/utilities/${u.id}/`}>Details</a>
+          {docsHref(u) && <a class="btn small" href={docsHref(u)}>Docs</a>}
+        </div>
+      </div>
+      <div class="panel-visual">
+        <AppShot name={u.id} alt={`${u.name} screen`} preview={u.preview} />
+      </div>
+    </div>
+  ))}
+</div>
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-showcase]');
+    if (!root) return;
+    var tabs = [].slice.call(root.querySelectorAll('[role=tab]'));
+    var panels = [].slice.call(root.querySelectorAll('[data-panel]'));
+    function select(id, focus, scroll, updateHash) {
+      tabs.forEach(function (t) {
+        var on = t.getAttribute('data-id') === id;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        if (on) {
+          if (focus) t.focus();
+          // Keep the chosen chip in view inside the strip, without scrolling the whole page.
+          var strip = t.parentNode;
+          strip.scrollTo({ left: t.offsetLeft - (strip.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' });
+        }
+      });
+      panels.forEach(function (p) { p.hidden = p.getAttribute('data-panel') !== id; });
+      if (scroll) root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Keep the URL shareable: the chosen utility is the hash (no extra history entries).
+      if (updateHash && history.replaceState) history.replaceState(null, '', '#' + id);
+    }
+    function known(id) { return tabs.some(function (t) { return t.getAttribute('data-id') === id; }); }
+    root.classList.add('is-tabs');
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { select(t.getAttribute('data-id'), false, false, true); });
+      t.addEventListener('keydown', function (e) {
+        var n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (n < 0) return;
+        e.preventDefault();
+        select(tabs[(n + tabs.length) % tabs.length].getAttribute('data-id'), true, false, true);
+      });
+    });
+    // A link like /#portpeek opens that tab and brings the showcase into view (also on later hash changes).
+    var start = (location.hash || '').slice(1);
+    select(known(start) ? start : tabs[0].getAttribute('data-id'), false, known(start));
+    window.addEventListener('hashchange', function () {
+      var id = (location.hash || '').slice(1);
+      if (known(id)) select(id, false, true);
+    });
+  })();
+</script>

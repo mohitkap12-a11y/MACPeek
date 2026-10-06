@@ -18,6 +18,8 @@ export interface Utility {
   icon: string; // inner SVG (24x24, stroke)
   question: string;
   tagline: string;
+  /** One crisp line for the homepage showcase (the utility's own page has the full copy). */
+  blurb: string;
   metaTitle: string;
   metaDescription: string;
   problem: string;
@@ -38,6 +40,7 @@ export const utilities: Utility[] = [
     icon: '<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
     question: 'What is using port 3000?',
     tagline: "See what's using your ports. Kill it in one click.",
+    blurb: 'The listening ports on your account, the process behind each, and a safe one-click kill.',
     metaTitle: 'PortPeek: Find and Kill the Process Using a Port on Mac | MacPeek',
     metaDescription: 'PortPeek lists every listening TCP and UDP port on your Mac with the process behind it, and frees a port by safely terminating its owner. Free and open source.',
     problem: '“Port 3000 is already in use.” macOS gives you no screen that says which app owns a port, so you drop to Terminal, remember the right lsof flags, copy a PID and hope it is still the right process when you kill it.',
@@ -75,6 +78,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
     question: 'What display configuration am I actually running?',
     tagline: 'Know exactly how your displays are configured.',
+    blurb: 'Real resolution, refresh rate and scaling for each connected display.',
     metaTitle: 'DisplayPeek: See Your Real Monitor Resolution and Refresh Rate | MacPeek',
     metaDescription: "DisplayPeek shows each display's panel resolution, desktop resolution, refresh rate and scaling on your Mac, and copies the details in one click. Free and open source.",
     problem: 'Your external monitor looks soft, or you paid for 120 Hz. System Settings shows a slider and a list of scaled modes, but not a plain answer to “what is this display really running at?”.',
@@ -105,6 +109,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="7" y="3" width="10" height="7" rx="1.5"/><path d="M10 6h.01M14 6h.01M9 10v3a3 3 0 0 0 6 0v-3M12 16v5"/>',
     question: 'What is connected, and at what speed?',
     tagline: "See what's connected to your Mac.",
+    blurb: 'The USB and Thunderbolt devices macOS lists, and the speed each one negotiated.',
     metaTitle: 'USBPeek: See USB and Thunderbolt Devices and Their Speed | MacPeek',
     metaDescription: 'USBPeek lists connected USB devices as a tree with vendor and link speed, and shows your Thunderbolt and USB4 ports. Serial numbers are never read. Free and open source.',
     problem: 'Your external SSD feels slow. Is it on a fast port? Is the cable limiting it? The answer is buried in System Information, in a tree that is hard to read.',
@@ -137,6 +142,7 @@ export const utilities: Utility[] = [
     icon: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/>',
     question: 'Is my network connection actually healthy?',
     tagline: 'Understand your network connection.',
+    blurb: 'Your connection, Wi-Fi signal, router and DNS, plus on-demand ping checks.',
     metaTitle: 'NetPeek: Check Your Mac Network, Wi-Fi Signal and Latency | MacPeek',
     metaDescription: 'NetPeek shows your active interface, IP addresses, router, DNS servers and Wi-Fi signal, and pings your router and DNS only when you ask. Free and open source.',
     problem: 'The internet feels flaky. Is it Wi-Fi signal, the router, DNS or your ISP? Answering that today means several Terminal commands and a Wi-Fi menu you have to Option-click.',
@@ -170,6 +176,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="2" y="8" width="17" height="9" rx="2"/><path d="M22 11v3M6 11v3M10 11v3"/>',
     question: 'What is my MacBook battery actually doing?',
     tagline: 'Understand your MacBook battery.',
+    blurb: 'Charge, cycle count and health, as macOS reports them.',
     metaTitle: 'BatteryPeek: MacBook Battery Health, Cycles and Charging | MacPeek',
     metaDescription: 'BatteryPeek, coming to MacPeek, shows charge, power source, cycle count and the health indicators macOS reports, without claiming precision the OS does not give.',
     problem: 'How healthy is your battery, how many cycles has it done, and why is it not charging? macOS spreads the answers over Settings, System Information and Terminal.',
@@ -200,6 +207,7 @@ export const utilities: Utility[] = [
     icon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     question: "Why isn't my Mac sleeping?",
     tagline: "Find out why your Mac isn't sleeping.",
+    blurb: 'What keeps your Mac awake, and the history of when it slept and woke.',
     metaTitle: "SleepPeek: Find Out Why Your Mac Won't Sleep or Keeps Waking | MacPeek",
     metaDescription: "SleepPeek is a read-only view of what keeps your Mac awake: sleep assertions and the processes behind them, plus recent wake reasons, with facts kept apart from guesses.",
     problem: 'Your Mac will not go to sleep, or wakes in the night. Something is holding it awake, but which process, and why, is hidden in pmset output.',
@@ -231,6 +239,7 @@ export const utilities: Utility[] = [
     icon: '<path d="M6 3h8l4 4v14H6z"/><rect x="9" y="12" width="6" height="5" rx="1"/><path d="M10 12v-1.5a2 2 0 0 1 4 0V12"/>',
     question: 'What process is using this file?',
     tagline: "Find what's holding a file open.",
+    blurb: 'Find the process holding a file or folder open, and end it safely.',
     metaTitle: 'FileLockPeek: See Which Process Is Using a File on Mac | MacPeek',
     metaDescription: 'FileLockPeek shows which of your processes have a file or folder open, locked or as their working directory, and can safely end one. Free and open source.',
     problem: '“The operation can’t be completed because the item is in use.” Or a drive that will not eject. Something has the file or folder open, but macOS does not tell you what.',
@@ -267,6 +276,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="10" y="10" width="4" height="4"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
     question: 'What exactly is this process?',
     tagline: 'Inspect a process and its relationships.',
+    blurb: 'Command line, listening ports, parent and children, and a safe way to end it.',
     metaTitle: 'ProcessPeek: Inspect a Mac Process, Its Parent, Ports and Children | MacPeek',
     metaDescription: "ProcessPeek shows a Mac process's path, parent, user, start time, command line, listening ports and children. It is deliberately not an Activity Monitor replacement.",
     problem: 'You see an unfamiliar process name. Where did it come from, what started it, and what is it listening on?',
@@ -300,6 +310,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 14h.01M11 14h6"/>',
     question: 'Which app is using my disk right now?',
     tagline: 'See which processes are hitting your disk.',
+    blurb: 'See which processes are reading and writing the disk right now.',
     metaTitle: 'DiskPeek: See Which App Is Using Your Mac Disk Right Now | MacPeek',
     metaDescription: 'DiskPeek samples per-process disk reads and writes only while it is open and labels every value as sampled, so you can find what is hammering your disk.',
     problem: 'The fans spin up and the disk light is on. Which app is reading and writing so much?',
@@ -332,6 +343,7 @@ export const utilities: Utility[] = [
     icon: '<path d="M4 17l6-5-6-5M12 19h8"/>',
     question: 'What environment variables does this environment see?',
     tagline: 'Inspect and search environment variables.',
+    blurb: 'Search environment variables and walk through PATH, with secrets hidden.',
     metaTitle: 'EnvPeek: Search and Inspect Environment Variables and PATH on Mac | MacPeek',
     metaDescription: 'EnvPeek lets you search environment variables, inspect PATH entry by entry and copy NAME=value, labelling where each value comes from so nothing looks global by mistake.',
     problem: 'Why is the wrong Node first in PATH? Does this app even see that variable? The answer depends on which shell or process you ask.',
@@ -363,6 +375,7 @@ export const utilities: Utility[] = [
     icon: '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>',
     question: 'Which DNS servers is my Mac using, and do they respond?',
     tagline: 'Inspect DNS configuration and resolver behavior.',
+    blurb: 'The DNS servers in use, and whether each one answers.',
     metaTitle: 'DNSPeek: See Which DNS Servers Your Mac Uses and How Fast | MacPeek',
     metaDescription: 'DNSPeek is a read-only view of the DNS servers and resolver configuration your Mac uses, with lookups and per-server checks only when you ask. Free and open source.',
     problem: 'Pages hang or a domain will not resolve. Which DNS servers is your Mac actually asking, and are they answering?',
