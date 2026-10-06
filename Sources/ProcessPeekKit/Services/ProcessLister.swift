@@ -125,7 +125,7 @@ public struct PSProcessLister: ProcessListing {
 
     /// Two start times identify the same process when they agree to the second. If either is unknown the process
     /// cannot be confirmed, so it is treated as changed rather than risk showing another process's details.
-    static func sameProcess(_ lhs: Date?, _ rhs: Date?) -> Bool {
+    public static func sameProcess(_ lhs: Date?, _ rhs: Date?) -> Bool {
         guard let lhs, let rhs else { return false }
         return abs(lhs.timeIntervalSince(rhs)) < 1.5
     }
