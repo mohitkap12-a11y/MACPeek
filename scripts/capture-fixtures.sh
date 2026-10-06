@@ -25,15 +25,27 @@ mask() {
 }
 
 # cap NAME COMMAND...   (runs the command, masks it, saves to $OUT/NAME.txt; never fails the script)
+# Runs a command but kills it after $1 seconds (macOS has no `timeout`), so a command that streams
+# forever or hangs can never block the script.
+run_limited() {
+  local secs="$1"; shift
+  "$@" </dev/null &
+  local pid=$!
+  ( sleep "$secs"; kill "$pid" 2>/dev/null; sleep 1; kill -9 "$pid" 2>/dev/null ) &
+  local watchdog=$!
+  wait "$pid" 2>/dev/null; local rc=$?
+  kill "$watchdog" 2>/dev/null; wait "$watchdog" 2>/dev/null
+  return $rc
+}
 cap() {
   local name="$1"; shift
   echo "capturing $name ..."
-  { echo "\$ $*"; "$@" 2>&1; echo "[exit status: $?]"; } | mask | head -c 400000 > "$OUT/$name.txt"
+  { echo "\$ $*"; run_limited 20 "$@" 2>&1; echo "[exit status: $?]"; } | mask | head -c 400000 > "$OUT/$name.txt"
 }
 capsh() { # capsh NAME 'shell pipeline'
   local name="$1" cmd="$2"
   echo "capturing $name ..."
-  { echo "\$ $cmd"; bash -c "$cmd" 2>&1; echo "[exit status: $?]"; } | mask | head -c 400000 > "$OUT/$name.txt"
+  { echo "\$ $cmd"; run_limited 20 bash -c "$cmd" 2>&1; echo "[exit status: $?]"; } | mask | head -c 400000 > "$OUT/$name.txt"
 }
 
 cap sw_vers sw_vers
@@ -58,7 +70,7 @@ capsh ioreg_battery 'ioreg -r -c AppleSmartBattery -w0'
 
 # SleepPeek
 cap pmset_assertions pmset -g assertions
-cap pmset_assertions_detail pmset -g assertionslog
+# (`pmset -g assertionslog` streams forever, so it is deliberately not captured)
 capsh pmset_log_wake "pmset -g log | grep -E ' (Wake|DarkWake|Sleep|Entering|Waking) ' | tail -n 150"
 cap pmset_everything pmset -g
 
