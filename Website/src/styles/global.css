@@ -131,7 +131,6 @@ footer.site .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: 
 /* Phones: keep every header control reachable down to 320px by dropping the wordmark (the icon stays). */
 @media (max-width: 480px) {
   header.site .bar { padding: 0 8px 0 12px; gap: 8px; }
-  .brand-text { display: none; }
   nav.main { gap: 2px; }
   nav.main a.link { padding: 7px 9px; }
   .nav-cta { padding: 8px 13px; }
@@ -269,3 +268,42 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
   .dx-pager { grid-template-columns: 1fr; }
 }
 .prose th, .prose td { text-align: left; }
+
+/* ---- Mobile header: wordmark stays, links collapse into a menu ---- */
+.menu-btn { display: none; }
+.menu-btn .close { display: none; }
+.menu-open .menu-btn .open { display: none; } .menu-open .menu-btn .close { display: block; }
+.mobile-menu { pointer-events: auto; display: none; margin-top: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 22px; background: var(--nav-bg); backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); }
+.mobile-menu a:not(.btn) { display: block; padding: 14px 16px; color: var(--muted); text-decoration: none; font-size: 17px; border-radius: 12px; }
+.mobile-menu a:not(.btn):hover { color: var(--text); background: var(--card); }
+.mobile-menu .btn { width: 100%; margin-top: 6px; }
+@media (max-width: 760px) {
+  nav.main a.link, .nav-cta { display: none; }
+  .menu-btn { display: inline-grid; }
+  .mobile-menu:not([hidden]) { display: block; }
+  header.site .bar { padding: 0 8px 0 14px; }
+}
+
+/* ---- Utilities showcase: scrollable tab strip + one panel at a time ---- */
+.showcase { margin-top: 8px; }
+.tabs-wrap { position: relative; margin: 0 -22px 20px; }
+.tabs-wrap::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 36px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--bg)); }
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 22px 10px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: none; scroll-snap-align: center; font: inherit; font-size: 15px; font-weight: 600; padding: 9px 18px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.tabs button:hover { color: var(--text); background: var(--card); }
+.tabs button[aria-selected='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.panel-card { display: grid; gap: 32px; grid-template-columns: 1.05fr .95fr; align-items: center; padding: 36px; border: 1px solid var(--line); border-radius: 28px; background: var(--card); }
+.panel-card[hidden] { display: none; }
+.panel-card + .panel-card { margin-top: 20px; }
+.is-tabs .panel-card + .panel-card { margin-top: 0; }
+.panel-card h3 { font-size: clamp(1.4rem, 3.4vw, 2rem); letter-spacing: -.03em; line-height: 1.15; margin: 14px 0 6px; }
+.panel-q { color: var(--accent); font-weight: 600; margin: 0 0 12px; }
+.panel-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.panel-visual { display: grid; place-items: center; min-width: 0; }
+@media (max-width: 800px) {
+  .panel-card { grid-template-columns: 1fr; padding: 24px 18px; gap: 24px; border-radius: 22px; }
+  .panel-card h3 { text-align: left; }
+}
+@media (max-width: 480px) { .tabs-wrap { margin: 0 -16px 20px; } .tabs { padding-inline: 16px; } }
+@media (min-width: 1000px) { .tabs-wrap { margin-inline: 0; } .tabs-wrap::after { display: none; } .tabs { flex-wrap: wrap; justify-content: center; overflow: visible; padding-inline: 0; } }
