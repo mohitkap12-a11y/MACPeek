@@ -13,6 +13,8 @@ final class UtilityRegistry: ObservableObject {
 
     private let modules: [String: UtilityModule]
     private let defaults: UserDefaults
+    /// In-flight launcher-summary tasks, so they can be cancelled when a utility is disabled or the popover closes.
+    private var summaryTasks: [String: Task<Void, Never>] = [:]
 
     init(modules: [UtilityModule], defaults: UserDefaults = .standard) {
         self.modules = Dictionary(uniqueKeysWithValues: modules.map { ($0.info.id, $0) })
@@ -35,21 +37,36 @@ final class UtilityRegistry: ObservableObject {
         var updated = selection
         guard updated.setEnabled(id, enabled) else { return }
         if !enabled {
+            summaryTasks[id]?.cancel()
+            summaryTasks[id] = nil
             modules[id]?.didDisappear()
             summaries[id] = nil
         }
         selection = updated
         defaults.set(updated.storageValue, forKey: Self.defaultsKey)
-        if enabled { Task { await refreshSummary(id) } }
+        if enabled { startSummary(id) }
     }
 
-    func refreshSummaries() async {
-        for info in enabledUtilities { await refreshSummary(info.id) }
+    /// Starts one tracked, cancellable summary task per enabled utility.
+    func refreshSummaries() {
+        for info in enabledUtilities { startSummary(info.id) }
     }
 
-    private func refreshSummary(_ id: String) async {
+    /// Cancels in-flight summary work (popover closed). Cancellation reaches `lsof` via `ShellCommand`.
+    func cancelSummaries() {
+        for task in summaryTasks.values { task.cancel() }
+        summaryTasks.removeAll()
+    }
+
+    private func startSummary(_ id: String) {
+        summaryTasks[id]?.cancel()
         guard let module = module(for: id) else { return }
-        summaries[id] = await module.launcherSummary()
+        summaryTasks[id] = Task { [weak self] in
+            let summary = await module.launcherSummary()
+            // Drop the result if we were cancelled or the utility was disabled while it ran.
+            guard let self, !Task.isCancelled, self.isEnabled(id) else { return }
+            self.summaries[id] = summary
+        }
     }
 }
 #endif

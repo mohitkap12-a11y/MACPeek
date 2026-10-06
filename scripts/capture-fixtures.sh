@@ -5,9 +5,12 @@
 # Usage:  scripts/capture-fixtures.sh
 # Output: ./macpeek-fixtures/*.txt  and a single combined ./macpeek-fixtures.txt you can attach.
 #
-# Privacy: this runs read-only commands on YOUR machine and saves the output locally. Serial numbers,
-# UUIDs, MAC addresses, SSIDs-in-logs, your username and hostname are masked below, but please skim the
-# result before sharing it. Nothing is uploaded by this script.
+# Privacy: this runs read-only commands on YOUR machine and saves the output locally. Nothing is uploaded.
+#  - It NEVER captures your real environment variables or other processes' command lines (those routinely
+#    contain tokens/API keys). Environment and command-line samples come from throwaway test processes
+#    with fake values; the process list uses command names only.
+#  - Serial numbers, UUIDs, MAC addresses, your username and hostname are masked.
+# Network/Wi-Fi/DNS output still contains IP addresses and nearby network names: skim the result before sharing.
 set -uo pipefail
 OUT="macpeek-fixtures"
 rm -rf "$OUT" "$OUT.txt"; mkdir -p "$OUT"
@@ -73,11 +76,14 @@ cap ping_gateway_3 ping -c 3 -t 5 1.1.1.1
 capsh dns_lookup 'dscacheutil -q host -a name apple.com'
 
 # ProcessPeek / EnvPeek / DiskPeek
-cap ps_sample ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,command
-cap ps_self ps -o pid,ppid,uid,user,state,lstart,command -p $$
-capsh ps_env_self 'ps eww -p $$ | head -c 6000'
+# Process list: command NAMES only (comm), never arguments or environments of your real processes.
+cap ps_sample ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm
+# Command-line and environment SHAPE, from a throwaway process we start with fake values.
+capsh ps_args_env_demo 'env -i FAKE_VAR=fake_value OTHER_VAR=other PATH=/usr/bin:/bin /bin/sleep 20 & p=$!; sleep 0.3; echo "--- ps -o args"; ps -o pid,ppid,uid,user,state,lstart,args -p $p; echo "--- ps eww"; ps eww -p $p; kill $p 2>/dev/null; wait $p 2>/dev/null'
+# env/launchctl SHAPE only: names with values dropped, plus PATH (a list of directories).
+capsh env_names 'env | sed -E "s/=.*$/=<value>/" | sort'
 cap launchctl_path launchctl getenv PATH
-cap env_sample env
+capsh path_value 'echo "$PATH"'
 capsh top_sample 'top -l 1 -n 15 -stats pid,command,cpu,mem,state'
 
 # FileLockPeek: hold a temp file open and ask lsof about it (field output, same format PortPeek parses)

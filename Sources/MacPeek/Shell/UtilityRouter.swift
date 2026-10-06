@@ -30,11 +30,12 @@ final class UtilityRouter: ObservableObject {
     func back() { go(.launcher) }
 
     func popoverWillShow() {
-        Task { await registry.refreshSummaries() }
+        registry.refreshSummaries()
     }
 
     /// Always return to the launcher so the next open is predictable, and stop any live work.
     func popoverDidClose() {
+        registry.cancelSummaries()
         leave(route)
         route = .launcher
     }

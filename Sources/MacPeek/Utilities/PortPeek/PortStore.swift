@@ -60,6 +60,8 @@ final class PortStore: ObservableObject {
                 forceCandidate = nil
             }
         } catch {
+            // A cancelled scan (popover closed, utility disabled) is not an error to show the user.
+            if Task.isCancelled { return }
             scanError = error.localizedDescription
             Log.portPeek.error("scan failed: \(error.localizedDescription, privacy: .public)")
         }

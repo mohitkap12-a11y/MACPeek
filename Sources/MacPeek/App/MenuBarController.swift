@@ -64,7 +64,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         statusItem.menu = nil
     }
 
-    @objc private func refreshNow() { Task { await registry.refreshSummaries() } }
+    @objc private func refreshNow() { registry.refreshSummaries() }
     @objc private func quit() { NSApp.terminate(nil) }
 
     // MARK: NSPopoverDelegate — utilities refresh only while their screen is visible.

@@ -15,7 +15,7 @@ final class PortPeekModule: UtilityModule {
 
     func launcherSummary() async -> String? {
         await store.refresh()
-        guard store.scanError == nil else { return nil }
+        guard !Task.isCancelled, store.scanError == nil else { return nil }
         let n = store.ports.count
         return n == 1 ? "1 active" : "\(n) active"
     }
