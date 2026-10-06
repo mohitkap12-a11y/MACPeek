@@ -20,6 +20,10 @@ const isNoindex = (h) => /<meta name="robots" content="noindex/i.test(h);
 const indexable = pages.filter((p) => !isRedirectStub(html(p)) && !isNoindex(html(p)));
 const origin = new URL(html(join(dist, 'index.html')).match(/<link rel="canonical" href="([^"]+)"/)[1]).origin;
 
+test('canonical origin is the production domain', () => {
+  assert.equal(origin, 'https://www.macpeekapp.com');
+});
+
 test('indexable pages: one h1, unique title ≤ 60 chars, unique description, canonical to themselves', () => {
   const titles = new Map(), descs = new Map();
   for (const p of indexable) {

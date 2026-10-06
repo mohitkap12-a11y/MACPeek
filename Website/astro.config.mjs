@@ -2,13 +2,10 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import { readFileSync, existsSync } from 'node:fs';
 
-// Canonical origin, in order of preference:
-//   1. SITE_URL (set it in the Vercel project once the custom domain is attached),
-//   2. Vercel's own production URL (VERCEL_PROJECT_PRODUCTION_URL, the custom domain if there is one),
-//   3. a placeholder for local builds.
-// Canonicals, the sitemap, robots.txt, llms.txt and the feed all derive from this one value.
-const vercelProd = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-const site = process.env.SITE_URL || (vercelProd ? `https://${vercelProd}` : 'https://portpeek.app');
+// Canonical origin: the production domain, www.macpeekapp.com (www is the primary host). Canonicals, og:url, the sitemap,
+// robots.txt, llms.txt and the feed all derive from this one value, on previews too, so a preview can never become
+// a competing copy. SITE_URL overrides it (for a staging domain or a local build).
+const site = process.env.SITE_URL || 'https://www.macpeekapp.com';
 
 // lastmod only where it is true: Markdown pages carry their own date in frontmatter. Other pages omit it.
 function lastmodFor(pathname) {

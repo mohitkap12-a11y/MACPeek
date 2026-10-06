@@ -3,17 +3,16 @@
 Everything below is generated from the site's data, so it stays in step with the pages. `tests/seo.test.mjs` fails the
 build when any of it regresses.
 
-## 1. Set the canonical domain (one value)
-Canonical URLs, `og:url`, the sitemap, `robots.txt`, `llms.txt` and the feed all use one origin, chosen in this order:
+## 1. The canonical domain
+The production domain is **https://www.macpeekapp.com** (the `www` host is primary). It is pinned in `astro.config.mjs`, and
+canonical URLs, `og:url`, the sitemap, `robots.txt`, `llms.txt` and the feed all derive from it, on previews too. `SITE_URL`
+overrides it for a staging domain or a local build.
 
-1. `SITE_URL` (set it in the Vercel project: **Settings → Environment Variables**, Production),
-2. `VERCEL_PROJECT_PRODUCTION_URL` (Vercel sets it to the production domain; enable "Automatically expose System
-   Environment Variables"),
-3. `https://portpeek.app`, a local-build placeholder that is **not** a real choice.
-
-Attach the custom domain in Vercel (**Settings → Domains**) and make it the primary one, then confirm
-`view-source:<domain>/` shows `<link rel="canonical" href="https://<domain>/">`. Redirect `www` ↔ apex and the
-`*.vercel.app` production URL to the primary domain in the same screen so there is one copy of the site.
+In Vercel (**Settings → Domains**):
+1. Add `www.macpeekapp.com` and make it the **primary** domain.
+2. Add `macpeekapp.com` (apex) and set it to **redirect (308) to `www.macpeekapp.com`**.
+3. Set the `*.vercel.app` production domain to redirect to `www.macpeekapp.com` as well, so there is one copy of the site.
+4. Confirm `view-source:https://www.macpeekapp.com/` shows `<link rel="canonical" href="https://www.macpeekapp.com/">`.
 
 ## 2. Tell Google and Bing
 - **Google Search Console** → add a *Domain* property (DNS TXT) or a *URL-prefix* property. For URL-prefix, put the HTML tag

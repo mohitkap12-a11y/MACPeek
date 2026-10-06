@@ -50,7 +50,7 @@ Screens on the site are illustrations until real captures exist; see [SCREENSHOT
 - `SITE.hasRelease` in `src/site.ts` is `false`: every Download button goes to `/download/`, which explains that no signed release exists yet and shows how to build from source. **Flip it to `true` when the first release is published**; buttons then go to GitHub's latest release.
 
 ## Before launch
-- Build with your real domain so canonical URLs and the sitemap are right (it defaults to `portpeek.app`):
+- Canonical URLs and the sitemap use `https://www.macpeekapp.com` by default; build for another host with:
   `SITE_URL=https://example.com npm run build`
 - Replace illustrations with real captures (see SCREENSHOTS.md).
 - Run Lighthouse (Chrome DevTools) against `npm run preview` for performance/accessibility/SEO scores.
