@@ -20,15 +20,11 @@ const docsHref = (u: (typeof list)[number]) => (u.status !== 'available' ? '' : 
     <div class="panel-card" role="tabpanel" id={u.id} aria-labelledby={`tab-${u.id}`} data-panel={u.id}>
       <div class="panel-text">
         <span class:list={['tag', { live: u.status === 'available' }]}>{u.status === 'available' ? liveTagLong : 'Coming soon'}</span>
-        <h3>{u.name}: {u.tagline}</h3>
-        <p class="panel-q">{u.question}</p>
-        <p>{u.solution}</p>
-        <ul class="checks">
-          {u.features.slice(0, 4).map((f) => <li>{f}</li>)}
-        </ul>
+        <h3>{u.tagline}</h3>
+        <p class="panel-blurb">{u.blurb}</p>
         <div class="panel-links">
-          <a class="btn" href={`/utilities/${u.id}/`}>About {u.name}</a>
-          {docsHref(u) && <a class="btn" href={docsHref(u)}>Read the docs</a>}
+          <a class="btn small" href={`/utilities/${u.id}/`}>Details</a>
+          {docsHref(u) && <a class="btn small" href={docsHref(u)}>Docs</a>}
         </div>
       </div>
       <div class="panel-visual">

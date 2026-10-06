@@ -311,3 +311,10 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 }
 @media (max-width: 480px) { .tabs-wrap { margin: 0 -16px 20px; } .tabs { padding-inline: 16px; } }
 @media (min-width: 1000px) { .tabs-wrap { margin-inline: 0; } .tabs-wrap::after { display: none; } .tabs { flex-wrap: wrap; justify-content: center; overflow: visible; padding-inline: 0; } }
+
+/* Showcase panel: crisp copy, small buttons that always fit on one line */
+.panel-blurb { color: var(--muted); font-size: 1.05rem; line-height: 1.55; margin: 0; max-width: 46ch; }
+.panel-links { flex-wrap: nowrap; gap: 8px; margin-top: 20px; }
+.panel-links .btn { padding: 8px 18px; font-size: 14px; white-space: nowrap; }
+.panel-card { gap: 28px; }
+@media (max-width: 800px) { .panel-card { padding: 22px 18px; gap: 22px; } .panel-card h3 { margin-top: 12px; } }
