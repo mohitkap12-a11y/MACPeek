@@ -9,6 +9,9 @@ struct SleepPeekView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let error = store.error, store.snapshot != nil {
+                BannerView(banner: Banner(kind: .error, text: "Couldn't refresh: \(error) Showing the last reading."))
+            }
             content
             Divider()
             footer
@@ -23,6 +26,7 @@ struct SleepPeekView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     SummaryCard(snapshot: snapshot)
                     ForEach(snapshot.diagnosis.blockers) { blocker in BlockerCard(blocker: blocker) }
+                    ForEach(snapshot.diagnosis.expectedHolds) { hold in BlockerCard(blocker: hold, expected: true) }
                     OtherAssertions(snapshot: snapshot)
                     HistorySection()
                 }
@@ -60,7 +64,8 @@ private struct SummaryCard: View {
 
     private var diagnosis: SleepDiagnosis { snapshot.diagnosis }
     private var symbol: String {
-        diagnosis.systemSleepBlocked ? "exclamationmark.circle" : (diagnosis.displaySleepBlocked || diagnosis.userActive) ? "sun.max" : "moon.zzz"
+        diagnosis.systemSleepBlocked ? "exclamationmark.circle"
+            : (diagnosis.displaySleepBlocked || diagnosis.userActive || !diagnosis.expectedHolds.isEmpty) ? "sun.max" : "moon.zzz"
     }
 
     var body: some View {
@@ -102,6 +107,8 @@ private struct SummaryCard: View {
 
 private struct BlockerCard: View {
     let blocker: SleepBlocker
+    /// A hold macOS takes itself while the display is on: shown, but not styled as a problem.
+    var expected = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -109,8 +116,9 @@ private struct BlockerCard: View {
                 Text(blocker.assertion.processName).font(.system(size: 13, weight: .medium))
                 Text("PID \(blocker.assertion.pid)").font(.caption).foregroundStyle(.secondary)
                 Spacer(minLength: 4)
-                StatusBadge(text: blocker.assertion.preventsSystemSleep ? "Keeps Mac awake" : "Keeps display awake",
-                            tone: .warning)
+                StatusBadge(text: expected ? "Expected while display is on"
+                                : blocker.assertion.preventsSystemSleep ? "Keeps Mac awake" : "Keeps display awake",
+                            tone: expected ? .neutral : .warning)
             }
             ForEach(Array(blocker.findings.enumerated()), id: \.offset) { _, finding in
                 HStack(alignment: .top, spacing: 6) {

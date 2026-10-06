@@ -121,6 +121,16 @@ final class SleepLogParserTests: XCTestCase {
         XCTAssertNotNil(h.wakeRequestsRecordedAt)
     }
 
+    func testWakeRequestWithoutInfoDoesNotSwallowTheNextEntry() {
+        let text = """
+        2026-01-02 03:00:00 +0000 Wake Requests       \t[process=powerd request=CSPNEvaluation deltaSecs=3905 wakeAt=2026-01-02 04:05:05] [process=powerd request=UserWake deltaSecs=100 wakeAt=2026-01-02 03:01:40 info="alarm"]
+        """
+        let requests = SleepLogParser.parse(text).wakeRequests
+        XCTAssertEqual(requests.map(\.request), ["CSPNEvaluation", "UserWake"])
+        XCTAssertEqual(requests.map(\.info), ["", "alarm"])
+        XCTAssertTrue(requests.allSatisfy { $0.wakeAt != nil })
+    }
+
     func testBatteryAndNoReason() {
         let text = """
         2026-01-02 03:04:05 +0000 Wake                \tWake from Normal Sleep [CDNVA] : due to EC.LidOpen/Lid Open Using BATT (Charge:55%) 3600 secs
@@ -150,15 +160,32 @@ final class SleepAnalysisTests: XCTestCase {
         XCTAssertFalse(d.displaySleepBlocked)
         XCTAssertTrue(d.userActive)
         XCTAssertEqual(d.headline, "Something is keeping your Mac awake")
-        XCTAssertEqual(d.blockers.map(\.assertion.processName), ["bluetoothd", "powerd", "sharingd"])
+        // powerd's "Prevent sleep while display is on" is the system's own hold, not a blocker to chase.
+        XCTAssertEqual(d.blockers.map(\.assertion.processName), ["bluetoothd", "sharingd"])
+        XCTAssertEqual(d.expectedHolds.map(\.assertion.processName), ["powerd"])
         XCTAssertEqual(d.macOSReportedBlockers, ["useractivityd", "bluetoothd", "sharingd", "powerd"])
 
-        let powerd = try XCTUnwrap(d.blockers.first { $0.assertion.processName == "powerd" })
+        let powerd = try XCTUnwrap(d.expectedHolds.first)
         XCTAssertEqual(powerd.findings.first?.basis, .verified)
         XCTAssertTrue(powerd.findings.contains { $0.basis == .inference && $0.text.contains("display is on") })
         // A blocker we know nothing about gets facts only, never a guess.
         let sharingd = try XCTUnwrap(d.blockers.first { $0.assertion.processName == "sharingd" })
         XCTAssertTrue(sharingd.findings.allSatisfy { $0.basis == .verified })
+    }
+
+    func testOnlyTheDisplayBeingOnIsNotReportedAsABlocker() {
+        let report = AssertionParser.parse("""
+        Assertion status system-wide:
+           PreventUserIdleSystemSleep     1
+           UserIsActive                   0
+        Listed by owning process:
+           pid 4598(powerd): [0x1] 01:01:14 PreventUserIdleSystemSleep named: "Powerd - Prevent sleep while display is on"
+        """)
+        let d = SleepAnalysis.diagnose(report: report, settings: nil)
+        XCTAssertFalse(d.systemSleepBlocked)
+        XCTAssertTrue(d.blockers.isEmpty)
+        XCTAssertEqual(d.expectedHolds.count, 1)
+        XCTAssertEqual(d.headline, "Your Mac stays awake while the display is on")
     }
 
     func testNothingBlocking() {

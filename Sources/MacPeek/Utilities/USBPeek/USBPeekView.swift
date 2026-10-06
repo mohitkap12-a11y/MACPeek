@@ -8,6 +8,9 @@ struct USBPeekView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let error = store.error, store.snapshot != nil {
+                BannerView(banner: Banner(kind: .error, text: "Couldn't refresh: \(error) Showing the last reading."))
+            }
             content
             Divider()
             footer

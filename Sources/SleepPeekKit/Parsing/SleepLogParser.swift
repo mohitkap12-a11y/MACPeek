@@ -9,8 +9,9 @@ public enum SleepLogParser {
     private static let timestamp = NSRegularExpression.compile(#"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) ([+-]\d{4}) (.*)$"#)
     private static let kindSplit = NSRegularExpression.compile(#"^(.*?)(?:\t+|\s{2,})(.*)$"#)
     private static let reason = NSRegularExpression.compile(#"due to (.*?)(?: Using (AC|Batt|BATT|UPS)\b.*)?\s*$"#)
+    // `info` is optional, and no field may run past its own closing bracket into the next entry.
     private static let wakeRequest = NSRegularExpression.compile(
-        #"\[\*?process=(.+?) request=(.+?) deltaSecs=\d+ wakeAt=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) info="(.*?)"\]"#)
+        #"\[\*?process=([^\]]+?) request=([^\]]+?) deltaSecs=\d+ wakeAt=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?: info="(.*?)")?\]"#)
 
     public static func parse(_ text: String, limit: Int = 60) -> SleepHistory {
         let formatter = DateFormatter()

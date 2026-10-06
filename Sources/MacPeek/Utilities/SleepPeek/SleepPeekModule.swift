@@ -19,7 +19,8 @@ final class SleepPeekModule: UtilityModule {
             let n = diagnosis.blockers.filter { $0.assertion.preventsSystemSleep }.count
             return n == 1 ? "1 blocker" : "\(n) blockers"
         }
-        return diagnosis.displaySleepBlocked ? "Display held awake" : "No blockers"
+        if diagnosis.displaySleepBlocked { return "Display held awake" }
+        return diagnosis.expectedHolds.isEmpty ? "No blockers" : "Display is on"
     }
 
     func didAppear() { store.startPolling() }

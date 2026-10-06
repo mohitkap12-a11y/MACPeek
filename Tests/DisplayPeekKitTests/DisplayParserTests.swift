@@ -52,6 +52,16 @@ final class DisplayParserTests: XCTestCase {
         XCTAssertNil(displays[1].isMain, "an absent flag stays unknown rather than becoming 'No'")
     }
 
+    func testSameWidthButDifferentHeightIsNotCalledNative() throws {
+        let json = """
+        {"SPDisplaysDataType":[{"spdisplays_ndrvs":[
+          {"_name":"Odd","_spdisplays_pixels":"1920 x 1200","_spdisplays_resolution":"1920 x 1080 @ 60.00Hz"}]}]}
+        """
+        let display = try XCTUnwrap(DisplayParser.parse(json).displays.first)
+        XCTAssertEqual(display.scaling, .differentShape)
+        XCTAssertNotEqual(display.scaling.label, "Native (1×)")
+    }
+
     func testMissingFieldsStayNil() throws {
         let display = try XCTUnwrap(DisplayParser.parse(#"{"SPDisplaysDataType":[{"spdisplays_ndrvs":[{}]}]}"#).displays.first)
         XCTAssertEqual(display.name, "Display")

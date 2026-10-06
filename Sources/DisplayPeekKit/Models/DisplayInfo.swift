@@ -23,6 +23,8 @@ public struct GPUInfo: Equatable, Sendable {
 public enum DisplayScaling: Equatable, Sendable {
     case native
     case scaled(factor: Double)
+    /// The desktop and panel resolutions have different shapes, so no single scale factor describes them.
+    case differentShape
     case unknown
 
     public var label: String {
@@ -31,6 +33,7 @@ public enum DisplayScaling: Equatable, Sendable {
         case .scaled(let factor):
             if abs(factor - 2) < 0.01 { return "HiDPI (2×)" }
             return String(format: "Scaled (%.2g×)", factor)
+        case .differentShape: return "Different shape from the panel"
         case .unknown: return "Not reported"
         }
     }
@@ -91,8 +94,14 @@ public struct DisplayInfo: Identifiable, Equatable, Sendable {
 
     public var scaling: DisplayScaling {
         guard let nativeWidth, let uiWidth, uiWidth > 0 else { return .unknown }
-        let factor = Double(nativeWidth) / Double(uiWidth)
-        return abs(factor - 1) < 0.01 ? .native : .scaled(factor: factor)
+        let widthFactor = Double(nativeWidth) / Double(uiWidth)
+        // When both heights are known they must agree with the width factor; otherwise the two resolutions
+        // are not a pure scaling of each other and calling it "Native" or "Scaled" would be wrong.
+        if let nativeHeight, let uiHeight, uiHeight > 0 {
+            let heightFactor = Double(nativeHeight) / Double(uiHeight)
+            if abs(widthFactor - heightFactor) > 0.01 * max(widthFactor, heightFactor) { return .differentShape }
+        }
+        return abs(widthFactor - 1) < 0.01 ? .native : .scaled(factor: widthFactor)
     }
 
     /// Plain text for support threads and bug reports. No serial numbers.
