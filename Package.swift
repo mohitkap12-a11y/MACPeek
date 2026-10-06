@@ -19,6 +19,9 @@ let package = Package(
         .library(name: "DisplayPeekKit", targets: ["DisplayPeekKit"]),
         .library(name: "USBPeekKit", targets: ["USBPeekKit"]),
         .library(name: "SleepPeekKit", targets: ["SleepPeekKit"]),
+        .library(name: "ProcessPeekKit", targets: ["ProcessPeekKit"]),
+        .library(name: "DiskPeekKit", targets: ["DiskPeekKit"]),
+        .library(name: "EnvPeekKit", targets: ["EnvPeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
@@ -27,10 +30,14 @@ let package = Package(
         .target(name: "DisplayPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DisplayPeekKit"),
         .target(name: "USBPeekKit", dependencies: ["MacPeekCore"], path: "Sources/USBPeekKit"),
         .target(name: "SleepPeekKit", dependencies: ["MacPeekCore"], path: "Sources/SleepPeekKit"),
+        .target(name: "ProcessPeekKit", dependencies: ["MacPeekCore", "PortPeekKit"], path: "Sources/ProcessPeekKit"),
+        .target(name: "DiskPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DiskPeekKit"),
+        .target(name: "EnvPeekKit", dependencies: ["MacPeekCore"], path: "Sources/EnvPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
-            dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit"],
+            dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
+                           "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -64,5 +71,13 @@ let package = Package(
             path: "Tests/SleepPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(
+            name: "ProcessPeekKitTests",
+            dependencies: ["ProcessPeekKit", "PortPeekKit", "MacPeekCore"],
+            path: "Tests/ProcessPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit"], path: "Tests/DiskPeekKitTests"),
+        .testTarget(name: "EnvPeekKitTests", dependencies: ["EnvPeekKit"], path: "Tests/EnvPeekKitTests"),
     ]
 )

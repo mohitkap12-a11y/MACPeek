@@ -19,9 +19,9 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
 | **SleepPeek** | Why isn't my Mac sleeping? | ✅ Available |
 | **FileLockPeek** | What process is using this file? | ✅ Available |
-| **ProcessPeek** | What exactly is this process? | Coming soon |
-| **DiskPeek** | Which app is using my disk right now? | Coming soon |
-| **EnvPeek** | What environment variables does this environment see? | Coming soon |
+| **ProcessPeek** | What exactly is this process? | ✅ Available |
+| **DiskPeek** | Which app is using my disk right now? | ✅ Available |
+| **EnvPeek** | What environment variables does this environment see? | ✅ Available |
 | **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | Coming soon |
 
 Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
@@ -81,9 +81,9 @@ No account, no telemetry, no cloud, no network access. MacPeek reads local syste
 you and never transmits it. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-PortPeek, FileLockPeek, DisplayPeek, USBPeek and SleepPeek are built; the remaining utilities arrive in phases
-(see [CHANGELOG.md](CHANGELOG.md)): Net/Battery → Process, Disk, Env and DNS → global search, accessibility and
-localization polish → signed releases.
+Eight utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek);
+the remaining ones arrive in phases (see [CHANGELOG.md](CHANGELOG.md)): NetPeek, BatteryPeek and DNSPeek → global
+search, accessibility and localization polish → signed releases.
 
 ## Contributing / License
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Licensed under the [MIT License](LICENSE).

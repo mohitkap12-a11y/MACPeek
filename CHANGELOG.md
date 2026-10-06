@@ -4,6 +4,13 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **ProcessPeek**: a searchable process list; open a process for its path, parent, user, start time, CPU and memory,
+  command line, listening ports and children (jump between them). Read-only; the command line is read only on request.
+- **DiskPeek**: per-process disk read/write rates and totals, sampled with `proc_pid_rusage` only while its screen is
+  open and always labelled as sampled. Other users' processes are counted but not shown.
+- **EnvPeek**: search environment variables, inspect PATH entry by entry, copy `NAME=value`. Sources are always
+  labelled (MacPeek's own environment, or one process by PID via `sysctl KERN_PROCARGS2`). Credential-looking values
+  are hidden until revealed; nothing is logged or stored.
 - **DisplayPeek**: each connected display's panel resolution, "looks like" resolution, refresh rate, scaling and the
   other details macOS reports, with one-click copy (serial numbers excluded). Reads only while its screen is open.
 - **USBPeek**: connected USB devices as a tree by bus (vendor, vendor:product ID, negotiated link speed, declared USB

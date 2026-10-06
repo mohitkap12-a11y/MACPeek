@@ -6,6 +6,9 @@ import FileLockPeekKit
 import DisplayPeekKit
 import USBPeekKit
 import SleepPeekKit
+import ProcessPeekKit
+import DiskPeekKit
+import EnvPeekKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
@@ -38,12 +41,19 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let usbStore = USBStore(discovery: SystemUSBDiscovery())
         let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
 
+        let processStore = ProcessStore(lister: PSProcessLister())
+        let diskStore = DiskStore(reader: SystemDiskIOReader(), settings: settings)
+        let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
+
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
             DisplayPeekModule(store: displayStore),
             USBPeekModule(store: usbStore),
             SleepPeekModule(store: sleepStore),
             FileLockPeekModule(store: fileLockStore),
+            ProcessPeekModule(store: processStore),
+            DiskPeekModule(store: diskStore),
+            EnvPeekModule(store: envStore),
         ])
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings)

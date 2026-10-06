@@ -63,24 +63,24 @@ public enum UtilityCatalog {
         id: "processpeek", name: "ProcessPeek", question: "What exactly is this process?",
         tagline: "Inspect a process and its relationships.",
         summary: "Shows a process's path, parent, user, start time, command line, CPU and memory, listening ports and children. Deliberately not an Activity Monitor replacement.",
-        icon: "cpu", category: .developer, availability: .comingSoon,
-        reads: ["Process details for processes your user can inspect"],
+        icon: "cpu", category: .developer, availability: .available,
+        reads: ["The process list (ps); a process's command line and listening ports only when you open it"],
         permissions: ["None. Some details are unavailable for other users' processes."]
     )
     public static let diskPeek = UtilityInfo(
         id: "diskpeek", name: "DiskPeek", question: "Which app is using my disk right now?",
         tagline: "See which processes are hitting your disk.",
         summary: "Samples per-process disk reads and writes while it is open and clearly labels values as sampled. It stops sampling as soon as you leave it.",
-        icon: "internaldrive", category: .developer, availability: .comingSoon,
-        reads: ["Per-process disk I/O counters for processes your user can inspect"],
+        icon: "internaldrive", category: .developer, availability: .available,
+        reads: ["Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open"],
         permissions: ["None. Other users' processes are not shown."]
     )
     public static let envPeek = UtilityInfo(
         id: "envpeek", name: "EnvPeek", question: "What environment variables does this environment see?",
         tagline: "Inspect and search environment variables.",
         summary: "Search variables, inspect PATH and copy NAME=value. Variables are labelled by where they come from, so a per-process value is never presented as global.",
-        icon: "terminal", category: .developer, availability: .comingSoon,
-        reads: ["MacPeek's own environment and, where permitted, a process's environment"],
+        icon: "terminal", category: .developer, availability: .available,
+        reads: ["MacPeek's own environment and, where macOS permits, the environment of one process whose PID you enter"],
         permissions: ["None. Values are shown on screen only and never logged."]
     )
     public static let dnsPeek = UtilityInfo(
