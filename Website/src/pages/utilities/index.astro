@@ -1,8 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
-import UtilityIcon from '../../components/UtilityIcon.astro';
-import { utilities } from '../../data/utilities';
-import { liveTag } from '../../site';
+import UtilityCard from '../../components/UtilityCard.astro';
+import { utilities, comingSoon } from '../../data/utilities';
+import { builtInSentence, comingSoonSample } from '../../site';
 
 const groups = [
   { label: 'Utilities', items: utilities.filter((u) => u.category === 'everyday') },
@@ -20,24 +20,18 @@ const jsonLd = {
 ---
 <Base
   title="All MacPeek Utilities: Ports, Displays, USB, Network and More"
-  description="Every MacPeek utility in one place: PortPeek is built in today; DisplayPeek, USBPeek, NetPeek, BatteryPeek, SleepPeek and developer tools are coming soon."
+  description={`Every MacPeek utility in one place: ${builtInSentence}; ${comingSoon.length} more are coming soon, including ${comingSoonSample}.`}
   jsonLd={jsonLd}
 >
   <div class="wrap article">
     <div class="crumbs"><a href="/">Home</a> › Utilities</div>
     <h1>MacPeek utilities</h1>
-    <p class="lede">Each Peek answers one question about your Mac. PortPeek is built into the app today; the others are in development and are marked <em>Coming soon</em> until they ship.</p>
+    <p class="lede">Each Peek answers one question about your Mac. {builtInSentence}; the others are in development and are marked <em>Coming soon</em> until they ship.</p>
     {groups.map((g) => (
       <Fragment>
         <h2 class="group-title" style="margin-top:36px">{g.label}</h2>
         <div class="ugrid">
-          {g.items.map((u) => (
-            <a class="ucard" href={`/utilities/${u.id}/`}>
-              <span class="uicon"><UtilityIcon utility={u} /></span>
-              <h3>{u.name} <span class:list={['tag', { live: u.status === 'available' }]}>{u.status === 'available' ? liveTag : 'Coming soon'}</span></h3>
-              <p>{u.question}</p>
-            </a>
-          ))}
+          {g.items.map((u) => <UtilityCard u={u} line="question" />)}
         </div>
       </Fragment>
     ))}

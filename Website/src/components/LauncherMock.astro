@@ -1,7 +1,8 @@
 ---
-// Illustration of the MacPeek launcher with every planned utility. Only PortPeek ships today: the caption says so.
+// Illustration of the MacPeek launcher with every planned utility. The caption names what actually ships (derived from the data).
 import UtilityIcon from './UtilityIcon.astro';
 import { utilities } from '../data/utilities';
+import { availableNames, shipVerb } from '../site';
 const subs: Record<string, string> = {
   portpeek: '6 active', displaypeek: '2 connected', usbpeek: '5 devices', netpeek: 'Wi-Fi', batterypeek: '92%', sleeppeek: 'No blocker',
 };
@@ -35,5 +36,5 @@ const groups = [
       <div class="foot" aria-hidden="true"><span>Manage utilities</span><span>About</span></div>
     </div>
   </div>
-  <figcaption class="fine">Illustrative preview of the full launcher. Only PortPeek ships today; the rest are coming soon.</figcaption>
+  <figcaption class="fine">Illustrative preview of the full launcher. Only {availableNames} {shipVerb} today; the rest are coming soon.</figcaption>
 </figure>

@@ -3,8 +3,8 @@ import Base from '../../layouts/Base.astro';
 import AppShot from '../../components/AppShot.astro';
 import DownloadCTA from '../../components/DownloadCTA.astro';
 import UtilityIcon from '../../components/UtilityIcon.astro';
-import { SITE, blogPosts, liveTagLong } from '../../site';
-import { utilities, type Utility } from '../../data/utilities';
+import { SITE, blogPosts, liveTagLong, builtInSentence, availableNames } from '../../site';
+import { utilities, available, type Utility } from '../../data/utilities';
 
 export function getStaticPaths() {
   return utilities.map((u) => ({ params: { slug: u.id }, props: { u } }));
@@ -73,14 +73,18 @@ const jsonLd = [
     {live ? (
       <p>{util.name} is part of MacPeek. <a href="/docs/installation/">Install MacPeek</a>, open <strong>Manage utilities</strong> and make sure {util.name} is switched on (it is on by default). There is nothing separate to download.</p>
     ) : (
-      <p>{util.name} is not released yet. It is already listed in MacPeek's <strong>Manage utilities</strong> screen as <em>Coming soon</em>; when it ships it will appear there to switch on, with no separate download. <a href="/docs/installation/">Install MacPeek</a> to get the launcher and PortPeek today.</p>
+      <p>{util.name} is not released yet. It is already listed in MacPeek's <strong>Manage utilities</strong> screen as <em>Coming soon</em>; when it ships it will appear there to switch on, with no separate download. <a href="/docs/installation/">Install MacPeek</a> to get the launcher and {availableNames} today.</p>
     )}
 
     <h2>Privacy</h2>
     <p><strong>What {util.name} {live ? 'reads' : 'will read'}:</strong></p>
     <ul>{util.reads.map((r) => <li>{r}</li>)}</ul>
     <p><strong>Access it needs:</strong> {util.access}</p>
-    <p>Everything stays on your Mac: no account, no telemetry, no network access. <a href="/privacy/">Read the full privacy statement</a>.</p>
+    {util.networkChecks ? (
+      <p>Nothing about your Mac is sent to any server, and there is no account and no telemetry. {util.name} {live ? 'makes' : 'will make'} network requests only when you ask it to run a check. <a href="/privacy/">Read the full privacy statement</a>.</p>
+    ) : (
+      <p>Everything stays on your Mac: no account, no telemetry, no network access. <a href="/privacy/">Read the full privacy statement</a>.</p>
+    )}
 
     <h2>Open source</h2>
     <p>MacPeek and every utility in it are MIT-licensed. <a href={SITE.github}>Read the code on GitHub</a>, or <a href={`${SITE.github}/blob/main/CONTRIBUTING.md#adding-a-utility`}>see how a utility is built</a>.</p>
@@ -97,8 +101,8 @@ const jsonLd = [
         <Fragment><p><strong>Get {util.name} with MacPeek.</strong> Free and open source.</p><DownloadCTA /></Fragment>
       ) : (
         <Fragment>
-          <p><strong>Want {util.name}?</strong> It is on the roadmap. PortPeek is built into the app today, and {util.name} will arrive in the same app.</p>
-          <div class="cta" style="justify-content:flex-start"><a class="btn primary" href="/utilities/portpeek/">See PortPeek</a><a class="btn" href={SITE.github}>Follow on GitHub</a></div>
+          <p><strong>Want {util.name}?</strong> It is on the roadmap. {builtInSentence}, and {util.name} will arrive in the same app.</p>
+          <div class="cta" style="justify-content:flex-start"><a class="btn primary" href={`/utilities/${available[0].id}/`}>See {available[0].name}</a><a class="btn" href={SITE.github}>Follow on GitHub</a></div>
         </Fragment>
       )}
     </div>

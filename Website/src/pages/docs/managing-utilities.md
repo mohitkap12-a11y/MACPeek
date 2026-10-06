@@ -15,7 +15,7 @@ Every utility MacPeek knows about, each with:
 - **Learn more**: the question it answers, what it does, **what it reads** from your Mac and **what access it needs**
 
 ## What on and off mean
-- **On:** the utility appears in the launcher and refreshes only while you have its screen open.
+- **On:** the utility appears in the launcher. It may take one quick snapshot when the popover opens, to fill in its one-line launcher summary, and it refreshes continuously only while you have its screen open.
 - **Off:** it disappears from the launcher and does **no work at all**: no polling, no scanning, no timers.
 - Your choices are saved on your Mac. Utilities released in a future version appear switched **on** by default, and you can switch them off.
 

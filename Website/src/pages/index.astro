@@ -3,8 +3,8 @@ import Base from '../layouts/Base.astro';
 import LauncherMock from '../components/LauncherMock.astro';
 import AppShot from '../components/AppShot.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
-import UtilityIcon from '../components/UtilityIcon.astro';
-import { SITE, liveTag, liveTagLong, liveSentence } from '../site';
+import UtilityCard from '../components/UtilityCard.astro';
+import { SITE, liveTagLong, liveSentence, builtInSentence } from '../site';
 import { utilities, byId, available, comingSoon } from '../data/utilities';
 
 const title = 'MacPeek: The Tiny Utilities macOS Should Have Built In';
@@ -28,8 +28,8 @@ const jsonLd = [
     '@type': 'FAQPage',
     mainEntity: [
       ['What is MacPeek?', 'MacPeek is an open-source collection of small native macOS menu-bar utilities, called Peeks, for inspecting things macOS makes hard to see, such as which process is using a port.'],
-      ['Which utilities are available today?', `${available.map((u) => u.name).join(', ')} is built into the app today${SITE.hasRelease ? '' : ' (the first signed release is not published yet)'}. ${comingSoon.length} more are in development: ${comingSoon.map((u) => u.name).join(', ')}.`],
-      ['Does MacPeek send my data anywhere?', 'No. MacPeek has no account, no telemetry and makes no network connections. Information about your Mac stays on your Mac.'],
+      ['Which utilities are available today?', `${builtInSentence}${SITE.hasRelease ? '' : ' (the first signed release is not published yet)'}. ${comingSoon.length} more are in development: ${comingSoon.map((u) => u.name).join(', ')}.`],
+      ['Does MacPeek send my data anywhere?', 'No. MacPeek has no account and no telemetry, and nothing about your Mac is sent to any server. Network utilities such as NetPeek will only send test requests when you ask them to run a check.'],
       ['Is MacPeek free?', 'Yes. MacPeek is free and open source under the MIT license.'],
     ].map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
   },
@@ -53,23 +53,11 @@ const jsonLd = [
       <h2>Small tools. One question each.</h2>
       <p class="sub">Switch on the Peeks you want and switch off the rest. A utility that is off does no work at all.</p>
       <div class="ugrid">
-        {everyday.map((u) => (
-          <a class="ucard" href={`/utilities/${u.id}/`}>
-            <span class="uicon"><UtilityIcon utility={u} /></span>
-            <h3>{u.name} <span class:list={['tag', { live: u.status === 'available' }]}>{u.status === 'available' ? liveTag : 'Coming soon'}</span></h3>
-            <p>{u.tagline}</p>
-          </a>
-        ))}
+        {everyday.map((u) => <UtilityCard u={u} />)}
       </div>
       <h3 class="group-title">Developer</h3>
       <div class="ugrid">
-        {developer.map((u) => (
-          <a class="ucard" href={`/utilities/${u.id}/`}>
-            <span class="uicon"><UtilityIcon utility={u} /></span>
-            <h3>{u.name} <span class="tag">Coming soon</span></h3>
-            <p>{u.tagline}</p>
-          </a>
-        ))}
+        {developer.map((u) => <UtilityCard u={u} />)}
       </div>
     </div>
   </section>

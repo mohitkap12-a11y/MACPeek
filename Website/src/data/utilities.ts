@@ -26,6 +26,8 @@ export interface Utility {
   how: string[];
   reads: string[];
   access: string;
+  /** True if the utility makes network requests when the user runs a check (so "no network access" would be false). */
+  networkChecks?: boolean;
   guides: string[]; // blog slugs
   preview: Preview;
 }
@@ -46,7 +48,7 @@ export const utilities: Utility[] = [
       'Safe kill: re-check → verify the same process → SIGTERM → confirm the port is free',
       'Explicit force kill only after a graceful attempt fails, with a second re-check',
       'Clear permission states: can terminate, permission required, protected',
-      'Copy port, PID, process name or address; refreshes only while open',
+      'Copy port, PID, process name or address; refreshes live only while its screen is open',
     ],
     how: [
       'Open MacPeek and choose PortPeek.',
@@ -147,6 +149,7 @@ export const utilities: Utility[] = [
     how: ['Open NetPeek from the launcher.', 'Read your interface and gateway details.', 'Run a check to measure latency.'],
     reads: ['Network interface configuration; latency to your gateway and DNS only when you run a check'],
     access: 'Wi-Fi network name may require Location access on recent macOS versions.',
+    networkChecks: true,
     guides: ['how-to-check-wifi-signal-strength-on-mac'],
     preview: {
       title: 'NetPeek',
@@ -354,6 +357,7 @@ export const utilities: Utility[] = [
     how: ['Open DNSPeek from the launcher.', 'Read your resolver configuration.', 'Run a lookup to measure latency.'],
     reads: ['System resolver configuration; lookups only when you run a check'],
     access: 'None.',
+    networkChecks: true,
     guides: [],
     preview: {
       title: 'DNSPeek',

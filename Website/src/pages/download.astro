@@ -36,13 +36,19 @@ const jsonLd = {
     </ul>
 
     <h2>Install a release</h2>
-    <ol>
-      <li>Download <code>MacPeek-x.y.z.dmg</code> from the <a href={SITE.releases}>latest release</a>.</li>
-      <li>Open the DMG and drag <strong>MacPeek</strong> to <strong>Applications</strong>.</li>
-      <li>Launch MacPeek. The icon appears in your menu bar.</li>
-      <li>Open <strong>Manage utilities</strong> to choose what you want.</li>
-    </ol>
-    <p>Releases are built by GitHub Actions, signed with a Developer ID, notarized by Apple and published with a <code>SHA256SUMS</code> file. See <a href="/docs/installation/">verifying the download</a> and the <a href="/security/">security page</a>.</p>
+    {SITE.hasRelease ? (
+      <Fragment>
+        <ol>
+          <li>Download <code>MacPeek-x.y.z.dmg</code> from the <a href={SITE.releases}>latest release</a>.</li>
+          <li>Open the DMG and drag <strong>MacPeek</strong> to <strong>Applications</strong>.</li>
+          <li>Launch MacPeek. The icon appears in your menu bar.</li>
+          <li>Open <strong>Manage utilities</strong> to choose what you want.</li>
+        </ol>
+        <p>Releases are built by GitHub Actions, signed with a Developer ID, notarized by Apple and published with a <code>SHA256SUMS</code> file. See <a href="/docs/installation/">verifying the download</a> and the <a href="/security/">security page</a>.</p>
+      </Fragment>
+    ) : (
+      <p>There is nothing to download yet. When the first release is published, this section will walk you through installing it, and releases will come as a signed, notarized DMG with a <code>SHA256SUMS</code> file (see the <a href="/security/">security page</a>). Until then, build from source below.</p>
+    )}
 
     <h2>Build from source</h2>
     <pre><code>git clone {SITE.github}.git

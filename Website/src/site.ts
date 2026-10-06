@@ -1,3 +1,5 @@
+import { available, comingSoon } from './data/utilities';
+
 export const SITE = {
   name: 'MacPeek',
   tagline: 'The tiny utilities macOS should have built in.',
@@ -14,7 +16,15 @@ export const SITE = {
 /** Wording for a utility that is built into the app: honest about there being no download yet. */
 export const liveTag = SITE.hasRelease ? 'Available' : 'Ready';
 export const liveTagLong = SITE.hasRelease ? 'Available now' : 'Ready · first release pending';
-export const liveSentence = SITE.hasRelease ? 'PortPeek is available now.' : 'PortPeek is ready; the first release is on the way.';
+const list = (items: { name: string }[]) =>
+  items.length <= 1 ? items.map((u) => u.name).join('') : `${items.slice(0, -1).map((u) => u.name).join(', ')} and ${items[items.length - 1].name}`;
+const be = available.length === 1 ? 'is' : 'are';
+/** Names of the utilities that are built into the app, derived from the data so copy cannot go stale. */
+export const availableNames = list(available);
+export const shipVerb = available.length === 1 ? 'ships' : 'ship';
+export const builtInSentence = `${availableNames} ${be} built into the app today`;
+export const comingSoonSample = list(comingSoon.slice(0, 3));
+export const liveSentence = SITE.hasRelease ? `${availableNames} ${be} available now.` : `${availableNames} ${be} ready; the first release is on the way.`;
 
 /** Where "Download" buttons point. */
 export const downloadHref = SITE.hasRelease ? SITE.releases : '/download/';

@@ -12,7 +12,7 @@ date: "2026-10-06"
 3. **Click a utility** to open it inside the same popover. Use the **back** button (or `⌘[`) to return to the launcher.
 4. The **gear** opens Settings. **Manage utilities** (launcher footer or Settings) lists every utility with an on/off switch: see [managing utilities](/docs/managing-utilities/).
 
-A utility refreshes only while its screen is open, and the popover always reopens on the launcher.
+When the popover opens, enabled utilities may take one quick snapshot to fill in the launcher's one-line summaries (for example PortPeek's port count). **Continuous refreshing happens only while a utility's own screen is open.** A switched-off utility does no work at all. The popover always reopens on the launcher.
 
 ## Using PortPeek
 1. Open **PortPeek**. It scans immediately and refreshes every 2 seconds while its screen is open.

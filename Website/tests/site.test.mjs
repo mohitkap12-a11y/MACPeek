@@ -67,6 +67,28 @@ test('brand: MacPeek everywhere, no stale PortPeek-as-the-product wording', () =
   }
 });
 
+test('404 page is on-brand', () => {
+  const h = html(join(dist, '404.html'));
+  assert.match(h, /<title>Page not found \| MacPeek<\/title>/);
+  assert.match(h, /Back to MacPeek/);
+  assert.doesNotMatch(h, /PortPeek/, '404 must not use the old brand');
+});
+
+test('no page links to the GitHub latest-release URL while no release exists', () => {
+  const site = readFileSync(new URL('../src/site.ts', import.meta.url), 'utf8');
+  const hasRelease = /hasRelease: true/.test(site);
+  if (hasRelease) return;
+  for (const p of content()) assert.doesNotMatch(html(p), /releases\/latest/, `${p}: links to a release that does not exist yet`);
+});
+
+test('network wording: utilities that make network requests never claim "no network access"', () => {
+  for (const u of ['netpeek', 'dnspeek']) {
+    const h = html(join(dist, 'utilities', u, 'index.html'));
+    assert.doesNotMatch(h, /no network access/i, `${u}: contradicts its own description`);
+    assert.match(h, /only when you ask/i, `${u}: must say checks run only on request`);
+  }
+});
+
 test('every utility page has the sections the guide requires', () => {
   for (const u of UTILS) {
     const h = html(join(dist, 'utilities', u, 'index.html'));

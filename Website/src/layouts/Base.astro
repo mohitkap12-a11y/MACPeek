@@ -71,7 +71,7 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
           <a href="/utilities/">Utilities</a><br /><a href="/docs/">Documentation</a><br /><a href="/blog/">Guides</a><br /><a href="/download/">Download</a>
         </div>
         <div>
-          <a href={SITE.github}>GitHub</a><br /><a href={SITE.releases}>Releases</a><br /><a href="/privacy/">Privacy</a><br /><a href="/security/">Security</a>
+          <a href={SITE.github}>GitHub</a><br />{SITE.hasRelease && <Fragment><a href={SITE.releases}>Releases</a><br /></Fragment>}<a href="/privacy/">Privacy</a><br /><a href="/security/">Security</a>
         </div>
       </div>
     </footer>
