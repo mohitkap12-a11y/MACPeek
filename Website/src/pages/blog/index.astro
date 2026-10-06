@@ -1,0 +1,11 @@
+---
+import Base from '../../layouts/Base.astro';
+import { blogNav } from '../../site';
+---
+<Base title="Mac Port Guides — Find and Kill What Is Using a Port | PortPeek" description="Practical guides for macOS developers: find what is using a port, kill a process on a port, free port 3000, and use lsof the right way.">
+  <div class="wrap narrow article">
+    <h1>Mac port guides</h1>
+    <p class="lede">Short, practical answers for when a port is already in use.</p>
+    <ul>{blogNav.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+  </div>
+</Base>

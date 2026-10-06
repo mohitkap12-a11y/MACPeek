@@ -1,0 +1,58 @@
+---
+import Base from './Base.astro';
+import DownloadCTA from '../components/DownloadCTA.astro';
+import { SITE, docsNav, blogNav } from '../site';
+
+const { frontmatter } = Astro.props;
+const { title, description, section = 'blog', h1, date = '2026-10-06' } = frontmatter;
+const isDocs = section === 'docs';
+const url = new URL(Astro.url.pathname, Astro.site).toString();
+const home = new URL('/', Astro.site).toString();
+const sectionUrl = new URL(isDocs ? '/docs/' : '/blog/', Astro.site).toString();
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': isDocs ? 'TechArticle' : 'Article',
+    headline: h1 ?? title,
+    description,
+    datePublished: date,
+    dateModified: date,
+    mainEntityOfPage: url,
+    author: { '@type': 'Organization', name: 'PortPeek contributors' },
+    publisher: { '@type': 'Organization', name: 'PortPeek', url: home },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: home },
+      { '@type': 'ListItem', position: 2, name: isDocs ? 'Docs' : 'Guides', item: sectionUrl },
+      { '@type': 'ListItem', position: 3, name: h1 ?? title, item: url },
+    ],
+  },
+];
+const nav = isDocs ? docsNav : blogNav;
+const related = (isDocs ? blogNav : docsNav.slice(0, 3)).filter((l) => l.href !== Astro.url.pathname).slice(0, 4);
+---
+<Base title={title} description={description} jsonLd={jsonLd} ogType="article">
+  <div class="wrap docs-layout">
+    <aside class="docs-nav" aria-label={isDocs ? 'Documentation' : 'Guides'}>
+      {nav.map((l) => <a href={l.href} aria-current={l.href === Astro.url.pathname ? 'page' : undefined}>{l.label}</a>)}
+    </aside>
+    <article class="article">
+      <div class="crumbs"><a href="/">Home</a> › <a href={isDocs ? '/docs/' : '/blog/'}>{isDocs ? 'Docs' : 'Guides'}</a></div>
+      <h1>{h1 ?? title}</h1>
+      <slot />
+      {!isDocs && (
+        <div class="callout">
+          <p><strong>PortPeek gives you the same visibility from your Mac menu bar.</strong> Search any port, see the process, and free it in one click — free and open source.</p>
+          <DownloadCTA />
+        </div>
+      )}
+      <nav class="related" aria-label="Related">
+        <h2>Related</h2>
+        <ul>{related.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+      </nav>
+    </article>
+  </div>
+</Base>

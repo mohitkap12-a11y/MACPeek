@@ -1,0 +1,19 @@
+garbage line
+
+x
+foo
+p
+f1
+PTCP
+nnot-an-endpoint
+TST=LISTEN
+p55
+cbroken
+f3
+PTCP
+n*:notaport
+TST=LISTEN
+f4
+PTCP
+n*:99999
+TST=LISTEN

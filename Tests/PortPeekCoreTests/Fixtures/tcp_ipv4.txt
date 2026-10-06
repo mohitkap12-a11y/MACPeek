@@ -1,0 +1,10 @@
+p18432
+cnode
+Lmohit
+f23
+tIPv4
+PTCP
+n127.0.0.1:3000
+TST=LISTEN
+TQR=0
+TQS=0
