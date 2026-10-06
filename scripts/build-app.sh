@@ -4,6 +4,7 @@
 # otherwise the bundle is ad-hoc signed (fine for local use, NOT for distribution).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+scripts/check-toolchain.sh
 VERSION="${1:-0.1.0}"
 APP="build/PortPeek.app"
 

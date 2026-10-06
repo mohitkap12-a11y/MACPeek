@@ -72,3 +72,12 @@ test('internal links resolve', () => {
     }
   }
 });
+
+test('dark by default with a light/dark switch on every page', () => {
+  for (const p of pages) {
+    const h = html(p);
+    assert.match(h, /<html lang="en" data-theme="dark"/, `${p}: must default to dark`);
+    assert.match(h, /id="theme-toggle"/, `${p}: theme switch missing`);
+    assert.match(h, /localStorage\.getItem\('portpeek-theme'\)/, `${p}: persisted theme not restored`);
+  }
+});
