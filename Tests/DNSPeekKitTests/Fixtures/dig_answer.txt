@@ -1,0 +1,18 @@
+; <<>> DiG 9.10.6 <<>> apple.com A +time=2 +tries=1
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 34169
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;apple.com.			IN	A
+
+;; ANSWER SECTION:
+apple.com.		124	IN	A	17.253.144.10
+
+;; Query time: 467 msec
+;; SERVER: 127.0.2.2#53(127.0.2.2)
+;; WHEN: Wed Oct 07 00:31:47 IST 2026
+;; MSG SIZE  rcvd: 63

@@ -4,6 +4,7 @@ import SwiftUI
 /// The popover content: a router over the launcher, utility screens, manager, settings and about.
 struct MainPopoverView: View {
     @EnvironmentObject private var router: UtilityRouter
+    @EnvironmentObject private var settings: AppSettings
 
     var body: some View {
         Group {
@@ -17,6 +18,7 @@ struct MainPopoverView: View {
         }
         .frame(width: 380, height: 520)
         .background(.background)
+        .preferredColorScheme(settings.appearance.colorScheme)
         .animation(.easeOut(duration: 0.12), value: router.route)
     }
 }

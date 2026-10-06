@@ -124,6 +124,17 @@ final class LookupParserTests: XCTestCase {
     }
 }
 
+final class RealDigCaptureTests: XCTestCase {
+    func testAnswerFromRealCapture() throws {
+        XCTAssertEqual(DigParser.outcome(output: try fixture("dig_answer"), status: 0),
+                       .answered(queryMilliseconds: 467, status: "NOERROR", answers: 1))
+    }
+
+    func testTimeoutFromRealCapture() throws {
+        XCTAssertEqual(DigParser.outcome(output: try fixture("dig_timeout"), status: 9), .timedOut)
+    }
+}
+
 final class InputValidationTests: XCTestCase {
     func testHostnames() {
         for good in ["apple.com", "a.b-c.example.org", "localhost", "example.com.", "_dmarc.example.com", "xn--bcher-kva.example"] {

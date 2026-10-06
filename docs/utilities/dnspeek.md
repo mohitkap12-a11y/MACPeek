@@ -17,10 +17,8 @@
 | Per-server query | `dig @<server> <name> A +time=2 +tries=1` |
 
 ## Verified versus not
-`scutil --dns` and `dscacheutil` parsing are verified against a real Mac. **The `dig` output format was not captured** when this
-was written: it follows dig's documented output (`status: NOERROR`, `ANSWER: n`, `Query time: n msec`, "timed out"), is covered
-by synthetic tests, and anything it does not recognise is shown as "unavailable", never guessed. `scripts/capture-fixtures.sh`
-now captures a real `dig` sample (`dig_sample`) so a future change can verify it.
+`scutil --dns`, `dscacheutil` and `dig` (an answer and a timeout, DiG 9.10.6) parsing are all verified against real captures.
+Anything the parsers do not recognise is shown as "unavailable", never guessed.
 
 ## Privacy and safety
 Read-only: DNSPeek never changes DNS settings. Lookups run only when you press **Run lookup**, and only the name you typed is
