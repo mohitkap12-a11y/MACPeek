@@ -27,6 +27,16 @@ final class ProcArgsParserTests: XCTestCase {
         XCTAssertEqual(parsed.environment, [EnvVariable(name: "GREETING", value: "héllo ✓")])
     }
 
+    func testRepeatedNamesGetDistinctIDsSoRowsAndRevealStateStayApart() throws {
+        let bytes = buffer(argc: 1, ["/bin/x", "x", "A=1", "B=2", "A=3", "A=4"])
+        let parsed = try XCTUnwrap(ProcArgsParser.parse(bytes))
+        let ids: [String] = parsed.environment.map { $0.id }
+        let values: [String] = parsed.environment.map { $0.value }
+        XCTAssertEqual(ids, ["A", "B", "A#1", "A#2"])
+        XCTAssertEqual(Set(ids).count, 4)
+        XCTAssertEqual(values, ["1", "2", "3", "4"])
+    }
+
     func testNoEnvironment() throws {
         let parsed = try XCTUnwrap(ProcArgsParser.parse(buffer(argc: 1, ["/bin/x", "x"])))
         XCTAssertTrue(parsed.environment.isEmpty)
@@ -75,16 +85,6 @@ final class VariableTests: XCTestCase {
         XCTAssertEqual(EnvSearch.filter(vars, query: "api_token").map(\.name), ["API_TOKEN"], "its name still is")
         XCTAssertEqual(EnvSearch.filter(vars, query: "hunter2", revealedIDs: ["API_TOKEN"]).map(\.name), ["API_TOKEN"])
         XCTAssertEqual(EnvSearch.filter(vars, query: "/users").map(\.name), ["HOME"], "ordinary values stay searchable")
-    }
-
-    func testRepeatedNamesGetDistinctIDsSoRowsAndRevealStateStayApart() throws {
-        let bytes = withUnsafeBytes(of: Int32(1)) { Array($0) }
-            + Array("/bin/x".utf8) + [0, 0] + Array("x".utf8) + [0]
-            + Array("A=1".utf8) + [0] + Array("B=2".utf8) + [0] + Array("A=3".utf8) + [0] + Array("A=4".utf8) + [0]
-        let parsed = try XCTUnwrap(ProcArgsParser.parse(bytes))
-        XCTAssertEqual(parsed.environment.map(\.id), ["A", "B", "A#1", "A#2"])
-        XCTAssertEqual(Set(parsed.environment.map(\.id)).count, 4)
-        XCTAssertEqual(parsed.environment.map(\.value), ["1", "2", "3", "4"])
     }
 
     func testSearchMatchesNameOrValueAndSorts() {
