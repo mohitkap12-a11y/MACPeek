@@ -69,6 +69,24 @@ final class VariableTests: XCTestCase {
         XCTAssertEqual(vars.map(\.name), ["A", "B", "C"])
     }
 
+    func testHiddenValuesCannotBeProbedBySearch() {
+        let vars = [EnvVariable(name: "API_TOKEN", value: "hunter2-secret"), EnvVariable(name: "HOME", value: "/Users/me")]
+        XCTAssertTrue(EnvSearch.filter(vars, query: "hunter2").isEmpty, "a masked value is not searchable")
+        XCTAssertEqual(EnvSearch.filter(vars, query: "api_token").map(\.name), ["API_TOKEN"], "its name still is")
+        XCTAssertEqual(EnvSearch.filter(vars, query: "hunter2", revealedIDs: ["API_TOKEN"]).map(\.name), ["API_TOKEN"])
+        XCTAssertEqual(EnvSearch.filter(vars, query: "/users").map(\.name), ["HOME"], "ordinary values stay searchable")
+    }
+
+    func testRepeatedNamesGetDistinctIDsSoRowsAndRevealStateStayApart() throws {
+        let bytes = withUnsafeBytes(of: Int32(1)) { Array($0) }
+            + Array("/bin/x".utf8) + [0, 0] + Array("x".utf8) + [0]
+            + Array("A=1".utf8) + [0] + Array("B=2".utf8) + [0] + Array("A=3".utf8) + [0] + Array("A=4".utf8) + [0]
+        let parsed = try XCTUnwrap(ProcArgsParser.parse(bytes))
+        XCTAssertEqual(parsed.environment.map(\.id), ["A", "B", "A#1", "A#2"])
+        XCTAssertEqual(Set(parsed.environment.map(\.id)).count, 4)
+        XCTAssertEqual(parsed.environment.map(\.value), ["1", "2", "3", "4"])
+    }
+
     func testSearchMatchesNameOrValueAndSorts() {
         let vars = [EnvVariable(name: "ZED", value: "nvm"), EnvVariable(name: "path", value: "/usr/bin"), EnvVariable(name: "NODE_ENV", value: "dev")]
         XCTAssertEqual(EnvSearch.filter(vars, query: "").map(\.name), ["NODE_ENV", "path", "ZED"])

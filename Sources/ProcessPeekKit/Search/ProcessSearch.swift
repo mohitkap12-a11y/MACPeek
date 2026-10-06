@@ -8,7 +8,7 @@ public enum ProcessSort: String, CaseIterable, Sendable {
 }
 
 public enum ProcessSearch {
-    /// Every whitespace-separated word must match the name, PID, user or executable path (case-insensitive).
+    /// Every whitespace-separated word must match the name, PID, user or command name (case-insensitive).
     public static func filter(_ entries: [ProcessEntry], query: String, ownedBy uid: Int?, sort: ProcessSort) -> [ProcessEntry] {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
         let matched = entries.filter { entry in

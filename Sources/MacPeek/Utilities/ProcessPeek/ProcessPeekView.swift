@@ -176,10 +176,12 @@ private struct ProcessDetailView: View {
     private var pathRow: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Executable").font(.caption).foregroundStyle(.secondary)
-                CopyButton(text: entry.executable, label: "Copy executable path")
+                Text("Started as").font(.caption).foregroundStyle(.secondary)
+                CopyButton(text: entry.executable, label: "Copy command name")
             }
             Text(entry.executable).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
+            Text("As the process was launched. It can be a relative path or a name the process chose, not always the binary's real location.")
+                .font(.caption2).foregroundStyle(.tertiary)
         }
     }
 
@@ -211,7 +213,11 @@ private struct ProcessDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Listening ports").font(.caption).foregroundStyle(.secondary)
                 if details.listeningPorts.isEmpty {
-                    Text(details.portsNote ?? "None").font(.caption)
+                    // macOS only lets MacPeek see sockets of your own processes, so "none" would be a guess for others.
+                    Text(store.isOwned(entry)
+                         ? (details.portsNote ?? "None")
+                         : "Not visible: MacPeek can only see the ports of your own processes.")
+                        .font(.caption)
                 } else {
                     ForEach(details.listeningPorts) { port in
                         Text("\(port.protocolType.rawValue) \(port.endpoint)").font(.caption.monospaced())

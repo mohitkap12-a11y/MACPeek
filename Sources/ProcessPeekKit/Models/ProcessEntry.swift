@@ -15,7 +15,9 @@ public struct ProcessEntry: Identifiable, Equatable, Sendable {
     /// CPU percentage as `ps` reports it: a decaying average, not an instantaneous reading.
     public let cpuPercent: Double
     public let residentKB: Int
-    /// The executable path as `ps` prints it (`comm`). It can contain spaces.
+    /// The command name exactly as `ps` prints it (`comm`): how the process was started, which is not necessarily
+    /// the binary's real path. It can be a relative path, a login shell's `-zsh`, or any name the process chose.
+    /// It can contain spaces.
     public let executable: String
 
     public init(pid: Int, ppid: Int, uid: Int, user: String, state: String, startTime: Date?, elapsed: String,

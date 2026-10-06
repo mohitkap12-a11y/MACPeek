@@ -36,12 +36,15 @@ public enum ProcArgsParser {
         }
 
         var environment: [EnvVariable] = []
+        var seen: [String: Int] = [:]
         while let entry = nextString() {
             if entry.isEmpty { break }  // the environment block ends at the first empty string
             guard let equals = entry.firstIndex(of: "=") else { continue }
             let name = String(entry[entry.startIndex..<equals])
             guard !name.isEmpty else { continue }
-            environment.append(EnvVariable(name: name, value: String(entry[entry.index(after: equals)...])))
+            let occurrence = seen[name, default: 0]
+            seen[name] = occurrence + 1
+            environment.append(EnvVariable(name: name, value: String(entry[entry.index(after: equals)...]), occurrence: occurrence))
         }
         return ProcessArguments(executable: executable, arguments: arguments, environment: environment)
     }

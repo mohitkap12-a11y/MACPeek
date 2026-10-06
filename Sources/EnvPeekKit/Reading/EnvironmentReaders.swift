@@ -56,9 +56,13 @@ public struct SystemProcessEnvironmentReader: ProcessEnvironmentReading {
         guard let environ = FileManager.default.contents(atPath: "/proc/\(pid)/environ") else { throw EnvError.notPermitted }
         let cmdline = FileManager.default.contents(atPath: "/proc/\(pid)/cmdline") ?? Data()
         let arguments = String(decoding: cmdline, as: UTF8.self).split(separator: "\0").map(String.init)
+        var seen: [String: Int] = [:]
         let variables = String(decoding: environ, as: UTF8.self).split(separator: "\0").compactMap { entry -> EnvVariable? in
             guard let equals = entry.firstIndex(of: "=") else { return nil }
-            return EnvVariable(name: String(entry[entry.startIndex..<equals]), value: String(entry[entry.index(after: equals)...]))
+            let name = String(entry[entry.startIndex..<equals])
+            let occurrence = seen[name, default: 0]
+            seen[name] = occurrence + 1
+            return EnvVariable(name: name, value: String(entry[entry.index(after: equals)...]), occurrence: occurrence)
         }
         return ProcessArguments(executable: arguments.first, arguments: arguments, environment: variables)
     }

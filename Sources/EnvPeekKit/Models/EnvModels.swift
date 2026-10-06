@@ -1,13 +1,18 @@
 import Foundation
 
 public struct EnvVariable: Identifiable, Equatable, Sendable {
-    public var id: String { name }
+    /// Unique within one environment even when a process lists the same name twice: the first keeps the bare
+    /// name, later copies are `NAME#1`, `NAME#2`… Reveal state and row identity are keyed on this, never on the name.
+    public var id: String { occurrence == 0 ? name : "\(name)#\(occurrence)" }
     public let name: String
     public let value: String
+    /// 0 for the first appearance of the name in the environment, 1 for the second, and so on.
+    public let occurrence: Int
 
-    public init(name: String, value: String) {
+    public init(name: String, value: String, occurrence: Int = 0) {
         self.name = name
         self.value = value
+        self.occurrence = occurrence
     }
 
     /// `NAME=value`, for pasting into a shell or a bug report.

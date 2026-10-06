@@ -53,7 +53,7 @@ SleepPeek is read-only: it never changes a power setting.
 ## Using ProcessPeek
 1. Open **ProcessPeek**. It reads the process list when the screen opens (`⌘R` to read again) and does nothing in the background.
 2. Search by name, PID, user or path. The filter menu sorts by name, CPU, memory or PID and can include other users' processes (your own are shown by default).
-3. Open a process to see its PID, user, start time, how long it has been running, CPU and memory, its executable path, its full command line, its listening ports, its parent and its children. Click the parent or a child to jump to it.
+3. Open a process to see its PID, user, start time, how long it has been running, CPU and memory, how it was launched (its command name), its full command line, its listening ports (yours only), its parent and its children. Click the parent or a child to jump to it.
 
 The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only. ProcessPeek is read-only: it never ends a process.
 

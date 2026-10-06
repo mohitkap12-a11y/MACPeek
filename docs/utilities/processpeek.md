@@ -7,14 +7,15 @@ A searchable list of processes (yours by default). Open one for:
 
 | Field | Source |
 |---|---|
-| PID, parent PID, user, uid, state, start time, running time, CPU, memory, executable path | `ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm` |
+| PID, parent PID, user, uid, state, start time, running time, CPU, memory, "Started as" | `ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm` |
 | Command line | `ps -ww -o args= -p <pid>`, only when you open the process |
-| Listening ports | PortPeek's `lsof` discovery filtered to the PID, only when you open the process |
+| Listening ports | PortPeek's `lsof` discovery filtered to the PID, only when you open the process. `lsof` runs without privileges and only sees your own processes' sockets, so for other users' processes ProcessPeek says "not visible" instead of "none" |
 | Parent, children | derived from the parent PIDs in the same snapshot; click to jump |
 
 `CPU` is the number `ps` prints (a decaying average, not an instantaneous reading) and is labelled "ps average". Memory is
-resident size. The executable path is `comm`, which on macOS is the full path and can contain spaces, so it is parsed as the
-last column.
+resident size. "Started as" is `comm`: how the process was launched, which can be a relative path (`.build/…/MacPeek`), a login shell's
+`-zsh`, or any name a process chose, so it is not guaranteed to be the binary's real location. It can contain spaces, so it
+is parsed as the last column.
 
 ## Privacy
 Command lines can contain secrets passed as arguments (tokens, passwords). They are read only for the process you open, shown

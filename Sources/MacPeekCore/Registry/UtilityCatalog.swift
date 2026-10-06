@@ -62,7 +62,7 @@ public enum UtilityCatalog {
     public static let processPeek = UtilityInfo(
         id: "processpeek", name: "ProcessPeek", question: "What exactly is this process?",
         tagline: "Inspect a process and its relationships.",
-        summary: "Shows a process's path, parent, user, start time, command line, CPU and memory, listening ports and children. Deliberately not an Activity Monitor replacement.",
+        summary: "Shows how a process was launched, its parent, user, start time, command line, CPU and memory, the listening ports of your own processes, and its children. Deliberately not an Activity Monitor replacement.",
         icon: "cpu", category: .developer, availability: .available,
         reads: ["The process list (ps); a process's command line and listening ports only when you open it"],
         permissions: ["None. Some details are unavailable for other users' processes."]

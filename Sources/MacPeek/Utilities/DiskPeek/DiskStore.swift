@@ -68,6 +68,11 @@ final class DiskStore: ObservableObject {
             error = nil
         } catch {
             if Task.isCancelled { return }
+            // Do not leave the last good rates on screen as if they were current, and a gap invalidates the baseline.
+            activity = []
+            unreadableProcesses = 0
+            sampler = DiskIOSampler()
+            isWaitingForSecondSample = true
             self.error = error.localizedDescription
             Log.diskPeek.error("sampling failed: \(error.localizedDescription, privacy: .public)")
         }

@@ -30,7 +30,7 @@ final class EnvStore: ObservableObject {
         self.ownEnvironment = ownEnvironment
     }
 
-    var visible: [EnvVariable] { EnvSearch.filter(variables, query: query) }
+    var visible: [EnvVariable] { EnvSearch.filter(variables, query: query, revealedIDs: revealed) }
 
     func setMode(_ newMode: Mode) {
         guard newMode != mode else { return }
@@ -68,11 +68,11 @@ final class EnvStore: ObservableObject {
         }
     }
 
-    func toggleReveal(_ name: String) {
-        if revealed.contains(name) { revealed.remove(name) } else { revealed.insert(name) }
+    func toggleReveal(_ variable: EnvVariable) {
+        if revealed.contains(variable.id) { revealed.remove(variable.id) } else { revealed.insert(variable.id) }
     }
 
-    func isRevealed(_ variable: EnvVariable) -> Bool { !variable.isSensitive || revealed.contains(variable.name) }
+    func isRevealed(_ variable: EnvVariable) -> Bool { !variable.isSensitive || revealed.contains(variable.id) }
 
     /// Called when the screen is left: drop every value from memory and hide anything that was revealed.
     func leave() {
@@ -80,6 +80,7 @@ final class EnvStore: ObservableObject {
         expandedPathVariable = nil
         variables = []
         source = nil
+        error = nil
     }
 
     func enter() {

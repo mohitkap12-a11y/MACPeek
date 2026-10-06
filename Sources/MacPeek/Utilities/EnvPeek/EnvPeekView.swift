@@ -97,7 +97,7 @@ private struct EnvRow: View {
     let variable: EnvVariable
 
     private var isPath: Bool { PathAnalyzer.isPathLike(variable.name) }
-    private var pathExpanded: Bool { store.expandedPathVariable == variable.name }
+    private var pathExpanded: Bool { store.expandedPathVariable == variable.id }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -109,7 +109,7 @@ private struct EnvRow: View {
                 Spacer(minLength: 4)
                 if isPath {
                     Button {
-                        withAnimation(.easeOut(duration: 0.15)) { store.expandedPathVariable = pathExpanded ? nil : variable.name }
+                        withAnimation(.easeOut(duration: 0.15)) { store.expandedPathVariable = pathExpanded ? nil : variable.id }
                     } label: {
                         Image(systemName: "list.number")
                     }
@@ -147,7 +147,7 @@ private struct EnvRow: View {
         } else {
             HStack(spacing: 6) {
                 Text("••••••••").font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
-                Button("Reveal") { store.toggleReveal(variable.name) }
+                Button("Reveal") { store.toggleReveal(variable) }
                     .buttonStyle(.link).font(.caption)
                 StatusBadge(text: "Looks sensitive", tone: .warning)
             }
