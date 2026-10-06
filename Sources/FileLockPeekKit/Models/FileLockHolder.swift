@@ -2,12 +2,15 @@ import Foundation
 
 public enum OpenAccess: String, Hashable, Sendable {
     case read, write, readWrite
+    /// lsof could not tell (access mode field blank or "-").
+    case unknown
 
     public var label: String {
         switch self {
         case .read: return "read"
         case .write: return "write"
         case .readWrite: return "read/write"
+        case .unknown: return "access unknown"
         }
     }
 }

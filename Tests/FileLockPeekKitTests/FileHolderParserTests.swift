@@ -10,7 +10,7 @@ final class FileHolderParserTests: XCTestCase {
         XCTAssertEqual(h.pid, 18432)
         XCTAssertEqual(h.processName, "Docker Desktop")
         XCTAssertEqual(h.user, "mohit")
-        XCTAssertEqual(h.files, [OpenFile(path: "/Users/mohit/data.db", descriptor: "23u", kind: .open(.readWrite), lock: nil, fileType: "REG")])
+        XCTAssertEqual(h.files, [OpenFile(path: "/Users/mohit/data.db", descriptor: "23", kind: .open(.readWrite), lock: nil, fileType: "REG")])
         XCTAssertEqual(h.primaryKind, .open(.readWrite))
     }
 
@@ -45,7 +45,8 @@ final class FileHolderParserTests: XCTestCase {
         let kinds = Dictionary(uniqueKeysWithValues: h.files.map { ($0.descriptor, $0.kind) })
         XCTAssertEqual(kinds["txt"], .executable)
         XCTAssertEqual(kinds["mem"], .memoryMapped)
-        XCTAssertEqual(kinds["3r"], .open(.read))
+        XCTAssertEqual(kinds["3"], .open(.read), "real lsof -F gives the descriptor number and the mode as a separate field")
+        XCTAssertEqual(kinds["8"], .open(.unknown), "access mode '-' means lsof could not tell")
         XCTAssertEqual(kinds["NOFD"], .other("NOFD"))
         XCTAssertEqual(h.primaryKind, .open(.read))
     }
@@ -53,11 +54,23 @@ final class FileHolderParserTests: XCTestCase {
     func testLockCharactersAreDescribed() throws {
         let h = try XCTUnwrap(FileHolderParser.parse(try fixture("locks")).first)
         let locks = Dictionary(uniqueKeysWithValues: h.files.map { ($0.descriptor, $0.lock) })
-        XCTAssertEqual(locks["5uW"], "write lock (whole file)")
-        XCTAssertEqual(locks["6wr"], "read lock (part of file)")
-        XCTAssertEqual(locks["7rR"], "read lock (whole file)")
-        XCTAssertEqual(locks["9ux"], "exclusive lock")
+        XCTAssertEqual(locks["5"], "write lock (whole file)")
+        XCTAssertEqual(locks["6"], "read lock (part of file)")
+        XCTAssertEqual(locks["7"], "read lock (whole file)")
+        XCTAssertNil(locks["8"] ?? nil, "a blank lock field means no lock")
+        XCTAssertEqual(locks["9"], "exclusive lock")
         XCTAssertTrue(h.hasLock)
+        let modes = Dictionary(uniqueKeysWithValues: h.files.map { ($0.descriptor, $0.kind) })
+        XCTAssertEqual(modes["6"], .open(.write))
+    }
+
+    func testCombinedDescriptorFormIsStillUnderstood() throws {
+        let h = try XCTUnwrap(FileHolderParser.parse(try fixture("combined_descriptors")).first)
+        let byFD = Dictionary(uniqueKeysWithValues: h.files.map { ($0.descriptor, $0) })
+        XCTAssertEqual(byFD["5uW"]?.kind, .open(.readWrite))
+        XCTAssertEqual(byFD["5uW"]?.lock, "write lock (whole file)")
+        XCTAssertEqual(byFD["6r"]?.kind, .open(.read))
+        XCTAssertNil(byFD["6r"]?.lock)
     }
 
     func testEscapedPathsAndNames() throws {

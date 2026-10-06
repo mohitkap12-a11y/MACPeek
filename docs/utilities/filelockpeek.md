@@ -6,10 +6,10 @@
 Choose a file or folder (**Choose…**, drag and drop, or paste a path) and FileLockPeek lists the processes that have it
 open. For each process: name, PID, user, and **how** it holds the path:
 
-| Shown as | Meaning (from lsof's file-descriptor column) |
+| Shown as | Meaning (from lsof's `-F` fields: `f` descriptor, `a` access mode, `l` lock) |
 |---|---|
-| Open · read / write / read/write | an open file descriptor (`3r`, `4w`, `5u`) |
-| Locked | an advisory lock is held (lock character after the access mode, e.g. `5uW`) |
+| Open · read / write / read/write | an open file descriptor with access mode `r`, `w` or `u` |
+| Locked | an advisory lock is held (the `l` field: `r R w W x X u`) |
 | Working dir | the path is the process's current working directory (`cwd`), which blocks ejecting a volume or deleting a folder |
 | Executable | the path is the process's program (`txt`) |
 | Mapped | the path is memory-mapped, e.g. a loaded library (`mem`) |
@@ -17,7 +17,7 @@ open. For each process: name, PID, user, and **how** it holds the path:
 Actions per holder: copy PID / process name, copy path, **Reveal in Finder**, and an optional **Kill Process**.
 
 ## How it works
-`lsof -nP +c 0 -FpcLftn -- <file>` for a file, or `... +D <folder>` for a folder (recursive). The path must be absolute and
+`lsof -nP +c 0 -FpcLfaltn -- <file>` for a file, or `... +D <folder>` for a folder (recursive). The path must be absolute and
 exist; it is passed as a separate argument, never through a shell. Output goes through `FileHolderParser` into
 `[FileLockHolder]` grouped by process; MacPeek's own process is excluded. The UI depends on `FileLockDiscoveryProtocol`,
 never on lsof output.

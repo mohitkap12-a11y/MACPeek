@@ -23,7 +23,7 @@ final class FileLockDiscoveryTests: XCTestCase {
         XCTAssertEqual(holders.map(\.pid), [18432])
         let (exe, args) = try XCTUnwrap(runner.calls.get().first)
         XCTAssertEqual(exe, "/usr/sbin/lsof")
-        XCTAssertEqual(args, ["-nP", "+c", "0", "-FpcLftn", "--", resolved(tempFile)])
+        XCTAssertEqual(args, ["-nP", "+c", "0", "-FpcLfaltn", "--", resolved(tempFile)])
     }
 
     func testFolderUsesRecursiveScan() async throws {
@@ -63,7 +63,7 @@ final class FileLockDiscoveryTests: XCTestCase {
     func testFailuresAreNeverMistakenForNothingHoldsIt() async {
         let cases = [
             CommandOutput(stdout: "", stderr: "lsof: boom", status: 2),
-            CommandOutput(stdout: "p1\ncx\nf3r\ntREG\nn/a\n", stderr: "lsof: killed", status: 2), // partial output on failure
+            CommandOutput(stdout: "p1\ncx\nf3\nar\ntREG\nn/a\n", stderr: "lsof: killed", status: 2), // partial output on failure
             CommandOutput(stdout: "", stderr: "lsof: WARNING: can't stat() fs", status: 1),
         ]
         for output in cases {

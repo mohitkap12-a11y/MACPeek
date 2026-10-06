@@ -28,23 +28,20 @@ public enum FileLockError: Error, LocalizedError, Equatable {
 /// Finds holders of a file or folder with `lsof`, for the current user's processes only.
 /// The path is passed as a separate argument (never through a shell) and must be absolute.
 public struct LsofFileLockDiscovery: FileLockDiscoveryProtocol {
-    static let baseArguments = ["-nP", "+c", "0", "-FpcLftn"]
+    static let baseArguments = ["-nP", "+c", "0", "-FpcLfaltn"]
 
     private let runner: CommandRunning
     private let lsofPath: String
     private let ownPID: Int
-    private let fileManager: FileManager
 
     public init(
         runner: CommandRunning = ShellCommand(timeout: 30), // folder scans are recursive and can be slow
         lsofPath: String = "/usr/sbin/lsof",
-        ownPID: Int = Int(getpid()),
-        fileManager: FileManager = .default
+        ownPID: Int = Int(getpid())
     ) {
         self.runner = runner
         self.lsofPath = lsofPath
         self.ownPID = ownPID
-        self.fileManager = fileManager
     }
 
     public func holders(of path: String) async throws -> [FileLockHolder] {
@@ -53,7 +50,7 @@ public struct LsofFileLockDiscovery: FileLockDiscoveryProtocol {
 
         let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
         var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: resolved, isDirectory: &isDirectory) else {
+        guard FileManager.default.fileExists(atPath: resolved, isDirectory: &isDirectory) else {
             throw FileLockError.notFound(path)
         }
         // A file: exact matches. A folder: everything open beneath it (+D is recursive; a hung scan is cancelled).
