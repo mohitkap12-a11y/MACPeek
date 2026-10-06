@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Article.astro
-title: "How to Check MacBook Battery Health and Cycle Count | MacPeek"
+title: "Check MacBook Battery Health and Cycle Count | MacPeek"
 description: "Check your MacBook's battery health, maximum capacity and cycle count in System Settings, System Information or Terminal, and what the numbers mean."
 h1: "How to Check MacBook Battery Health"
 section: blog

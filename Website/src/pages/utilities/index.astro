@@ -9,17 +9,25 @@ const groups = [
   { label: 'Developer', items: utilities.filter((u) => u.category === 'developer') },
 ];
 const home = new URL('/', Astro.site).toString();
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: home },
-    { '@type': 'ListItem', position: 2, name: 'Utilities', item: new URL('/utilities/', Astro.site).toString() },
-  ],
-};
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: home },
+      { '@type': 'ListItem', position: 2, name: 'Utilities', item: new URL('/utilities/', Astro.site).toString() },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'MacPeek utilities',
+    itemListElement: utilities.map((x, n) => ({ '@type': 'ListItem', position: n + 1, name: x.name, url: new URL(`/utilities/${x.id}/`, Astro.site).toString() })),
+  },
+];
 ---
 <Base
-  title="All MacPeek Utilities: Ports, Displays, USB, Network and More"
+  title="All MacPeek Utilities: Ports, USB, Network and More"
   description={`Every MacPeek utility in one place: ${available.length} are built into the app today and ${comingSoon.length} more are coming soon, including ${comingSoonSample}.`}
   jsonLd={jsonLd}
 >

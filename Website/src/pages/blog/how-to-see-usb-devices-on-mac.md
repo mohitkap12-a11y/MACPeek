@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Article.astro
-title: "How to See USB Devices on Mac and Check Their Speed | MacPeek"
+title: "See USB Devices and Check Their Speed on Mac | MacPeek"
 description: "List the USB and Thunderbolt devices connected to your Mac with System Information or Terminal, read the link speed, and spot a slow cable or port."
 h1: "How to See USB Devices on Mac"
 section: blog
