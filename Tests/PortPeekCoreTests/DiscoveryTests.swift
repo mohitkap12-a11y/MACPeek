@@ -24,6 +24,33 @@ final class DiscoveryTests: XCTestCase {
         }
     }
 
+    func testNonZeroStatusWithPartialStdoutIsAFailure() async throws {
+        let out = CommandOutput(stdout: try fixture("tcp_ipv4"), stderr: "lsof: killed", status: 2)
+        do {
+            _ = try await LsofPortDiscovery(runner: FakeRunner(output: out)).discover()
+            XCTFail("a failed run must not be treated as a successful scan")
+        } catch {
+            XCTAssertEqual(error as? PortDiscoveryError, .commandFailed("lsof: killed"))
+        }
+    }
+
+    func testStatus1WithErrorAndNoDataIsAFailure() async {
+        let out = CommandOutput(stdout: "", stderr: "lsof: WARNING: can't stat() file system", status: 1)
+        do {
+            _ = try await LsofPortDiscovery(runner: FakeRunner(output: out)).discover()
+            XCTFail("expected throw")
+        } catch {
+            guard case .commandFailed = error as? PortDiscoveryError else { return XCTFail("wrong error \(error)") }
+        }
+    }
+
+    func testStatus1WithDataAndWarningsStillParses() async throws {
+        // lsof exits 1 when one -i selection (e.g. UDP) matched nothing, even though TCP did.
+        let out = CommandOutput(stdout: try fixture("tcp_ipv4"), stderr: "lsof: WARNING: can't stat()", status: 1)
+        let ports = try await LsofPortDiscovery(runner: FakeRunner(output: out)).discover()
+        XCTAssertEqual(ports.map(\.port), [3000])
+    }
+
     func testRunnerErrorIsWrapped() async {
         let runner = FakeRunner(output: CommandOutput(stdout: "", stderr: "", status: 0), error: CocoaError(.fileNoSuchFile))
         do {

@@ -99,6 +99,44 @@ final class KillServiceTests: XCTestCase {
         XCTAssertTrue(inspector.signals.get().isEmpty)
     }
 
+    func testMissingStoredStartTimeNeverSignals() async {
+        let target = port(3000, pid: 100, start: nil)
+        let inspector = FakeInspector(alive: [100])
+        let result = await service(ScriptedDiscovery([[target]]), inspector).terminate(target)
+        guard case .failed(let reason) = result else { return XCTFail("expected .failed, got \(result)") }
+        XCTAssertTrue(reason.contains("verify"))
+        XCTAssertTrue(inspector.signals.get().isEmpty)
+    }
+
+    func testMissingCurrentStartTimeNeverSignals() async {
+        let target = port(3000, pid: 100, start: 100)
+        let inspector = FakeInspector(alive: [100], starts: [:])
+        let result = await service(ScriptedDiscovery([[target]]), inspector).forceTerminate(target)
+        guard case .failed = result else { return XCTFail("expected .failed, got \(result)") }
+        XCTAssertTrue(inspector.signals.get().isEmpty)
+    }
+
+    func testClosingOnlySelectedAddressDoesNotKillProcessListeningElsewhere() async {
+        let selected = port(3000, pid: 100, address: "127.0.0.1")
+        // Same PID, same port, but only the *other* address is still bound.
+        let remaining = port(3000, pid: 100, address: "::1")
+        let inspector = FakeInspector(alive: [100])
+        let result = await service(ScriptedDiscovery([[remaining]]), inspector).terminate(selected)
+        XCTAssertEqual(result, .targetChanged)
+        XCTAssertTrue(inspector.signals.get().isEmpty)
+    }
+
+    func testReplacementProcessOnPortIsNotReportedAsFreed() async {
+        let target = port(3000, pid: 100)
+        // After the target exits, a different process (PID 200) immediately binds the port.
+        let discovery = ScriptedDiscovery([[target], [port(3000, pid: 200)]])
+        let inspector = FakeInspector(alive: [100, 200])
+        let result = await service(discovery, inspector).terminate(target)
+        guard case .failed(let reason) = result else { return XCTFail("expected .failed, got \(result)") }
+        XCTAssertTrue(reason.contains("another process"), reason)
+        XCTAssertTrue(reason.contains("200"), reason)
+    }
+
     func testPortStillHeldAfterExitIsReported() async {
         let target = port(3000, pid: 100)
         let inspector = FakeInspector(alive: [100])

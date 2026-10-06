@@ -26,9 +26,12 @@ public struct LsofPortDiscovery: PortDiscoveryProtocol {
         } catch {
             throw PortDiscoveryError.commandFailed(error.localizedDescription)
         }
-        // lsof exits 1 when nothing matches; that is an empty list, not a failure.
-        if output.status > 1 && output.stdout.isEmpty {
-            let detail = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        // lsof exits 1 when a search selection matches nothing (e.g. no UDP sockets) — also when
+        // others matched — so status 1 is only a failure when it produced no data and an error.
+        // Status > 1 is always a failure, even with partial stdout, so a broken run can never
+        // replace the last good list or be mistaken for "port released".
+        let detail = output.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        if output.status > 1 || (output.status == 1 && output.stdout.isEmpty && !detail.isEmpty) {
             throw PortDiscoveryError.commandFailed(detail.isEmpty ? "lsof exited with status \(output.status)" : detail)
         }
         return PortParser.parse(output.stdout)

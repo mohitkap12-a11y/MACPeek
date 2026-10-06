@@ -48,9 +48,11 @@ final class FakeInspector: ProcessInspecting, @unchecked Sendable {
     /// If set, a successful signal removes the PID from `alive` (the process "exits").
     var diesOnSignal = true
 
-    init(alive: Set<Int>, starts: [Int: TimeInterval] = [:]) {
+    /// By default every live PID started at t=100 (matching `port(...)`'s default), so tests that
+    /// are not about identity pass validation. Pass `starts: [:]` explicitly to model "unknown".
+    init(alive: Set<Int>, starts: [Int: TimeInterval]? = nil) {
         self.alive = LockedBox(alive)
-        self.starts = LockedBox(starts)
+        self.starts = LockedBox(starts ?? Dictionary(uniqueKeysWithValues: alive.map { ($0, 100) }))
     }
 
     func isAlive(pid: Int) -> Bool { alive.get().contains(pid) }
@@ -63,6 +65,6 @@ final class FakeInspector: ProcessInspecting, @unchecked Sendable {
     }
 }
 
-func port(_ n: Int, pid: Int, name: String = "node", user: String? = "me", start: TimeInterval? = nil) -> PortInfo {
-    PortInfo(port: n, protocolType: .tcp, address: "127.0.0.1", processName: name, pid: pid, user: user, state: .listen, startTime: start)
+func port(_ n: Int, pid: Int, name: String = "node", user: String? = "me", start: TimeInterval? = 100, address: String = "127.0.0.1") -> PortInfo {
+    PortInfo(port: n, protocolType: .tcp, address: address, processName: name, pid: pid, user: user, state: .listen, startTime: start)
 }

@@ -10,6 +10,7 @@ enum TargetValidation: Equatable {
     case alreadyExited
     case portAlreadyReleased
     case targetChanged
+    case identityUnknown
     case scanFailed(String)
 }
 
@@ -59,6 +60,8 @@ public struct KillService: Sendable {
         case .alreadyExited: return .alreadyExited
         case .portAlreadyReleased: return .portAlreadyReleased
         case .targetChanged: return .targetChanged
+        case .identityUnknown:
+            return .failed("Could not verify the process identity, so nothing was killed. Refresh and try again.")
         case .scanFailed(let reason): return .failed(reason)
         }
 
@@ -71,8 +74,12 @@ public struct KillService: Sendable {
         }
 
         guard await waitForExit(pid: target.pid, timeout: wait) else { return .stillRunning }
-        if await verifyPortReleased(target) { return .terminated }
-        return .failed("The process exited but port \(target.port) is still in use.")
+        switch await verifyPortReleased(target) {
+        case .released: return .terminated
+        case .takenOver(let pid):
+            return .failed("The process exited, but port \(target.port) is now in use by another process (PID \(pid)).")
+        case .stillHeld: return .failed("The process exited but port \(target.port) is still in use.")
+        }
     }
 
     // MARK: - Steps
@@ -87,14 +94,19 @@ public struct KillService: Sendable {
         guard !onPort.isEmpty else {
             return inspector.isAlive(pid: target.pid) ? .portAlreadyReleased : .alreadyExited
         }
-        guard let owner = onPort.first(where: { $0.pid == target.pid }) else { return .targetChanged }
+        // The selected *socket* (pid + address) must still exist: a process that closed only the
+        // selected address but still listens elsewhere on the port must not be killed for it.
+        guard let owner = onPort.first(where: { $0.pid == target.pid && $0.address == target.address }) else {
+            return .targetChanged
+        }
         if owner.processName != target.processName { return .targetChanged }
 
-        if let expected = target.startTime, let current = inspector.startTime(pid: target.pid),
-           abs(expected - current) > 1 {
-            return .targetChanged // same PID, different process: PID was reused
+        // PID-reuse guard: identity must be provable. A missing timestamp never counts as a match.
+        guard let expected = target.startTime else { return .identityUnknown }
+        guard let current = inspector.startTime(pid: target.pid) else {
+            return inspector.isAlive(pid: target.pid) ? .identityUnknown : .alreadyExited
         }
-        return .valid
+        return abs(expected - current) > 1 ? .targetChanged : .valid // same PID, different process
     }
 
     func waitForExit(pid: Int, timeout: TimeInterval) async -> Bool {
@@ -106,16 +118,29 @@ public struct KillService: Sendable {
         return true
     }
 
-    /// The kernel can lag slightly behind process exit, so poll briefly.
-    func verifyPortReleased(_ target: PortInfo) async -> Bool {
+    enum PortRelease: Equatable {
+        case released
+        case takenOver(pid: Int)
+        case stillHeld
+    }
+
+    /// The kernel can lag slightly behind process exit, so poll briefly. "Released" means *nobody*
+    /// owns the port: a replacement process binding it must not be reported as a freed port.
+    func verifyPortReleased(_ target: PortInfo) async -> PortRelease {
         let deadline = Date().addingTimeInterval(1)
+        var last = PortRelease.stillHeld
         repeat {
-            if let scan = try? await discovery.discover(),
-               !scan.contains(where: { $0.pid == target.pid && $0.port == target.port && $0.protocolType == target.protocolType }) {
-                return true
+            if let scan = try? await discovery.discover() {
+                let owners = scan.filter { $0.port == target.port && $0.protocolType == target.protocolType }
+                if owners.isEmpty { return .released }
+                if let other = owners.first(where: { $0.pid != target.pid }),
+                   !owners.contains(where: { $0.pid == target.pid }) {
+                    return .takenOver(pid: other.pid)
+                }
+                last = .stillHeld
             }
             try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
         } while Date() < deadline
-        return false
+        return last
     }
 }

@@ -54,6 +54,10 @@ final class PortStore: ObservableObject {
             lastUpdated = Date()
             scanError = nil
             if let id = selectedID, !ports.contains(where: { $0.id == id }) { selectedID = nil }
+            // A force-kill offer is only valid for the exact process that ignored SIGTERM.
+            if let candidate = forceCandidate, !ports.contains(where: { Self.isSameProcess($0, candidate) }) {
+                forceCandidate = nil
+            }
         } catch {
             scanError = error.localizedDescription
             Log.scan.error("scan failed: \(error.localizedDescription, privacy: .public)")
@@ -81,7 +85,17 @@ final class PortStore: ObservableObject {
     // MARK: Termination
 
     func terminate(_ port: PortInfo) async { await run(port, force: false) }
-    func forceTerminate(_ port: PortInfo) async { await run(port, force: true) }
+    /// Force-kills the *original* candidate (never a refreshed row that merely shares its id);
+    /// `KillService` revalidates it again, including start time, before sending SIGKILL.
+    func confirmForceTerminate() async {
+        guard let candidate = forceCandidate else { return }
+        await run(candidate, force: true)
+    }
+
+    private static func isSameProcess(_ a: PortInfo, _ b: PortInfo) -> Bool {
+        guard a.id == b.id, let sa = a.startTime, let sb = b.startTime else { return false }
+        return abs(sa - sb) <= 1
+    }
     func dismissForce() { forceCandidate = nil }
 
     private func run(_ port: PortInfo, force: Bool) async {

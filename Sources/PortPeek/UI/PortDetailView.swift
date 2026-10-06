@@ -63,7 +63,7 @@ struct PortDetailView: View {
                 confirmLabel: "Force Kill",
                 destructive: true,
                 onCancel: { store.dismissForce() },
-                onConfirm: { Task { await store.forceTerminate(port) } }
+                onConfirm: { Task { await store.confirmForceTerminate() } }
             )
         }
     }
