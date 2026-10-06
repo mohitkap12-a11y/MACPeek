@@ -1,10 +1,12 @@
 ---
 import Base from './Base.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
-import { SITE, docsNav, blogNav } from '../site';
+import { SITE, docsNav, blogNav, blogPosts } from '../site';
+import { byId } from '../data/utilities';
 
 const { frontmatter } = Astro.props;
-const { title, description, section = 'blog', h1, date = '2026-10-06' } = frontmatter;
+const { title, description, section = 'blog', h1, date = '2026-10-06', utility: utilityId } = frontmatter;
+const util = utilityId ? byId(utilityId) : undefined;
 const isDocs = section === 'docs';
 const url = new URL(Astro.url.pathname, Astro.site).toString();
 const home = new URL('/', Astro.site).toString();
@@ -18,8 +20,8 @@ const jsonLd = [
     datePublished: date,
     dateModified: date,
     mainEntityOfPage: url,
-    author: { '@type': 'Organization', name: 'PortPeek contributors' },
-    publisher: { '@type': 'Organization', name: 'PortPeek', url: home },
+    author: { '@type': 'Organization', name: 'MacPeek contributors' },
+    publisher: { '@type': 'Organization', name: 'MacPeek', url: home },
   },
   {
     '@context': 'https://schema.org',
@@ -32,7 +34,10 @@ const jsonLd = [
   },
 ];
 const nav = isDocs ? docsNav : blogNav;
-const related = (isDocs ? blogNav : docsNav.slice(0, 3)).filter((l) => l.href !== Astro.url.pathname).slice(0, 4);
+const sameUtility = blogPosts.filter((p) => p.utility === utilityId).map((p) => ({ href: `/blog/${p.slug}/`, label: p.label }));
+const related = (isDocs ? blogNav : [...sameUtility, ...(util ? [{ href: `/utilities/${util.id}/`, label: `About ${util.name}` }] : []), ...docsNav.slice(0, 3)])
+  .filter((l, i, a) => l.href !== Astro.url.pathname && a.findIndex((x) => x.href === l.href) === i)
+  .slice(0, 5);
 ---
 <Base title={title} description={description} jsonLd={jsonLd} ogType="article">
   <div class="wrap docs-layout">
@@ -43,10 +48,22 @@ const related = (isDocs ? blogNav : docsNav.slice(0, 3)).filter((l) => l.href !=
       <div class="crumbs"><a href="/">Home</a> › <a href={isDocs ? '/docs/' : '/blog/'}>{isDocs ? 'Docs' : 'Guides'}</a></div>
       <h1>{h1 ?? title}</h1>
       <slot />
-      {!isDocs && (
+      {!isDocs && util && (
         <div class="callout">
-          <p><strong>PortPeek gives you the same visibility from your Mac menu bar.</strong> Search any port, see the process, and free it in one click — free and open source.</p>
-          <DownloadCTA />
+          {util.status === 'available' ? (
+            <>
+              <p><strong>{util.name} gives you the same visibility from your Mac menu bar.</strong> {util.tagline} It is a free, open-source utility inside MacPeek.</p>
+              <DownloadCTA />
+            </>
+          ) : (
+            <>
+              <p><strong>{util.name} is coming to MacPeek.</strong> {util.tagline} It is not available yet; follow the project on GitHub to know when it ships.</p>
+              <div class="cta" style="justify-content:flex-start">
+                <a class="btn primary" href={`/utilities/${util.id}/`}>About {util.name}</a>
+                <a class="btn" href={SITE.github}>Follow on GitHub</a>
+              </div>
+            </>
+          )}
         </div>
       )}
       <nav class="related" aria-label="Related">

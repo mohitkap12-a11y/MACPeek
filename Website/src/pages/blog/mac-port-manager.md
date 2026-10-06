@@ -1,9 +1,10 @@
 ---
 layout: ../../layouts/Article.astro
-title: "Mac Port Manager: See and Free Ports from the Menu Bar | PortPeek"
+title: "Mac Port Manager: See and Free Ports from the Menu Bar | MacPeek"
 description: "What a good Mac port manager should do: list listening ports, show the owning process, kill safely and stay private. Compare Terminal, Activity Monitor and PortPeek."
 h1: "A Mac Port Manager That Lives in Your Menu Bar"
 section: blog
+utility: portpeek
 date: "2026-10-06"
 ---
 macOS has no built-in screen that answers "which app is using port 5432?" Here are your options.
@@ -24,4 +25,4 @@ macOS has no built-in screen that answers "which app is using port 5432?" Here a
 5. Respect privacy: no account, no telemetry.
 
 ## PortPeek
-PortPeek is a free, open-source, native menu-bar app built around exactly that list. It deliberately **isn't** a system monitor — no CPU graphs, no clutter. See the [feature overview](/#features), [usage docs](/docs/usage/) and [how killing works](/docs/killing-processes/).
+PortPeek is a free, open-source utility inside MacPeek, a native menu-bar app, built around exactly that list. It deliberately **isn't** a system monitor — no CPU graphs, no clutter. See the [PortPeek page](/utilities/portpeek/), [usage docs](/docs/usage/) and [how killing works](/docs/killing-processes/).

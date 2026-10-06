@@ -1,0 +1,106 @@
+---
+import Base from '../../layouts/Base.astro';
+import AppShot from '../../components/AppShot.astro';
+import DownloadCTA from '../../components/DownloadCTA.astro';
+import UtilityIcon from '../../components/UtilityIcon.astro';
+import { SITE, blogPosts, liveTagLong } from '../../site';
+import { utilities, type Utility } from '../../data/utilities';
+
+export function getStaticPaths() {
+  return utilities.map((u) => ({ params: { slug: u.id }, props: { u } }));
+}
+const util: Utility = Astro.props.u;
+const live = util.status === 'available';
+const url = new URL(Astro.url.pathname, Astro.site).toString();
+const home = new URL('/', Astro.site).toString();
+const guides = util.guides.map((slug) => blogPosts.find((p) => p.slug === slug)).filter(Boolean) as typeof blogPosts;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: home },
+      { '@type': 'ListItem', position: 2, name: 'Utilities', item: new URL('/utilities/', Astro.site).toString() },
+      { '@type': 'ListItem', position: 3, name: util.name, item: url },
+    ],
+  },
+  live
+    ? { '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: util.name, applicationCategory: 'UtilitiesApplication', operatingSystem: 'macOS 13 or later', description: util.metaDescription, isPartOf: { '@type': 'SoftwareApplication', name: 'MacPeek' }, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } }
+    : { '@context': 'https://schema.org', '@type': 'WebPage', name: util.metaTitle, description: util.metaDescription, url },
+];
+---
+<Base title={util.metaTitle} description={util.metaDescription} jsonLd={jsonLd}>
+  <div class="wrap article">
+    <div class="crumbs"><a href="/">Home</a> › <a href="/utilities/">Utilities</a> › {util.name}</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap">
+      <span class="uicon lg"><UtilityIcon utility={util} size={28} /></span>
+      <span class:list={['tag', { live }]}>{live ? liveTagLong : 'Coming soon'}</span>
+    </div>
+    <h1>{util.name}: {util.tagline}</h1>
+    <p class="lede">{util.question}</p>
+
+    {live && !SITE.hasRelease && (
+      <div class="notice">
+        <strong>{util.name} is built and part of MacPeek's source.</strong> The first signed download has not been published yet; see <a href="/download/">Download</a> for how to build it today.
+      </div>
+    )}
+
+    {!live && (
+      <div class="notice">
+        <strong>Coming soon.</strong> {util.name} is in development and is not part of the current MacPeek release. This page describes what it is planned to do; the screen below is an illustration, not the finished app.
+      </div>
+    )}
+
+    <div class="split" style="margin-top:36px">
+      <div>
+        <h2>The problem</h2>
+        <p>{util.problem}</p>
+        <h2>The solution</h2>
+        <p>{util.solution}</p>
+      </div>
+      <div class="visual">
+        <AppShot name={util.id} alt={`${util.name} ${live ? 'screen' : 'preview (illustration)'}`} preview={util.preview} />
+      </div>
+    </div>
+
+    <h2>{live ? 'Features' : 'Planned features'}</h2>
+    <ul class="checks">{util.features.map((f) => <li>{f}</li>)}</ul>
+
+    <h2>How it works</h2>
+    <ol>{util.how.map((h) => <li>{h}</li>)}</ol>
+
+    <h2>Installation</h2>
+    {live ? (
+      <p>{util.name} is part of MacPeek. <a href="/docs/installation/">Install MacPeek</a>, open <strong>Manage utilities</strong> and make sure {util.name} is switched on (it is on by default). There is nothing separate to download.</p>
+    ) : (
+      <p>{util.name} is not released yet. It is already listed in MacPeek's <strong>Manage utilities</strong> screen as <em>Coming soon</em>; when it ships it will appear there to switch on, with no separate download. <a href="/docs/installation/">Install MacPeek</a> to get the launcher and PortPeek today.</p>
+    )}
+
+    <h2>Privacy</h2>
+    <p><strong>What {util.name} {live ? 'reads' : 'will read'}:</strong></p>
+    <ul>{util.reads.map((r) => <li>{r}</li>)}</ul>
+    <p><strong>Access it needs:</strong> {util.access}</p>
+    <p>Everything stays on your Mac: no account, no telemetry, no network access. <a href="/privacy/">Read the full privacy statement</a>.</p>
+
+    <h2>Open source</h2>
+    <p>MacPeek and every utility in it are MIT-licensed. <a href={SITE.github}>Read the code on GitHub</a>, or <a href={`${SITE.github}/blob/main/CONTRIBUTING.md#adding-a-utility`}>see how a utility is built</a>.</p>
+
+    {guides.length > 0 && (
+      <Fragment>
+        <h2>Related guides</h2>
+        <ul>{guides.map((g) => <li><a href={`/blog/${g.slug}/`}>{g.label}</a></li>)}</ul>
+      </Fragment>
+    )}
+
+    <div class="callout">
+      {live ? (
+        <Fragment><p><strong>Get {util.name} with MacPeek.</strong> Free and open source.</p><DownloadCTA /></Fragment>
+      ) : (
+        <Fragment>
+          <p><strong>Want {util.name}?</strong> It is on the roadmap. PortPeek is built into the app today, and {util.name} will arrive in the same app.</p>
+          <div class="cta" style="justify-content:flex-start"><a class="btn primary" href="/utilities/portpeek/">See PortPeek</a><a class="btn" href={SITE.github}>Follow on GitHub</a></div>
+        </Fragment>
+      )}
+    </div>
+  </div>
+</Base>

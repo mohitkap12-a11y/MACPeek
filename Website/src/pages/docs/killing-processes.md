@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Article.astro
-title: "How PortPeek Safely Kills a Process | PortPeek Docs"
+title: "How PortPeek Safely Kills a Process | MacPeek Docs"
 description: "How PortPeek terminates the process behind a port: revalidation, SIGTERM first, port-release verification and an explicit force kill."
 h1: "Killing processes safely"
 section: docs
 date: "2026-10-06"
 ---
-Killing the wrong process is worse than not killing one, so PortPeek never signals a stale PID.
+Killing the wrong process is worse than not killing one, so PortPeek never signals a stale PID. Every MacPeek utility that can end a process uses this same shared safety logic.
 
 ## The sequence
 1. **Re-scan** the port when you click Kill.

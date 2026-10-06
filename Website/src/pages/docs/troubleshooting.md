@@ -1,11 +1,14 @@
 ---
 layout: ../../layouts/Article.astro
-title: "PortPeek Troubleshooting | PortPeek Docs"
-description: "Fixes for PortPeek problems: a port is missing, Kill does nothing, Launch at login fails, or macOS blocks the app."
+title: "MacPeek Troubleshooting | MacPeek Docs"
+description: "Fixes for common MacPeek problems: a utility is missing, a port is missing, Kill does nothing, Launch at login fails, or macOS blocks the app."
 h1: "Troubleshooting"
 section: docs
 date: "2026-10-06"
 ---
+## A utility is missing from the launcher
+Open **Settings → Manage utilities** (or the **Manage utilities** link in the launcher footer) and check its switch. Utilities marked *Coming soon* are not released yet and cannot be switched on.
+
 ## A port I expect is missing
 - It may belong to another user or root. Check with `sudo lsof -nP -iTCP -sTCP:LISTEN`.
 - Only *listening* sockets are shown, not outgoing connections.
@@ -24,7 +27,7 @@ That's PortPeek protecting you: the port changed owner between scan and kill, so
 That's macOS **AirPlay Receiver**. Turn it off in System Settings → General → AirDrop & Handoff → AirPlay Receiver.
 
 ## Launch at login doesn't stick
-Run PortPeek from `/Applications`, then toggle it in settings. You can also manage it in System Settings → General → Login Items.
+Run MacPeek from `/Applications`, then toggle it in settings. You can also manage it in System Settings → General → Login Items.
 
 ## macOS blocks the app
 Download only from the official [releases page](https://github.com/mohitkap12-a11y/MACPeek/releases/latest) and verify the [checksum](/docs/installation/).

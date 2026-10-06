@@ -1,11 +1,18 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { blogNav } from '../../site';
+import { blogPosts } from '../../site';
+import { byId } from '../../data/utilities';
+const groups = [...new Set(blogPosts.map((p) => p.utility))].map((id) => ({ util: byId(id)!, posts: blogPosts.filter((p) => p.utility === id) }));
 ---
-<Base title="Mac Port Guides — Find and Kill What Is Using a Port | PortPeek" description="Practical guides for macOS developers: find what is using a port, kill a process on a port, free port 3000, and use lsof the right way.">
+<Base title="Mac Guides: Ports, Displays, USB, Sleep, Battery and Wi-Fi | MacPeek" description="Practical guides for Mac problems: find what is using a port, check monitor refresh rate, see USB devices, why a Mac will not sleep, battery health and Wi-Fi signal.">
   <div class="wrap narrow article">
-    <h1>Mac port guides</h1>
-    <p class="lede">Short, practical answers for when a port is already in use.</p>
-    <ul>{blogNav.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+    <h1>Mac guides</h1>
+    <p class="lede">Short, practical answers for the things macOS makes hard to see.</p>
+    {groups.map((g) => (
+      <Fragment>
+        <h2>{g.util.name}{g.util.status === 'available' ? '' : ' (coming soon)'}</h2>
+        <ul>{g.posts.map((p) => <li><a href={`/blog/${p.slug}/`}>{p.label}</a></li>)}</ul>
+      </Fragment>
+    ))}
   </div>
 </Base>

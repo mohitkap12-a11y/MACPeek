@@ -1,0 +1,28 @@
+---
+// Illustrative rendering of a utility's popover from data (NOT a real screenshot): used until a real
+// capture exists in public/screenshots/ (see AppShot.astro). Sample values only.
+import type { Preview } from '../data/utilities';
+interface Props { preview: Preview; badge?: string }
+const { preview, badge } = Astro.props;
+const label = `${preview.title} popover preview with ${preview.rows.map((r) => (r.lead ? `${r.lead} ${r.title}` : r.title)).join(', ')}`;
+---
+<div class="mock" role="img" aria-label={label}>
+  <div class="bar2" aria-hidden="true"><span>{preview.title}</span><span>{badge ?? '⟳'}</span></div>
+  {preview.search && <div class="search" aria-hidden="true">{preview.search}</div>}
+  {preview.rows.map((r, i) => (
+    <Fragment>
+      <div class:list={['row', { 'has-lead': !!r.lead, open: preview.expanded?.index === i }]} aria-hidden="true">
+        {r.lead && <b>{r.lead}</b>}
+        <span>{r.title}{r.sub && <small>{r.sub}</small>}</span>
+        {r.badge && <i class={r.tone ?? ''}>{r.badge}</i>}
+      </div>
+      {preview.expanded?.index === i && (
+        <div class="detail" aria-hidden="true">
+          <div class="kv">{preview.expanded.kv.map(([k, v]) => <Fragment><span>{k}</span><span>{v}</span></Fragment>)}</div>
+          {preview.expanded.action && <span class="kill">{preview.expanded.action}</span>}
+        </div>
+      )}
+    </Fragment>
+  ))}
+  <div class="foot" aria-hidden="true"><span>{preview.footer[0]}</span><span>{preview.footer[1]}</span></div>
+</div>
