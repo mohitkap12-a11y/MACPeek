@@ -15,8 +15,12 @@ final class ScriptedRunner: CommandRunning, @unchecked Sendable {
     var results: [String: Result<CommandOutput, Error>]
     init(_ results: [String: Result<CommandOutput, Error>]) { self.results = results }
     var calls: [(String, [String])] { lock.lock(); defer { lock.unlock() }; return _calls }
+    private func record(_ executable: String, _ arguments: [String]) {
+        lock.lock(); defer { lock.unlock() }
+        _calls.append((executable, arguments))
+    }
     func run(_ executable: String, _ arguments: [String]) async throws -> CommandOutput {
-        lock.lock(); _calls.append((executable, arguments)); lock.unlock()
+        record(executable, arguments)
         guard let result = results[arguments.first ?? ""] ?? results["*"] else { return CommandOutput(stdout: "", stderr: "unscripted", status: 1) }
         return try result.get()
     }

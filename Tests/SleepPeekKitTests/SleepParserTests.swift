@@ -238,8 +238,12 @@ final class RoutedRunner: CommandRunning, @unchecked Sendable {
         self.log = log
     }
     var calls: [(String, [String])] { lock.lock(); defer { lock.unlock() }; return _calls }
+    private func record(_ executable: String, _ arguments: [String]) {
+        lock.lock(); defer { lock.unlock() }
+        _calls.append((executable, arguments))
+    }
     func run(_ executable: String, _ arguments: [String]) async throws -> CommandOutput {
-        lock.lock(); _calls.append((executable, arguments)); lock.unlock()
+        record(executable, arguments)
         let text: String?
         switch arguments {
         case ["-g", "assertions"]: text = assertions

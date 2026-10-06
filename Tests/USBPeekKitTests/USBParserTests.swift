@@ -28,7 +28,7 @@ final class USBParserTests: XCTestCase {
         XCTAssertTrue(hub3.isHub)
         XCTAssertEqual(hub3.deviceClassLabel, "Hub")
 
-        let hub2 = parsed()[2].devices[1]
+        let hub2 = try parsed()[2].devices[1]
         XCTAssertEqual(hub2.speedLabel, "480 Mb/s")
         XCTAssertEqual(hub2.declaredUSBVersion, "2.10")
 
