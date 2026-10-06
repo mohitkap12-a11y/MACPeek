@@ -32,52 +32,62 @@ const jsonLd = [
 <Base title={title} description={SITE.description} jsonLd={jsonLd}>
   <section class="hero">
     <div class="wrap">
-      <h1>See what's using your ports.<br /><span>Kill it in one click.</span></h1>
+      <div class="pill"><i></i> Free &amp; open source · macOS 13+</div>
+      <h1>See what's using your ports.<br /><span class="grad">Kill it in one click.</span></h1>
       <p class="lead">A lightweight native macOS menu bar app for finding and freeing network ports — no Terminal required.</p>
       <DownloadCTA />
-      <p class="fine">Free · Open source · macOS 13+ · No account, no telemetry</p>
+      <p class="fine">No account · No telemetry · Apple silicon &amp; Intel</p>
       <AppMock />
     </div>
   </section>
 
   <section class="block" id="features">
     <div class="wrap">
-      <h2>Why PortPeek?</h2>
-      <p class="sub">Your port is busy. PortPeek tells you why and lets you free it.</p>
-      <div class="grid">
-        <div class="card"><h3>Find ports instantly</h3><p>Search by port, process name, PID or address. Results update as you type.</p></div>
-        <div class="card"><h3>Kill the process</h3><p>Free a port without opening Terminal. Graceful SIGTERM first; force-kill only when you say so.</p></div>
-        <div class="card"><h3>Safe by design</h3><p>PortPeek re-checks the process just before it signals, so a reused PID is never killed by mistake.</p></div>
-        <div class="card"><h3>Native Mac app</h3><p>Swift and SwiftUI. Lives in the menu bar, polls only while open, light on CPU and memory.</p></div>
-        <div class="card"><h3>Open source</h3><p>MIT licensed. Read the code, build it yourself, contribute.</p></div>
-        <div class="card"><h3>Private by default</h3><p>No account. No telemetry. No cloud. Your process information stays on your Mac.</p></div>
+      <div class="eyebrow">Why PortPeek</div>
+      <h2>Your port is busy.<br />PortPeek tells you why.</h2>
+      <p class="sub">Everything you need to find a process behind a port and free it. Nothing you don't.</p>
+      <div class="bento">
+        <div class="card span4"><div class="ico">🔎</div><h3>Find ports instantly</h3><p>Every listening TCP and UDP port, IPv4 and IPv6. Search by port, process name, PID or address — results update as you type.</p></div>
+        <div class="card span2"><div class="ico">⚡</div><h3>One-click kill</h3><p>Free a port without opening Terminal.</p></div>
+        <div class="card span2"><div class="ico">🛡️</div><h3>Safe by design</h3><p>Graceful SIGTERM first. The process is re-checked right before it's signalled, so a reused PID is never killed by mistake.</p></div>
+        <div class="card span2"><div class="ico">⌘</div><h3>Native Mac app</h3><p>Swift and SwiftUI. Polls only while open — light on CPU and memory.</p></div>
+        <div class="card span2"><div class="ico">🔓</div><h3>Open source</h3><p>MIT licensed. Read the code, build it, contribute.</p></div>
       </div>
     </div>
   </section>
 
   <section class="block alt">
-    <div class="wrap">
-      <h2>Built for developers</h2>
+    <div class="wrap center">
+      <div class="eyebrow">Built for developers</div>
+      <h2>Find → Inspect → Kill</h2>
       <p class="sub">Dev servers, databases, caches, containers — whatever grabbed the port.</p>
       <div class="ports"><code>3000</code><code>5173</code><code>5432</code><code>6379</code><code>8080</code></div>
-      <p class="flow">Find → Inspect → Kill</p>
-      <p>Prefer Terminal? We wrote the guides too: <a href="/blog/how-to-find-what-is-using-a-port-on-mac/">find what is using a port on Mac</a> and <a href="/blog/how-to-free-port-3000-on-mac/">free port 3000</a>.</p>
+      <div class="steps" style="text-align:left">
+        <div class="card step"><h3>Find</h3><p>Click the menu bar icon and type a port, process or PID.</p></div>
+        <div class="card step"><h3>Inspect</h3><p>See the process, PID, address, state and whether you're allowed to stop it.</p></div>
+        <div class="card step"><h3>Kill</h3><p>Confirm once. PortPeek verifies the process exited and the port is free.</p></div>
+      </div>
+      <p style="margin-top:28px">Prefer Terminal? We wrote the guides too: <a href="/blog/how-to-find-what-is-using-a-port-on-mac/">find what is using a port on Mac</a> and <a href="/blog/how-to-free-port-3000-on-mac/">free port 3000</a>.</p>
     </div>
   </section>
 
   <section class="block">
-    <div class="wrap narrow">
-      <h2>Privacy first</h2>
-      <p>No account. No telemetry. No cloud. PortPeek reads local process and socket information to show you the list, and never transmits it. <a href="/docs/privacy/">Read exactly what it reads</a>.</p>
+    <div class="wrap center">
+      <div class="eyebrow">Privacy first</div>
+      <h2>Your Mac's business stays on your Mac.</h2>
+      <p class="sub">PortPeek reads local process and socket information to draw the list, and never transmits it. <a href="/docs/privacy/">See exactly what it reads</a>.</p>
+      <div class="privacy-list"><div>No account</div><div>No telemetry</div><div>No cloud</div><div>No network access</div></div>
     </div>
   </section>
 
-  <section class="block alt">
-    <div class="wrap" style="text-align:center">
-      <h2>Download PortPeek</h2>
-      <p class="sub" style="margin-inline:auto">Download the DMG, drag PortPeek to Applications, launch. It appears in your menu bar.</p>
-      <DownloadCTA />
-      <p class="fine"><a href={SITE.github}>View source on GitHub</a> · <a href="/docs/installation/">Installation guide</a></p>
+  <section class="block" style="padding-top:0">
+    <div class="wrap">
+      <div class="panel">
+        <h2>Download PortPeek</h2>
+        <p class="sub" style="margin-inline:auto">Download the DMG, drag PortPeek to Applications, launch. It appears in your menu bar.</p>
+        <DownloadCTA />
+        <p class="fine"><a href={SITE.github}>View source on GitHub</a> · <a href="/docs/installation/">Installation guide</a></p>
+      </div>
     </div>
   </section>
 </Base>

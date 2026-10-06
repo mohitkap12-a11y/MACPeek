@@ -24,7 +24,10 @@ Download `PortPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **Por
 and notarized; verify the download against the published SHA-256 file.
 
 ## Build from source
-Requires macOS 13+ and Xcode 15+ (Swift 5.9).
+Requires macOS 13+ and **full Xcode 15+** (Swift 5.9) — the standalone *Command Line Tools* are not enough,
+because SwiftUI's `@State` macro needs the `SwiftUIMacros` plugin that only Xcode ships. If you see
+`plugin for module 'SwiftUIMacros' not found`, run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
+(see [Troubleshooting the build](CONTRIBUTING.md#troubleshooting-the-build)).
 ```bash
 swift build
 swift test
@@ -41,7 +44,7 @@ KillService: validateTarget → signal → waitForExit → verifyPortReleased �
 ```
 - `Sources/PortPeekCore` — pure logic, platform independent, fully unit-tested with fixtures.
 - `Sources/PortPeek` — AppKit/SwiftUI shell.
-- `Website/` — Astro static marketing + docs + SEO guides.
+- `Website/` — Astro static marketing + docs + SEO guides. How to test it: [Website/TESTING.md](Website/TESTING.md).
 
 ## Security model
 PortPeek runs as your user and never elevates privileges. It can only see/terminate what your user can.
