@@ -1,0 +1,11 @@
+#if os(macOS)
+import os
+
+/// Local-only logging via the unified log. Nothing leaves the machine.
+/// One category per utility (`MacPeek.<Name>`); never log secrets, clipboard contents or device serials.
+enum Log {
+    private static let subsystem = "app.macpeek.MacPeek"
+    static let app = Logger(subsystem: subsystem, category: "MacPeek")
+    static let portPeek = Logger(subsystem: subsystem, category: "MacPeek.PortPeek")
+}
+#endif

@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Builds build/PortPeek.app from the SwiftPM executable. Usage: scripts/build-app.sh [version]
+# Builds build/MacPeek.app from the SwiftPM executable. Usage: scripts/build-app.sh [version]
 # Set SIGN_IDENTITY to a "Developer ID Application: ..." identity to sign with hardened runtime;
 # otherwise the bundle is ad-hoc signed (fine for local use, NOT for distribution).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 scripts/check-toolchain.sh
 VERSION="${1:-0.1.0}"
-APP="build/PortPeek.app"
+APP="build/MacPeek.app"
 
 swift build -c release --arch arm64 --arch x86_64
-BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/PortPeek"
+BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MacPeek"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/PortPeek"
+cp "$BIN" "$APP/Contents/MacOS/MacPeek"
 sed "s/__VERSION__/${VERSION}/g" Resources/Info.plist > "$APP/Contents/Info.plist"
 
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
   codesign --force --timestamp --options runtime \
-    --entitlements Resources/PortPeek.entitlements \
+    --entitlements Resources/MacPeek.entitlements \
     --sign "$SIGN_IDENTITY" "$APP"
 else
   echo "warning: SIGN_IDENTITY not set — ad-hoc signing (not distributable)" >&2

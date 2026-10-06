@@ -22,4 +22,4 @@ This data is held in memory to draw the list and is not written to disk. The onl
 ## This website
 The site is static. It sets no cookies and loads no third-party scripts. If privacy-friendly analytics are ever added, they will be documented here.
 
-The code is open: [verify it yourself](https://github.com/mohitkap12-a11y/PortPeek).
+The code is open: [verify it yourself](https://github.com/mohitkap12-a11y/MACPeek).

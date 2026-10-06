@@ -1,58 +1,89 @@
-# PortPeek
+# MacPeek
 
-**See what's using your ports. Kill it in one click.**
+**The tiny utilities macOS should have built in.**
 
-PortPeek is a lightweight, open-source, native macOS menu-bar app for finding the process behind a
-busy network port and freeing it — without opening Terminal.
+MacPeek is a native, lightweight, open-source collection of focused macOS menu-bar utilities for finding,
+inspecting and understanding the things macOS makes unnecessarily difficult to see. One small app, many
+**Peeks** — switch on the ones you want, switch off the rest.
 
-> Screenshot/GIF: add `docs/screenshot.png` after the first build (see `Website/public/`).
+> Screenshot/GIF: add `docs/screenshot.png` after the first build.
+
+## Utilities
+
+| Utility | Answers | Status |
+|---|---|---|
+| **PortPeek** | What is using port 3000? Free it safely. | ✅ Available |
+| **DisplayPeek** | What display configuration am I actually running? | Coming soon |
+| **USBPeek** | What is connected, and at what speed? | Coming soon |
+| **NetPeek** | Is my network connection actually healthy? | Coming soon |
+| **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
+| **SleepPeek** | Why isn't my Mac sleeping? | Coming soon |
+| **FileLockPeek** | What process is using this file? | Coming soon |
+| **ProcessPeek** | What exactly is this process? | Coming soon |
+| **DiskPeek** | Which app is using my disk right now? | Coming soon |
+| **EnvPeek** | What environment variables does this environment see? | Coming soon |
+| **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | Coming soon |
+
+Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
+every utility with a description, what it reads, what access it needs, and an on/off switch. A utility that
+is switched off does no work at all: no polling, no scanning, nothing in the launcher.
 
 ## Features
-- Searchable list of listening **TCP and UDP** ports, IPv4 and IPv6
-- Search by port (partial too), process name, PID or address — instant and local
-- Process detail view with permission hints (✓ can terminate · ⚠ permission required · 🔒 protected)
-- **Safe kill**: re-scan → verify the PID still owns the port and is the same process (PID-reuse guard) →
-  SIGTERM → verify exit and port release → optional, explicit force kill (SIGKILL)
-- Polls (default every 2 s) only while the popover is open; zero background scanning when idle
-- Light/dark mode, keyboard navigation, context menu (copy port/PID/address, open localhost)
-- Settings: launch at login, refresh interval, confirm before kill, notifications, appearance
+- Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance
+- One launcher, one search, one consistent compact UI for every utility
+- **Safe process termination** shared by every utility that can kill something: re-check the target →
+  verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
+  exit and release → optional, explicit force kill (SIGKILL) after another re-check
+- Utilities refresh only while their screen is open
 - No account, no telemetry, no network access, no third-party dependencies
 
 ## Install
-Download `PortPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **PortPeek** to
-**Applications**, launch it, and look for the icon in the menu bar. Releases are Developer ID signed
-and notarized; verify the download against the published SHA-256 file.
+Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
+launch it and look for the icon in the menu bar. Releases are Developer ID signed and notarized; verify the
+download against the published `SHA256SUMS`.
 
 ## Build from source
-Requires macOS 13+ and **full Xcode 15+** (Swift 5.9) — the standalone *Command Line Tools* are not enough,
-because SwiftUI's `@State` macro needs the `SwiftUIMacros` plugin that only Xcode ships. If you see
-`plugin for module 'SwiftUIMacros' not found`, run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
+Requires macOS 13+ and **full Xcode 15+** (Swift 5.9). The standalone *Command Line Tools* are not enough:
+SwiftUI's `@State` macro needs the `SwiftUIMacros` plugin that only Xcode ships. If you see
+`plugin for module 'SwiftUIMacros' not found`, run
+`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
 (see [Troubleshooting the build](CONTRIBUTING.md#troubleshooting-the-build)).
+
 ```bash
 swift build
 swift test
-swift run PortPeek          # runs the menu-bar app
-scripts/build-app.sh 0.1.0  # build/PortPeek.app (ad-hoc signed unless SIGN_IDENTITY is set)
-scripts/make-dmg.sh 0.1.0   # dist/PortPeek-0.1.0.dmg + .sha256
+swift run MacPeek            # runs the menu-bar app
+open Package.swift           # or open it in Xcode
+scripts/build-app.sh 0.1.0   # build/MacPeek.app (ad-hoc signed unless SIGN_IDENTITY is set)
+scripts/make-dmg.sh 0.1.0    # dist/MacPeek-0.1.0.dmg + SHA256SUMS
 ```
 
 ## Architecture
 ```text
-lsof ─▶ LsofPortDiscovery ─▶ PortParser ─▶ [PortInfo] ─▶ PortStore ─▶ SwiftUI
-            (PortDiscoveryProtocol; a native libproc backend can replace it later)
-KillService: validateTarget → signal → waitForExit → verifyPortReleased → (explicit) forceTerminate
+MacPeek (menu-bar app)                      Sources/MacPeek
+ ├─ Shell: launcher · router · utility manager · settings · about
+ ├─ SharedUI: PeekHeader · PeekRow · StatusBadge · EmptyState · CopyButton …
+ └─ Utilities/<Name>/  view + module for each utility
+MacPeekCore (shared, UI-free)               Sources/MacPeekCore
+ └─ ProcessTerminationService · PermissionService · ProcessInspecting · ShellCommand · UtilityCatalog
+<Name>Kit (one per utility, UI-free)        Sources/PortPeekKit, …
+ └─ models · parsers · discovery · services — unit-tested with fixtures
 ```
-- `Sources/PortPeekCore` — pure logic, platform independent, fully unit-tested with fixtures.
-- `Sources/PortPeek` — AppKit/SwiftUI shell.
-- `Website/` — Astro static marketing + docs + SEO guides. How to test it: [Website/TESTING.md](Website/TESTING.md).
+The shell knows only utility metadata and navigation; each utility owns its models, services, views and tests.
+Details: [docs/architecture.md](docs/architecture.md). Adding a utility: [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-utility).
 
 ## Security model
-PortPeek runs as your user and never elevates privileges. It can only see/terminate what your user can.
+MacPeek runs as your user and never elevates privileges. It can only see and terminate what your user can.
 Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 
 ## Privacy
-PortPeek reads local process, socket and port information (via `lsof` and `sysctl`) and never
-transmits it anywhere. No analytics, no telemetry, no accounts, no network entitlement.
+No account, no telemetry, no cloud, no network access. MacPeek reads local system information to show it to
+you and never transmits it. Each utility documents exactly what it reads (see Manage utilities).
+
+## Roadmap
+PortPeek ships first; the remaining utilities arrive in phases (see [CHANGELOG.md](CHANGELOG.md)):
+Display/USB/Sleep → Net/Battery → Developer utilities (FileLock, Process, Disk, Env, DNS) → global search,
+accessibility and localization polish → signed releases → website and guides.
 
 ## Contributing / License
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Licensed under the [MIT License](LICENSE).

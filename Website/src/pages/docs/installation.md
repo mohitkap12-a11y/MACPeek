@@ -1,33 +1,37 @@
 ---
 layout: ../../layouts/Article.astro
-title: "Install PortPeek on Mac | PortPeek Docs"
-description: "Install PortPeek on macOS: download the DMG, drag it to Applications, launch it and find it in the menu bar. Verify the SHA-256 checksum."
-h1: "Installing PortPeek"
+title: "Install MacPeek on Mac | MacPeek Docs"
+description: "Install MacPeek on macOS: download the DMG, drag it to Applications, launch it and find it in the menu bar. Verify the download with SHA256SUMS."
+h1: "Installing MacPeek"
 section: docs
 date: "2026-10-06"
 ---
-PortPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel.
+MacPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel. PortPeek, the port finder, is one of the utilities inside MacPeek.
 
 ## Steps
-1. Download `PortPeek-x.y.z.dmg` from the [latest release](https://github.com/mohitkap12-a11y/PortPeek/releases/latest).
+1. Download `MacPeek-x.y.z.dmg` from the [latest release](https://github.com/mohitkap12-a11y/MACPeek/releases/latest).
 2. Open the DMG.
-3. Drag **PortPeek** to **Applications**.
-4. Launch PortPeek.
-5. The PortPeek icon appears in the menu bar. There is no Dock icon and no main window by design.
+3. Drag **MacPeek** to **Applications**.
+4. Launch MacPeek.
+5. The MacPeek icon appears in the menu bar. There is no Dock icon and no main window by design.
 
 ## Verify the download
-Each release publishes a SHA-256 checksum next to the DMG:
+Each release publishes a `SHA256SUMS` file next to the DMG. Download both into the same folder, then run:
 
 ```bash
-shasum -a 256 ~/Downloads/PortPeek-1.0.0.dmg
+cd ~/Downloads
+shasum -a 256 -c --ignore-missing SHA256SUMS
 ```
 
-Compare the output to the `.sha256` file on the release page. Releases are Developer ID signed and notarized by Apple, so Gatekeeper opens them without warnings.
+You should see `MacPeek-x.y.z.dmg: OK`. Releases are Developer ID signed and notarized by Apple, so Gatekeeper opens them without warnings.
 
 ## Launch at login
-Open PortPeek, click the gear icon and enable **Launch at login**. This works when the app is run from `/Applications`.
+Open MacPeek, click the gear icon and enable **Launch at login**. This works when the app is run from `/Applications`.
+
+## Choose your utilities
+Open **Manage utilities** from the launcher to see every utility, what it reads and what access it needs, and to switch each one on or off.
 
 ## Uninstall
-Quit PortPeek from the menu-bar icon (right-click → Quit), then delete it from Applications. Settings live in `~/Library/Preferences/app.portpeek.PortPeek.plist`.
+Quit MacPeek from the menu-bar icon (right-click → Quit), then delete it from Applications. Settings live in `~/Library/Preferences/app.macpeek.MacPeek.plist`.
 
 Next: [how to use PortPeek](/docs/usage/).

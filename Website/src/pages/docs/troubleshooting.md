@@ -27,6 +27,6 @@ That's macOS **AirPlay Receiver**. Turn it off in System Settings → General �
 Run PortPeek from `/Applications`, then toggle it in settings. You can also manage it in System Settings → General → Login Items.
 
 ## macOS blocks the app
-Download only from the official [releases page](https://github.com/mohitkap12-a11y/PortPeek/releases/latest) and verify the [checksum](/docs/installation/).
+Download only from the official [releases page](https://github.com/mohitkap12-a11y/MACPeek/releases/latest) and verify the [checksum](/docs/installation/).
 
-Still stuck? [Open an issue](https://github.com/mohitkap12-a11y/PortPeek/issues).
+Still stuck? [Open an issue](https://github.com/mohitkap12-a11y/MACPeek/issues).

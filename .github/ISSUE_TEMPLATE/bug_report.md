@@ -9,4 +9,6 @@ labels: bug
 
 **Steps to reproduce**
 
-**Environment** — PortPeek version, macOS version, chip (Apple silicon / Intel)
+**Utility affected** — PortPeek, DisplayPeek, … or the MacPeek shell
+
+**Environment** — MacPeek version, macOS version, chip (Apple silicon / Intel)
