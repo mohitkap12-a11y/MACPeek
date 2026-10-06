@@ -41,7 +41,13 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let usbStore = USBStore(discovery: SystemUSBDiscovery())
         let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
 
-        let processStore = ProcessStore(lister: PSProcessLister())
+        let processStore = ProcessStore(
+            lister: PSProcessLister(),
+            terminator: ProcessTerminator(),
+            permissions: PermissionService(),
+            settings: settings,
+            notifier: notifier
+        )
         let diskStore = DiskStore(reader: SystemDiskIOReader(), settings: settings)
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
 

@@ -55,7 +55,9 @@ SleepPeek is read-only: it never changes a power setting.
 2. Search by name, PID, user or path. The filter menu sorts by name, CPU, memory or PID and can include other users' processes (your own are shown by default).
 3. Open a process to see its PID, user, start time, how long it has been running, CPU and memory, how it was launched (its command name), its full command line, its listening ports (yours only), its parent and its children. Click the parent or a child to jump to it.
 
-The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only. ProcessPeek is read-only: it never ends a process.
+The command line and ports are read only for the process you open. Command lines can contain secrets passed as arguments, so they are shown on screen only.
+
+**Kill Process** works like PortPeek's: MacPeek confirms (configurable), re-checks that the PID is still the same process (name and start time, so a reused PID is never hit), asks it to quit with SIGTERM and confirms it exited. If it ignores the request you can choose an explicit **Force Kill**. Ending `loginwindow` or your user `launchd` always asks first, because it ends your session. Nothing is ever ended for you.
 
 ## Using DiskPeek
 1. Open **DiskPeek**. It takes a first sample, and the rates appear after the second one, a couple of seconds later.

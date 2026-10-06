@@ -17,6 +17,20 @@ resident size. "Started as" is `comm`: how the process was launched, which can b
 `-zsh`, or any name a process chose, so it is not guaranteed to be the binary's real location. It can contain spaces, so it
 is parsed as the last column.
 
+## Kill Process
+Open a process and press **Kill Process**. It uses the same shared safe-termination service as PortPeek and FileLockPeek:
+
+1. **Confirm** (unless you turned confirmation off in Settings). Ending `loginwindow` or your user `launchd` always asks, because it
+   ends your whole session.
+2. **Re-check**: `ps` must still list the PID under the same name, and the kernel start time must match the one recorded when the
+   list was read, so a PID that was **reused** by a different process is never signalled.
+3. **SIGTERM** (a graceful request), then MacPeek waits for the process to exit and confirms it is gone.
+4. If it ignores SIGTERM, MacPeek says so and offers an explicit **Force Kill** (SIGKILL), which re-checks identity again. There is
+   never an automatic escalation.
+
+Protected processes (PID 1, MacPeek itself, root-owned processes) cannot be killed; processes of other users say "Permission
+required" and the kill is refused by macOS. MacPeek never elevates privileges.
+
 ## Privacy
 Command lines can contain secrets passed as arguments (tokens, passwords). They are read only for the process you open, shown
 on screen, and never logged. Nothing is written to disk.
@@ -25,7 +39,7 @@ on screen, and never logged. Nothing is written to disk.
 Reads when the screen opens and on ⌘R. There is no polling and no launcher summary.
 
 ## Limits
-- It is read-only: ProcessPeek never ends or signals a process (use PortPeek or FileLockPeek for that, with their safety checks).
+- Ending a process is explicit and never automatic (see Kill Process above).
 - Other users' processes are hidden unless you include them from the filter menu, and details for protected processes may be
   limited by macOS.
 - It is deliberately not Activity Monitor: no live graphs, no per-thread data.

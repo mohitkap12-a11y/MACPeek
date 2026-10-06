@@ -62,10 +62,10 @@ public enum UtilityCatalog {
     public static let processPeek = UtilityInfo(
         id: "processpeek", name: "ProcessPeek", question: "What exactly is this process?",
         tagline: "Inspect a process and its relationships.",
-        summary: "Shows how a process was launched, its parent, user, start time, command line, CPU and memory, the listening ports of your own processes, and its children. Deliberately not an Activity Monitor replacement.",
+        summary: "Shows how a process was launched, its parent, user, start time, command line, CPU and memory, the listening ports of your own processes, and its children. Ending a process is optional and uses the same safe-termination checks as PortPeek. Deliberately not an Activity Monitor replacement.",
         icon: "cpu", category: .developer, availability: .available,
         reads: ["The process list (ps); a process's command line and listening ports only when you open it"],
-        permissions: ["None. Some details are unavailable for other users' processes."]
+        permissions: ["None to inspect. Some details are unavailable for other users' processes, and you can terminate only processes your user owns."]
     )
     public static let diskPeek = UtilityInfo(
         id: "diskpeek", name: "DiskPeek", question: "Which app is using my disk right now?",

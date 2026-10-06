@@ -12,8 +12,15 @@ final class ProcessPeekModule: UtilityModule {
         self.store = store
     }
 
-    func didAppear() { store.refresh() }
-    func didDisappear() { store.cancel() }
+    func didAppear() {
+        store.setActive(true)
+        store.refresh()
+    }
+
+    func didDisappear() {
+        store.setActive(false)
+        store.cancel()
+    }
 
     func makeView() -> AnyView {
         AnyView(ProcessPeekView().environmentObject(store))

@@ -4,6 +4,9 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **ProcessPeek: Kill Process** with the same safe flow as PortPeek and FileLockPeek: confirm, re-check name and kernel start
+  time (a reused PID is never signalled), SIGTERM, verify exit, then an explicit Force Kill. Ending `loginwindow` or the user
+  `launchd` always asks first. Protected processes cannot be killed.
 - **ProcessPeek**: a searchable process list; open a process for its path, parent, user, start time, CPU and memory,
   command line, listening ports and children (jump between them). Read-only; the command line is read only on request.
 - **DiskPeek**: per-process disk read/write rates and totals, sampled with `proc_pid_rusage` only while its screen is

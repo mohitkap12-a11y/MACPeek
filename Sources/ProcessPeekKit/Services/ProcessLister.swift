@@ -51,10 +51,13 @@ public struct PSProcessLister: ProcessListing {
     static let listArguments = ["LC_ALL=C", ps, "-axo", "pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm"]
     private let runner: CommandRunning
     private let ports: PortDiscoveryProtocol
+    private let inspector: ProcessInspecting
 
-    public init(runner: CommandRunning = ShellCommand(timeout: 15), ports: PortDiscoveryProtocol = LsofPortDiscovery()) {
+    public init(runner: CommandRunning = ShellCommand(timeout: 15), ports: PortDiscoveryProtocol = LsofPortDiscovery(),
+                inspector: ProcessInspecting = SystemProcessInspector()) {
         self.runner = runner
         self.ports = ports
+        self.inspector = inspector
     }
 
     public func snapshot() async throws -> ProcessSnapshot {
@@ -69,7 +72,8 @@ public struct PSProcessLister: ProcessListing {
         if entries.isEmpty && lines > 1 {
             throw ProcessListError.commandFailed("ps printed process information in a format MacPeek does not understand.")
         }
-        return ProcessSnapshot(entries: entries)
+        // The kernel start time is what Kill uses to be sure a PID still belongs to the process the user saw.
+        return ProcessSnapshot(entries: entries.map { $0.withIdentity(inspector.startTime(pid: $0.pid)) })
     }
 
     private static let startAndArgs = NSRegularExpression.compile(

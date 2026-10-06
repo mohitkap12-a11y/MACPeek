@@ -268,7 +268,7 @@ export const utilities: Utility[] = [
     metaTitle: 'ProcessPeek: Inspect a Mac Process, Its Parent, Ports and Children | MacPeek',
     metaDescription: "ProcessPeek shows a Mac process's path, parent, user, start time, command line, listening ports and children. It is deliberately not an Activity Monitor replacement.",
     problem: 'You see an unfamiliar process name. Where did it come from, what started it, and what is it listening on?',
-    solution: 'ProcessPeek lists your processes in a searchable list. Open one to see how it was launched (its command name), parent, user, start time, how long it has been running, CPU and memory, its full command line, the ports it listens on, and its child processes, and jump to the parent or any child. It is deliberately not Activity Monitor: it explains one process rather than charting all of them.',
+    solution: 'ProcessPeek lists your processes in a searchable list. Open one to see how it was launched (its command name), parent, user, start time, how long it has been running, CPU and memory, its full command line, the ports it listens on, and its child processes, and jump to the parent or any child. It is deliberately not Activity Monitor: it explains one process rather than charting all of them. Ending a process is optional and uses the same safe-termination checks as PortPeek; nothing is ever ended by default.',
     features: [
       'Search by name, PID, user or path; sort by name, CPU, memory or PID',
       'Name, PID, parent, user, start time and running time',
@@ -276,11 +276,11 @@ export const utilities: Utility[] = [
       'Listening TCP and UDP ports of that process (for your own processes; macOS does not let MacPeek see other users’)',
       'Parent and children, one click to jump to any of them',
       'Your processes by default; other users’ processes only if you include them',
-      'Read-only: it never ends or changes a process',
+      'Optional Kill Process through the shared safe-termination service: confirmed, identity re-checked (so a reused PID is never hit), SIGTERM first, explicit force kill',
     ],
     how: ['Open ProcessPeek and search for a process.', 'Open a row to read its identity and relationships.', 'Jump to its parent or children.'],
     reads: ['The process list (ps); a process’s command line and listening ports only when you open it'],
-    access: 'None. Some details are unavailable for other users’ processes.',
+    access: 'None to inspect. Some details are unavailable for other users’ processes, and you can terminate only processes your user owns.',
     guides: [],
     preview: {
       title: 'ProcessPeek', search: 'Search processes…',
@@ -289,8 +289,8 @@ export const utilities: Utility[] = [
         { title: 'esbuild', sub: 'PID 18440 · you', badge: '31 MB' },
         { title: 'zsh', sub: 'PID 5120 · you', badge: '3 MB' },
       ],
-      expanded: { index: 0, kv: [['Parent', 'npm (PID 18420)'], ['Running for', '2h 14m'], ['Listening ports', 'TCP *:3000'], ['Children', '1 process']], action: 'Copy command line' },
-      footer: ['Read-only', 'Reads when you open it'],
+      expanded: { index: 0, kv: [['Parent', 'npm (PID 18420)'], ['Running for', '2h 14m'], ['Listening ports', 'TCP *:3000'], ['Status', '✓ Can terminate']], action: 'Kill Process' },
+      footer: ['Kill is explicit', 'Reads when you open it'],
     },
   },
   {
