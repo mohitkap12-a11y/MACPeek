@@ -179,4 +179,5 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 .notice { border: 1px solid color-mix(in srgb, #f5a524 45%, transparent); background: color-mix(in srgb, #f5a524 9%, transparent); border-radius: 16px; padding: 16px 18px; }
 .steps4 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); counter-reset: s; }
 .hero .lead strong { color: var(--text); }
-@media (max-width: 900px) { .split { grid-template-columns: 1fr; gap: 28px; } }
+.split.rev .visual { order: -1; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; gap: 28px; } .split.rev .visual { order: 0; } }

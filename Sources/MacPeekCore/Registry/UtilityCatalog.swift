@@ -54,10 +54,10 @@ public enum UtilityCatalog {
     public static let fileLockPeek = UtilityInfo(
         id: "filelockpeek", name: "FileLockPeek", question: "What process is using this file?",
         tagline: "Find what's holding a file open.",
-        summary: "Pick a file or folder and see which processes have it open. Terminating a holder is optional and uses the same safe-termination checks as PortPeek.",
-        icon: "lock.doc", category: .developer, availability: .comingSoon,
-        reads: ["Open files of processes owned by your user (via lsof), only for the path you choose"],
-        permissions: ["None. You can terminate only processes your user owns."]
+        summary: "Choose a file or folder (or drop one in) and see which of your processes have it open, locked, or as their working directory. Ending a holder is optional and uses the same safe-termination checks as PortPeek; nothing is ever terminated by default.",
+        icon: "lock.doc", category: .developer, availability: .available,
+        reads: ["Open files of processes owned by your user (via lsof), only for the path you choose, only when you scan"],
+        permissions: ["None to scan. Other users' processes are not listed, and you can terminate only processes your user owns."]
     )
     public static let processPeek = UtilityInfo(
         id: "processpeek", name: "ProcessPeek", question: "What exactly is this process?",

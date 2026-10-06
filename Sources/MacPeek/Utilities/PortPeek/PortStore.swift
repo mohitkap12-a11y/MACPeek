@@ -3,12 +3,6 @@ import Foundation
 import MacPeekCore
 import PortPeekKit
 
-struct Banner: Equatable {
-    enum Kind { case success, error }
-    let kind: Kind
-    let text: String
-}
-
 /// Observable state for the UI. Owns scanning/polling and the kill flow; contains no AppKit.
 @MainActor
 final class PortStore: ObservableObject {

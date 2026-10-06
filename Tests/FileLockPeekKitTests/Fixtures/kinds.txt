@@ -1,0 +1,15 @@
+p900
+cfoo
+Lmohit
+ftxt
+tREG
+n/Applications/Foo.app/Contents/MacOS/Foo
+fmem
+tREG
+n/Applications/Foo.app/Contents/Frameworks/Bar.dylib
+f3r
+tREG
+n/Applications/Foo.app/Contents/Frameworks/Bar.dylib
+fNOFD
+tDIR
+n/Applications/Foo.app/Contents/Frameworks

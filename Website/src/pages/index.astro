@@ -5,10 +5,9 @@ import AppShot from '../components/AppShot.astro';
 import DownloadCTA from '../components/DownloadCTA.astro';
 import UtilityCard from '../components/UtilityCard.astro';
 import { SITE, liveTagLong, liveSentence, builtInSentence } from '../site';
-import { utilities, byId, available, comingSoon } from '../data/utilities';
+import { utilities, available, comingSoon } from '../data/utilities';
 
 const title = 'MacPeek: The Tiny Utilities macOS Should Have Built In';
-const portpeek = byId('portpeek')!;
 const everyday = utilities.filter((u) => u.category === 'everyday');
 const developer = utilities.filter((u) => u.category === 'developer');
 const jsonLd = [
@@ -62,22 +61,24 @@ const jsonLd = [
     </div>
   </section>
 
-  <section class="block alt" id="portpeek">
-    <div class="wrap split">
-      <div>
-        <div class="eyebrow">{liveTagLong}</div>
-        <h2>PortPeek: see what's using your ports. Kill it in one click.</h2>
-        <p class="sub" style="margin-bottom:12px">{portpeek.solution}</p>
-        <ul class="checks">
-          {portpeek.features.slice(0, 4).map((f) => <li>{f}</li>)}
-        </ul>
-        <a class="btn" href="/utilities/portpeek/">About PortPeek</a>
+  {available.map((u, i) => (
+    <section class:list={['block', { alt: i % 2 === 0 }]} id={u.id}>
+      <div class:list={['wrap', 'split', { rev: i % 2 === 1 }]}>
+        <div>
+          <div class="eyebrow">{liveTagLong}</div>
+          <h2>{u.name}: {u.tagline}</h2>
+          <p class="sub" style="margin-bottom:12px">{u.solution}</p>
+          <ul class="checks">
+            {u.features.slice(0, 4).map((f) => <li>{f}</li>)}
+          </ul>
+          <a class="btn" href={`/utilities/${u.id}/`}>About {u.name}</a>
+        </div>
+        <div class="visual">
+          <AppShot name={u.id} alt={`${u.name} screen`} preview={u.preview} />
+        </div>
       </div>
-      <div class="visual">
-        <AppShot name="portpeek" alt="PortPeek listing listening ports with the node process on port 3000 expanded and a Kill Process button" preview={portpeek.preview} />
-      </div>
-    </div>
-  </section>
+    </section>
+  ))}
 
   <section class="block">
     <div class="wrap center">

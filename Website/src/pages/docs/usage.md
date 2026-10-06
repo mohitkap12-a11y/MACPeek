@@ -22,6 +22,13 @@ When the popover opens, enabled utilities may take one quick snapshot to fill in
 5. **Kill Process.** MacPeek confirms (configurable), re-checks the target and asks the process to quit gracefully.
 6. **Verify.** On success you see "✓ Port 3000 freed". MacPeek confirms the process exited and the port is released before it says so.
 
+## Using FileLockPeek
+1. Open **FileLockPeek** and choose a file or folder: click **Choose…**, drop one onto the popover, or paste a path and press Return.
+2. MacPeek lists the processes that have it open, and how: open for reading or writing, locked, working directory, executable or memory-mapped.
+3. Select a process to copy its PID or the path, reveal the item in Finder, or **Kill Process** (same safe checks as PortPeek; nothing is ever terminated for you).
+
+FileLockPeek scans **only when you ask**, and a folder scan includes everything inside it, so large folders can take a moment.
+
 ## Keyboard and context menu
 - Arrow keys move the selection; `⌘R` refreshes.
 - Right-click a row to copy the port, PID or address, or open `http://localhost:<port>`.

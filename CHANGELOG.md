@@ -3,6 +3,13 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- **FileLockPeek**: choose (or drop, or paste) a file or folder and see which of your processes have it open, locked,
+  as their working directory, as their executable or memory-mapped; copy PID/path, reveal in Finder, and optionally end a
+  holder through the shared safe-termination service. Scans only on request; folder scans are recursive.
+### Changed
+- Shared `Banner`, `KillConfirmationView` and `LsofEscape` moved out of PortPeek so utilities reuse them.
+
 ### Changed
 - **Rebrand: PortPeek is now a utility inside MacPeek** — a menu-bar app hosting a family of small utilities.
   Bundle ID `app.macpeek.MacPeek`, `MacPeek-x.y.z.dmg`, `SHA256SUMS`.

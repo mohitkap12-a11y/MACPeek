@@ -7,5 +7,6 @@ enum Log {
     private static let subsystem = "app.macpeek.MacPeek"
     static let app = Logger(subsystem: subsystem, category: "MacPeek")
     static let portPeek = Logger(subsystem: subsystem, category: "MacPeek.PortPeek")
+    static let fileLockPeek = Logger(subsystem: subsystem, category: "MacPeek.FileLockPeek")
 }
 #endif

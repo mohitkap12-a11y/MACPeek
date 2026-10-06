@@ -20,7 +20,8 @@ const isRedirect = (p) => /http-equiv="refresh"/i.test(html(p));
 const content = () => pages.filter((p) => !p.includes('/404/') && !isRedirect(p));
 
 const UTILS = ['portpeek', 'displaypeek', 'usbpeek', 'netpeek', 'batterypeek', 'sleeppeek', 'filelockpeek', 'processpeek', 'diskpeek', 'envpeek', 'dnspeek'];
-const COMING_SOON = UTILS.filter((u) => u !== 'portpeek');
+const LIVE = ['portpeek', 'filelockpeek'];
+const COMING_SOON = UTILS.filter((u) => !LIVE.includes(u));
 
 test('has expected pages', () => {
   const routes = ['', 'utilities', 'download', 'privacy', 'security',
@@ -28,7 +29,7 @@ test('has expected pages', () => {
     ...['installation', 'usage', 'managing-utilities', 'ports', 'killing-processes', 'permissions', 'troubleshooting'].map((d) => `docs/${d}`),
     ...['how-to-find-what-is-using-a-port-on-mac', 'how-to-kill-a-process-on-a-port-on-mac', 'how-to-free-port-3000-on-mac', 'lsof-mac-find-process-by-port',
       'mac-port-manager', 'mac-port-monitor', 'how-to-check-monitor-refresh-rate-on-mac', 'how-to-see-usb-devices-on-mac', 'why-wont-my-mac-go-to-sleep',
-      'how-to-check-macbook-battery-health', 'how-to-check-wifi-signal-strength-on-mac'].map((b) => `blog/${b}`)];
+      'how-to-check-macbook-battery-health', 'how-to-check-wifi-signal-strength-on-mac', 'how-to-find-what-process-is-using-a-file-on-mac'].map((b) => `blog/${b}`)];
   for (const r of routes) assert.ok(existsSync(join(dist, r, 'index.html')), `missing /${r}`);
   assert.ok(isRedirect(join(dist, 'docs/privacy/index.html')), '/docs/privacy/ should redirect to /privacy/');
 });
@@ -98,16 +99,18 @@ test('every utility page has the sections the guide requires', () => {
   }
 });
 
-test('honesty: unreleased utilities say Coming soon; only PortPeek claims Available', () => {
+test('honesty: unreleased utilities say Coming soon; only built utilities claim to be ready', () => {
   for (const u of COMING_SOON) {
     const h = html(join(dist, 'utilities', u, 'index.html'));
     assert.match(h, /Coming soon/, `${u}: must say Coming soon`);
     assert.doesNotMatch(h, /Available now|Ready · first release/, `${u}: must not claim availability`);
     assert.match(h, /not (part of|released|available)/i, `${u}: must say it is not released yet`);
   }
-  const pp = html(join(dist, 'utilities', 'portpeek', 'index.html'));
-  assert.match(pp, /Available now|Ready · first release pending/);
-  assert.doesNotMatch(pp, /Coming soon/);
+  for (const u of LIVE) {
+    const h = html(join(dist, 'utilities', u, 'index.html'));
+    assert.match(h, /Available now|Ready · first release pending/, `${u}: should say it is built`);
+    assert.doesNotMatch(h, /Coming soon/, `${u}: is built, must not say Coming soon`);
+  }
 });
 
 test('guides for unreleased utilities do not pitch a download', () => {

@@ -49,6 +49,7 @@ export const blogPosts = [
   { slug: 'lsof-mac-find-process-by-port', label: 'lsof on Mac: find process by port', utility: 'portpeek' },
   { slug: 'mac-port-manager', label: 'Mac port manager', utility: 'portpeek' },
   { slug: 'mac-port-monitor', label: 'Mac port monitor', utility: 'portpeek' },
+  { slug: 'how-to-find-what-process-is-using-a-file-on-mac', label: 'Find what process is using a file on Mac', utility: 'filelockpeek' },
   { slug: 'how-to-check-monitor-refresh-rate-on-mac', label: 'Check monitor refresh rate on Mac', utility: 'displaypeek' },
   { slug: 'how-to-see-usb-devices-on-mac', label: 'See USB devices on Mac', utility: 'usbpeek' },
   { slug: 'why-wont-my-mac-go-to-sleep', label: "Why won't my Mac go to sleep?", utility: 'sleeppeek' },
