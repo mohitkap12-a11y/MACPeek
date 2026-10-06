@@ -3,8 +3,8 @@ export const SITE = {
   tagline: "See what's using your ports. Kill it in one click.",
   description:
     'PortPeek is a lightweight, open-source macOS menu bar app for finding processes using network ports and freeing them without opening Terminal.',
-  github: 'https://github.com/mohitkap12-a11y/PortPeek',
-  releases: 'https://github.com/mohitkap12-a11y/PortPeek/releases/latest',
+  github: 'https://github.com/mohitkap12-a11y/MACPeek',
+  releases: 'https://github.com/mohitkap12-a11y/MACPeek/releases/latest',
 };
 
 export const docsNav = [

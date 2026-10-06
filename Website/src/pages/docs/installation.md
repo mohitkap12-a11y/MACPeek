@@ -9,7 +9,7 @@ date: "2026-10-06"
 PortPeek needs **macOS 13 (Ventura) or later**, on Apple silicon or Intel.
 
 ## Steps
-1. Download `PortPeek-x.y.z.dmg` from the [latest release](https://github.com/mohitkap12-a11y/PortPeek/releases/latest).
+1. Download `PortPeek-x.y.z.dmg` from the [latest release](https://github.com/mohitkap12-a11y/MACPeek/releases/latest).
 2. Open the DMG.
 3. Drag **PortPeek** to **Applications**.
 4. Launch PortPeek.

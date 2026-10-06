@@ -57,19 +57,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "$NOTARY_KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          xcrun notarytool submit "dist/PortPeek-${VERSION}.dmg" \
+          xcrun notarytool submit "dist/MacPeek-${VERSION}.dmg" \
             --key "$RUNNER_TEMP/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" \
             --wait --timeout 30m
-          xcrun stapler staple "dist/PortPeek-${VERSION}.dmg"
-          xcrun stapler validate "dist/PortPeek-${VERSION}.dmg"
-          spctl --assess --type open --context context:primary-signature -v "dist/PortPeek-${VERSION}.dmg"
+          xcrun stapler staple "dist/MacPeek-${VERSION}.dmg"
+          xcrun stapler validate "dist/MacPeek-${VERSION}.dmg"
+          spctl --assess --type open --context context:primary-signature -v "dist/MacPeek-${VERSION}.dmg"
           rm "$RUNNER_TEMP/notary.p8"
-          (cd dist && shasum -a 256 "PortPeek-${VERSION}.dmg" > "PortPeek-${VERSION}.dmg.sha256")
+          (cd dist && shasum -a 256 "MacPeek-${VERSION}.dmg" > SHA256SUMS)
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/PortPeek-${{ env.VERSION }}.dmg
-            dist/PortPeek-${{ env.VERSION }}.dmg.sha256
+            dist/MacPeek-${{ env.VERSION }}.dmg
+            dist/SHA256SUMS
           generate_release_notes: true
