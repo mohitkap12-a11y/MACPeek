@@ -3,8 +3,9 @@ import Foundation
 /// Turns cumulative per-process counters into per-interval rates.
 ///
 /// - The first sample only sets a baseline (there is nothing to subtract yet).
-/// - A counter that goes *down* means the PID now belongs to a different process: that process starts a new
-///   baseline and nothing negative or absurd is ever reported.
+/// - A PID that comes back with a different `generation` (process start time) is a different process and starts
+///   a new baseline. Without a generation, a counter that goes *down* means the same; nothing negative or absurd
+///   is ever reported.
 /// - A process that was not in the previous sample started inside the interval, so everything it has done so
 ///   far happened inside it, and its whole counter counts as that interval's activity.
 public struct DiskIOSampler: Sendable {
@@ -42,11 +43,16 @@ public struct DiskIOSampler: Sendable {
             let readDelta: UInt64
             let writeDelta: UInt64
             if let old = previous[counter.pid] {
-                if counter.bytesRead >= old.bytesRead && counter.bytesWritten >= old.bytesWritten {
+                if old.generation != counter.generation {
+                    // A different process now holds this PID (it started inside the interval), whatever its counters.
+                    totals[counter.pid] = Total()
+                    readDelta = counter.bytesRead
+                    writeDelta = counter.bytesWritten
+                } else if counter.bytesRead >= old.bytesRead && counter.bytesWritten >= old.bytesWritten {
                     readDelta = counter.bytesRead - old.bytesRead
                     writeDelta = counter.bytesWritten - old.bytesWritten
                 } else {
-                    // The PID was reused: a new process with its own counters.
+                    // Counters went down with no generation to tell us why: treat it as a reused PID and start over.
                     totals[counter.pid] = Total()
                     readDelta = 0
                     writeDelta = 0

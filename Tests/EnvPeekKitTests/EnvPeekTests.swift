@@ -90,6 +90,8 @@ final class PathAnalyzerTests: XCTestCase {
         XCTAssertEqual(entries[3].duplicateOf, 0)
         XCTAssertEqual(entries[3].notes, ["Duplicate of entry 1"])
         XCTAssertTrue(entries[4].isRelative)
+        XCTAssertNil(entries[4].exists, "a relative entry depends on the user's working directory and is not checked")
+        XCTAssertEqual(entries[4].notes, ["Relative path"])
         XCTAssertFalse(entries[5].isRelative, "~ is expanded by the shell")
     }
 
@@ -116,6 +118,14 @@ final class LiveEnvironmentReaderTests: XCTestCase {
         XCTAssertNotNil(args.executable)
         XCTAssertFalse(args.arguments.isEmpty)
         XCTAssertTrue(args.environment.contains { $0.name == "PATH" }, "a test process always starts with PATH")
+    }
+
+    func testOutOfRangePIDsAreErrorsNotCrashes() {
+        for pid in [0, -1, 2_147_483_648, Int.max] {
+            XCTAssertThrowsError(try SystemProcessEnvironmentReader().read(pid: pid), "pid \(pid)") {
+                XCTAssertEqual($0 as? EnvError, .noSuchProcess)
+            }
+        }
     }
 
     func testAProcessThatDoesNotExistIsAnError() {

@@ -6,13 +6,29 @@ public struct DiskCounters: Equatable, Sendable {
     public let name: String
     public let bytesRead: UInt64
     public let bytesWritten: UInt64
+    /// Identifies *which* process currently holds the PID (its start time as the OS reports it). A PID that comes
+    /// back with a different generation is a different process, even if its counters happen to be higher. Zero
+    /// means "unknown", in which case only a counter that goes down reveals a reused PID.
+    public let generation: UInt64
 
-    public init(pid: Int, name: String, bytesRead: UInt64, bytesWritten: UInt64) {
+    public init(pid: Int, name: String, bytesRead: UInt64, bytesWritten: UInt64, generation: UInt64 = 0) {
         self.pid = pid
         self.name = name
         self.bytesRead = bytesRead
         self.bytesWritten = bytesWritten
+        self.generation = generation
     }
+}
+
+/// A flag a synchronous reader polls so that cancelling the surrounding task can stop a scan that is already running.
+public final class CancellationFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    public init() {}
+
+    public var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
+    public func cancel() { lock.lock(); cancelled = true; lock.unlock() }
 }
 
 public struct DiskReadResult: Equatable, Sendable {

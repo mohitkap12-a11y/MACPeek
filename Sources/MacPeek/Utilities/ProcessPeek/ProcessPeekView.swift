@@ -187,6 +187,9 @@ private struct ProcessDetailView: View {
         VStack(alignment: .leading, spacing: 2) {
             if store.detailsLoading {
                 HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading details…").font(.caption).foregroundStyle(.secondary) }
+            } else if let details = store.details, details.pid == entry.pid, details.processChanged {
+                Text("This process has exited, or its PID now belongs to a different process. Refresh to update the list.")
+                    .font(.caption).foregroundStyle(.orange)
             } else if let details = store.details, details.pid == entry.pid {
                 HStack {
                     Text("Command line").font(.caption).foregroundStyle(.secondary)
@@ -204,7 +207,7 @@ private struct ProcessDetailView: View {
     }
 
     @ViewBuilder private var ports: some View {
-        if let details = store.details, details.pid == entry.pid {
+        if let details = store.details, details.pid == entry.pid, !details.processChanged {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Listening ports").font(.caption).foregroundStyle(.secondary)
                 if details.listeningPorts.isEmpty {

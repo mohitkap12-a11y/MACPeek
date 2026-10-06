@@ -10,6 +10,14 @@ public enum PSParser {
     private static let row = NSRegularExpression.compile(
         #"^\s*(\d+)\s+(\d+)\s+(-?\d+)\s+(\S+)\s+(\S+)\s+([A-Z][a-z]{2} [A-Z][a-z]{2}\s+\d{1,2} \d{2}:\d{2}:\d{2} \d{4})\s+(\S+)\s+([0-9.]+)\s+(\d+)\s+(.+?)\s*$"#)
 
+    /// Parses `lstart` ("Mon Oct  5 14:01:58 2026", local time; two spaces for single-digit days).
+    public static func date(from lstart: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE MMM d HH:mm:ss yyyy"
+        return formatter.date(from: lstart.split(whereSeparator: \.isWhitespace).joined(separator: " "))
+    }
+
     public static func parse(_ text: String) -> [ProcessEntry] {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

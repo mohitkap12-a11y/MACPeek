@@ -4,9 +4,14 @@ import Darwin
 #endif
 
 public protocol DiskIOReading: Sendable {
-    /// Reads the counters of every process the current user may inspect. Synchronous and quick (one call per
-    /// process); callers run it off the main thread.
-    func read() throws -> DiskReadResult
+    /// Reads the counters of every process the current user may inspect. Synchronous (one call per process), so
+    /// callers run it off the main thread and pass `isCancelled`, which is polled between processes: a cancelled
+    /// scan throws `CancellationError` promptly instead of running to the end.
+    func read(isCancelled: @Sendable () -> Bool) throws -> DiskReadResult
+}
+
+public extension DiskIOReading {
+    func read() throws -> DiskReadResult { try read(isCancelled: { false }) }
 }
 
 public enum DiskReadError: Error, LocalizedError, Equatable {
@@ -25,18 +30,20 @@ public enum DiskReadError: Error, LocalizedError, Equatable {
 public struct SystemDiskIOReader: DiskIOReading {
     public init() {}
 
-    public func read() throws -> DiskReadResult {
+    public func read(isCancelled: @Sendable () -> Bool) throws -> DiskReadResult {
         let pids = allPIDs()
         guard !pids.isEmpty else { throw DiskReadError.unavailable("macOS did not list any processes.") }
         var counters: [DiskCounters] = []
         var unreadable = 0
         for pid in pids where pid > 0 {
+            if isCancelled() { throw CancellationError() }
             guard let usage = rusage(pid) else {
                 unreadable += 1
                 continue
             }
             counters.append(DiskCounters(pid: Int(pid), name: name(of: pid),
-                                         bytesRead: usage.ri_diskio_bytesread, bytesWritten: usage.ri_diskio_byteswritten))
+                                         bytesRead: usage.ri_diskio_bytesread, bytesWritten: usage.ri_diskio_byteswritten,
+                                         generation: usage.ri_proc_start_abstime))
         }
         return DiskReadResult(counters: counters, unreadable: unreadable)
     }
@@ -72,7 +79,7 @@ public struct SystemDiskIOReader: DiskIOReading {
 public struct SystemDiskIOReader: DiskIOReading {
     public init() {}
 
-    public func read() throws -> DiskReadResult {
+    public func read(isCancelled: @Sendable () -> Bool) throws -> DiskReadResult {
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: "/proc") else {
             throw DiskReadError.unavailable("/proc is not available.")
         }
@@ -80,6 +87,7 @@ public struct SystemDiskIOReader: DiskIOReading {
         var unreadable = 0
         for entry in entries {
             guard let pid = Int(entry) else { continue }
+            if isCancelled() { throw CancellationError() }
             guard let io = try? String(contentsOfFile: "/proc/\(pid)/io", encoding: .utf8) else {
                 unreadable += 1
                 continue
@@ -96,9 +104,17 @@ public struct SystemDiskIOReader: DiskIOReading {
             }
             let comm = (try? String(contentsOfFile: "/proc/\(pid)/comm", encoding: .utf8))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? "PID \(pid)"
-            counters.append(DiskCounters(pid: pid, name: comm, bytesRead: read, bytesWritten: written))
+            counters.append(DiskCounters(pid: pid, name: comm, bytesRead: read, bytesWritten: written,
+                                         generation: startTicks(pid: pid)))
         }
         return DiskReadResult(counters: counters, unreadable: unreadable)
+    }
+
+    /// Field 22 of `/proc/<pid>/stat` (start time in clock ticks since boot): unique per process lifetime.
+    private func startTicks(pid: Int) -> UInt64 {
+        guard let stat = try? String(contentsOfFile: "/proc/\(pid)/stat", encoding: .utf8), let close = stat.lastIndex(of: ")") else { return 0 }
+        let fields = stat[stat.index(after: close)...].split(separator: " ")
+        return fields.count > 19 ? (UInt64(fields[19]) ?? 0) : 0
     }
 }
 #endif

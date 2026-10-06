@@ -16,7 +16,8 @@ final class EnvStore: ObservableObject {
     @Published var query = ""
     @Published var pidText = ""
     @Published private(set) var variables: [EnvVariable] = []
-    @Published private(set) var source: EnvSource = .macPeek
+    /// What the list on screen came from. Nil when nothing is shown, so the label can never name a stale source.
+    @Published private(set) var source: EnvSource?
     @Published private(set) var error: String?
     @Published private(set) var revealed: Set<String> = []
     @Published var expandedPathVariable: String?
@@ -47,9 +48,9 @@ final class EnvStore: ObservableObject {
     /// Reads the environment of the process in `pidText`. Only processes your user owns can be read.
     func inspectProcess() {
         let trimmed = pidText.trimmingCharacters(in: .whitespaces)
-        guard let pid = Int(trimmed), pid > 0 else {
+        guard let pid = Int(trimmed), pid > 0, pid <= Int(Int32.max) else {
             clearValues()
-            error = "Enter a process ID (PID). ProcessPeek shows PIDs."
+            error = "Enter a valid process ID (PID). ProcessPeek shows PIDs."
             return
         }
         do {
@@ -78,6 +79,7 @@ final class EnvStore: ObservableObject {
         revealed = []
         expandedPathVariable = nil
         variables = []
+        source = nil
     }
 
     func enter() {
@@ -85,6 +87,7 @@ final class EnvStore: ObservableObject {
     }
 
     private func clearValues() {
+        source = nil
         variables = []
         revealed = []
         expandedPathVariable = nil

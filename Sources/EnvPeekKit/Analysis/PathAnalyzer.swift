@@ -33,6 +33,8 @@ public struct PathEntry: Identifiable, Equatable, Sendable {
 }
 
 public enum PathAnalyzer {
+    /// Relative entries depend on the working directory of whoever uses the variable, which is unknown here, so
+    /// their existence is never checked (`exists` is nil) rather than answered for MacPeek's own directory.
     public static func analyze(_ value: String, directoryExists: (String) -> Bool) -> [PathEntry] {
         var firstSeen: [String: Int] = [:]
         return value.split(separator: ":", omittingEmptySubsequences: false).enumerated().map { index, part in
@@ -41,7 +43,7 @@ public enum PathAnalyzer {
             let duplicate = empty ? nil : firstSeen[path]
             if !empty, firstSeen[path] == nil { firstSeen[path] = index }
             let relative = !empty && !path.hasPrefix("/") && !path.hasPrefix("~")
-            return PathEntry(index: index, path: path, exists: empty ? nil : directoryExists(path),
+            return PathEntry(index: index, path: path, exists: (empty || relative) ? nil : directoryExists(path),
                              duplicateOf: duplicate, isEmpty: empty, isRelative: relative)
         }
     }

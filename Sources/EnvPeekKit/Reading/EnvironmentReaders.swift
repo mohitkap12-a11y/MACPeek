@@ -22,6 +22,8 @@ public struct SystemProcessEnvironmentReader: ProcessEnvironmentReading {
     public init() {}
 
     public func read(pid: Int) throws -> ProcessArguments {
+        // A PID is a 32-bit value: anything outside that range cannot be a process, and must not trap in Int32(_:).
+        guard pid > 0, pid <= Int(Int32.max) else { throw EnvError.noSuchProcess }
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, Int32(pid)]
         var size = 0
         guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0, size > 0 else { throw map(errno) }
@@ -49,6 +51,7 @@ public struct SystemProcessEnvironmentReader: ProcessEnvironmentReading {
     public init() {}
 
     public func read(pid: Int) throws -> ProcessArguments {
+        guard pid > 0, pid <= Int(Int32.max) else { throw EnvError.noSuchProcess }
         guard FileManager.default.fileExists(atPath: "/proc/\(pid)") else { throw EnvError.noSuchProcess }
         guard let environ = FileManager.default.contents(atPath: "/proc/\(pid)/environ") else { throw EnvError.notPermitted }
         let cmdline = FileManager.default.contents(atPath: "/proc/\(pid)/cmdline") ?? Data()

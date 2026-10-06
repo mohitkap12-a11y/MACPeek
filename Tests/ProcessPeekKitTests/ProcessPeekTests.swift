@@ -122,50 +122,115 @@ final class SnapshotAndSearchTests: XCTestCase {
 }
 
 final class ListerTests: XCTestCase {
-    func testSnapshotRunsPsWithTheVerifiedColumns() async throws {
-        let runner = ScriptedRunner(["-axo": ok(try fixture("ps_sample"))])
-        let snapshot = try await PSProcessLister(runner: runner, ports: FakePorts(result: .success([]))).snapshot()
+    private let started = "Mon Oct  5 20:26:33 2026"
+
+    private func entry(pid: Int = 42, start: String? = "Mon Oct  5 20:26:33 2026") -> ProcessEntry {
+        ProcessEntry(pid: pid, ppid: 1, uid: 501, user: "me", state: "S", startTime: start.flatMap(PSParser.date(from:)),
+                     elapsed: "01:00", cpuPercent: 0, residentKB: 1, executable: "/usr/local/bin/node")
+    }
+
+    private func lister(_ runner: CommandRunning, ports: Result<[PortInfo], Error> = .success([])) -> PSProcessLister {
+        PSProcessLister(runner: runner, ports: FakePorts(result: ports))
+    }
+
+    func testSnapshotRunsPsInTheCLocaleWithTheVerifiedColumns() async throws {
+        let fixture = try fixture("ps_sample")
+        let runner = RoutedRunner { _ in output(fixture) }
+        let snapshot = try await lister(runner).snapshot()
         XCTAssertEqual(snapshot.entries.count, 41)
-        XCTAssertEqual(runner.calls.first?.0, "/bin/ps")
-        XCTAssertEqual(runner.calls.first?.1, ["-axo", "pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm"])
+        XCTAssertEqual(runner.calls.first?.0, "/usr/bin/env")
+        // LC_ALL=C: ps prints lstart in the user's locale otherwise, which the parser cannot read.
+        XCTAssertEqual(runner.calls.first?.1, ["LC_ALL=C", "/bin/ps", "-axo", "pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm"])
     }
 
     func testPsFailureCarriesStderr() async {
-        let runner = ScriptedRunner(["-axo": failed("ps broke")])
+        let runner = RoutedRunner { _ in failure("ps broke") }
         do {
-            _ = try await PSProcessLister(runner: runner, ports: FakePorts(result: .success([]))).snapshot()
+            _ = try await lister(runner).snapshot()
             XCTFail("expected throw")
         } catch {
             XCTAssertEqual(error as? ProcessListError, .commandFailed("ps broke"))
         }
     }
 
+    func testRowsThatAllFailToParseAreAnErrorNotAnEmptyList() async {
+        let runner = RoutedRunner { _ in output("  PID  PPID\n1 0 root un-parseable row in some other locale\n") }
+        do {
+            _ = try await lister(runner).snapshot()
+            XCTFail("expected throw")
+        } catch {
+            guard case ProcessListError.commandFailed = error else { return XCTFail("wrong error \(error)") }
+        }
+    }
+
     func testDetailsHaveCommandLineAndOnlyThisProcessesPorts() async throws {
         let mine = PortInfo(port: 3000, protocolType: .tcp, address: "*", processName: "node", pid: 42)
         let other = PortInfo(port: 5000, protocolType: .tcp, address: "*", processName: "other", pid: 43)
-        let runner = ScriptedRunner(["-ww": ok("  /usr/local/bin/node server.js --port 3000\n")])
-        let details = try await PSProcessLister(runner: runner, ports: FakePorts(result: .success([mine, other]))).details(for: 42)
+        let line = started + "  /usr/local/bin/node server.js --port 3000\n"
+        let runner = RoutedRunner { _ in output(line) }
+        let details = try await lister(runner, ports: .success([mine, other])).details(for: entry())
+        XCTAssertFalse(details.processChanged)
         XCTAssertEqual(details.commandLine, "/usr/local/bin/node server.js --port 3000")
         XCTAssertEqual(details.listeningPorts, [mine])
         XCTAssertNil(details.portsNote)
-        XCTAssertEqual(runner.calls.first?.1, ["-ww", "-o", "args=", "-p", "42"])
+        XCTAssertEqual(runner.calls.first?.1, ["LC_ALL=C", "/bin/ps", "-ww", "-o", "lstart=,args=", "-p", "42"])
+        XCTAssertEqual(runner.calls.count, 2, "identity is confirmed before and after the slow lsof run")
     }
 
-    func testGoneProcessHasNoCommandLineAndPortFailureIsANote() async throws {
-        let runner = ScriptedRunner(["-ww": failed("", status: 1)])
-        let details = try await PSProcessLister(runner: runner, ports: FakePorts(result: .failure(PortDiscoveryError.commandFailed("lsof failed")))).details(for: 99)
+    func testAReusedPIDNeverShowsTheReplacementsDetails() async throws {
+        let replacement = "Tue Oct  6 09:00:00 2026  /bin/other --secret-flag\n"
+        let runner = RoutedRunner { _ in output(replacement) }
+        let port = PortInfo(port: 1, protocolType: .tcp, address: "*", processName: "other", pid: 42)
+        let details = try await lister(runner, ports: .success([port])).details(for: entry())
+        XCTAssertTrue(details.processChanged)
         XCTAssertNil(details.commandLine)
         XCTAssertTrue(details.listeningPorts.isEmpty)
+    }
+
+    func testAPIDReusedWhileLsofRanIsCaught() async throws {
+        let box = SequenceBox([output(started + "  /usr/local/bin/node\n"), output("Tue Oct  6 09:00:00 2026  /bin/other\n")])
+        let runner = RoutedRunner { _ in box.next() }
+        let details = try await lister(runner).details(for: entry())
+        XCTAssertTrue(details.processChanged)
+        XCTAssertNil(details.commandLine)
+    }
+
+    func testAnExitedProcessAndAnUnknownStartTimeAreBothChanged() async throws {
+        let gone = RoutedRunner { _ in failure("", status: 1) }
+        let exited = try await lister(gone).details(for: entry())
+        XCTAssertTrue(exited.processChanged)
+
+        let alive = RoutedRunner { _ in output(self.started + "  /usr/local/bin/node\n") }
+        let unknown = try await lister(alive).details(for: entry(start: nil))
+        XCTAssertTrue(unknown.processChanged, "without a start time the process cannot be confirmed, so nothing is shown")
+    }
+
+    func testPortFailureIsANote() async throws {
+        let runner = RoutedRunner { _ in output(self.started + "  /usr/local/bin/node\n") }
+        let details = try await lister(runner, ports: .failure(PortDiscoveryError.commandFailed("lsof failed"))).details(for: entry())
+        XCTAssertFalse(details.processChanged)
         XCTAssertNotNil(details.portsNote)
+        XCTAssertEqual(details.commandLine, "/usr/local/bin/node")
     }
 
     func testCancellationPropagates() async {
-        let runner = ScriptedRunner(["-ww": ok("x")])
+        let runner = RoutedRunner { _ in output(self.started + "  /usr/local/bin/node\n") }
         do {
-            _ = try await PSProcessLister(runner: runner, ports: FakePorts(result: .failure(CommandError.cancelled))).details(for: 1)
+            _ = try await lister(runner, ports: .failure(CommandError.cancelled)).details(for: entry())
             XCTFail("expected throw")
         } catch {
             XCTAssertEqual(error as? CommandError, .cancelled)
         }
+    }
+}
+
+final class StartTimeTests: XCTestCase {
+    func testDatesAgreeToTheSecond() {
+        let a = PSParser.date(from: "Mon Oct  5 20:26:33 2026")
+        XCTAssertTrue(PSProcessLister.sameProcess(a, a))
+        XCTAssertTrue(PSProcessLister.sameProcess(a, a?.addingTimeInterval(1)))
+        XCTAssertFalse(PSProcessLister.sameProcess(a, a?.addingTimeInterval(30)))
+        XCTAssertFalse(PSProcessLister.sameProcess(nil, a))
+        XCTAssertFalse(PSProcessLister.sameProcess(a, nil))
     }
 }

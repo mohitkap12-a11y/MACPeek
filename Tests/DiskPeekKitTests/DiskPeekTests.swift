@@ -51,6 +51,25 @@ final class DiskIOSamplerTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(after.first).readSinceOpened, 500, "the new process starts from its own baseline")
     }
 
+    func testAReusedPIDWithHigherCountersIsStillANewProcess() throws {
+        var sampler = DiskIOSampler()
+        func g(_ pid: Int, read: UInt64, write: UInt64, generation: UInt64) -> DiskCounters {
+            DiskCounters(pid: pid, name: "p\(pid)", bytesRead: read, bytesWritten: write, generation: generation)
+        }
+        _ = sampler.ingest([g(1, read: 1_000, write: 0, generation: 111)], at: t0)
+        let first = sampler.ingest([g(1, read: 2_000, write: 0, generation: 111)], at: t0.addingTimeInterval(2))
+        XCTAssertEqual(try XCTUnwrap(first.first).readSinceOpened, 1_000)
+
+        // A different process (new start time) now has PID 1 and has already read more than the old one had.
+        let reused = sampler.ingest([g(1, read: 50_000, write: 0, generation: 222)], at: t0.addingTimeInterval(4))
+        let row = try XCTUnwrap(reused.first)
+        XCTAssertEqual(row.readSinceOpened, 50_000, "the totals belong to the new process alone, not old + new")
+        XCTAssertEqual(row.readBytesPerSecond, 25_000, accuracy: 0.001, "it started inside the interval, so all of it happened there")
+
+        let next = sampler.ingest([g(1, read: 51_000, write: 0, generation: 222)], at: t0.addingTimeInterval(5))
+        XCTAssertEqual(try XCTUnwrap(next.first).readSinceOpened, 51_000)
+    }
+
     func testAProcessThatAppearsBetweenSamplesCountsEverythingItHasDone() throws {
         var sampler = DiskIOSampler()
         _ = sampler.ingest([c(1, read: 0, write: 0)], at: t0)
@@ -98,6 +117,19 @@ final class ByteFormattingTests: XCTestCase {
 }
 
 final class LiveDiskReaderTests: XCTestCase {
+    func testACancelledScanStopsInsteadOfRunningToTheEnd() {
+        XCTAssertThrowsError(try SystemDiskIOReader().read(isCancelled: { true })) { error in
+            XCTAssertTrue(error is CancellationError, "\(error)")
+        }
+    }
+
+    func testCancellationFlag() {
+        let flag = CancellationFlag()
+        XCTAssertFalse(flag.isCancelled)
+        flag.cancel()
+        XCTAssertTrue(flag.isCancelled)
+    }
+
     func testReadsCountersIncludingThisProcess() throws {
         let result: DiskReadResult
         do { result = try SystemDiskIOReader().read() } catch { throw XCTSkip("disk counters unavailable here: \(error)") }

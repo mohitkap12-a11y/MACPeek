@@ -52,8 +52,14 @@ final class DiskStore: ObservableObject {
     private func tick() async {
         let reader = self.reader
         do {
-            // One libproc call per process: keep it off the main thread.
-            let result = try await Task.detached(priority: .utility) { try reader.read() }.value
+            // One libproc call per process: keep it off the main thread, and let leaving the screen stop a scan that
+            // is already running (the reader polls the flag between processes).
+            let flag = CancellationFlag()
+            let result = try await withTaskCancellationHandler {
+                try await Task.detached(priority: .utility) { try reader.read(isCancelled: { flag.isCancelled }) }.value
+            } onCancel: {
+                flag.cancel()
+            }
             guard !Task.isCancelled else { return }
             let rows = sampler.ingest(result.counters, at: Date())
             activity = rows

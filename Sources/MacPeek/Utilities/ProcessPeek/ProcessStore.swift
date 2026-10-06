@@ -41,13 +41,13 @@ final class ProcessStore: ObservableObject {
         task = Task { [weak self] in await self?.load() }
     }
 
+    /// Called when the screen is left: stop any read and forget the opened process, so a command line (which can
+    /// contain secrets) does not stay in memory and nothing is left half-loaded on return.
     func cancel() {
         task?.cancel()
         task = nil
-        detailsTask?.cancel()
-        detailsTask = nil
         isLoading = false
-        detailsLoading = false
+        select(nil)
     }
 
     private func load() async {
@@ -56,9 +56,16 @@ final class ProcessStore: ObservableObject {
         do {
             let result = try await lister.snapshot()
             guard !Task.isCancelled else { return }
+            let previous = selectedPID.flatMap { snapshot?.entry(pid: $0) }
             snapshot = result
             error = nil
-            if let pid = selectedPID, result.entry(pid: pid) == nil { select(nil) }
+            // Close the opened process if it exited, or if its PID now belongs to a different process.
+            if let pid = selectedPID {
+                let current = result.entry(pid: pid)
+                if current == nil || (previous != nil && !PSProcessLister.sameProcess(previous?.startTime, current?.startTime)) {
+                    select(nil)
+                }
+            }
         } catch {
             if Task.isCancelled { return }
             self.error = error.localizedDescription
@@ -75,12 +82,12 @@ final class ProcessStore: ObservableObject {
         selectedPID = pid
         details = nil
         detailsLoading = false
-        guard let pid else { return }
+        guard let pid, let entry = snapshot?.entry(pid: pid) else { return }
         detailsLoading = true
         detailsTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await self.lister.details(for: pid)
+                let result = try await self.lister.details(for: entry)
                 guard !Task.isCancelled else { return }
                 self.details = result
             } catch {

@@ -44,7 +44,7 @@ struct EnvPeekView: View {
     }
 
     @ViewBuilder private var sourceNote: some View {
-        if let caveat = store.source.caveat, store.error == nil {
+        if let caveat = store.source?.caveat, store.error == nil {
             Label(caveat, systemImage: "info.circle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -58,9 +58,12 @@ struct EnvPeekView: View {
     @ViewBuilder private var content: some View {
         if let error = store.error {
             EmptyState(symbol: "lock.slash", title: "Can't read that environment", message: error)
-        } else if store.mode == .process && store.variables.isEmpty {
+        } else if store.source == nil && store.mode == .process {
             EmptyState(symbol: "terminal", title: "Enter a PID to inspect",
                        message: "Only processes owned by your user can be read, and macOS hides the environment of protected system processes.")
+        } else if store.variables.isEmpty {
+            EmptyState(symbol: "tray", title: "No environment returned",
+                       message: "macOS returned no environment for this process. It may be protected, or it may genuinely have none.")
         } else if store.visible.isEmpty {
             EmptyState(symbol: "magnifyingglass", title: "No matching variables")
         } else {
@@ -78,7 +81,7 @@ struct EnvPeekView: View {
 
     private var footer: some View {
         HStack {
-            Text(store.source.label).lineLimit(1)
+            Text(store.source?.label ?? "No process inspected").lineLimit(1)
             Spacer()
             Text("Values stay on screen and are never logged")
         }
@@ -116,8 +119,10 @@ private struct EnvRow: View {
                 }
                 Menu {
                     Button("Copy name") { copy(variable.name) }
-                    Button("Copy value") { copy(variable.value) }
-                    Button("Copy NAME=value") { copy(variable.assignment) }
+                    // A credential-looking value is only copyable after the user has revealed it.
+                    Button("Copy value") { copy(variable.value) }.disabled(!store.isRevealed(variable))
+                    Button("Copy NAME=value") { copy(variable.assignment) }.disabled(!store.isRevealed(variable))
+                    if !store.isRevealed(variable) { Text("Reveal the value to copy it") }
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
