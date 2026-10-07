@@ -74,7 +74,7 @@ test('FAQ JSON-LD on utility pages matches visible text', () => {
 
 test('sitemap lists every indexable page and nothing else', () => {
   const index = html(join(dist, 'sitemap-index.xml'));
-  assert.match(index, new RegExp(`${origin.replace(/[.]/g, '\\.')}/sitemap-0\\.xml`));
+  assert.match(index, new RegExp(`${origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/sitemap-0\\.xml`));
   const urls = [...html(join(dist, 'sitemap-0.xml')).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
   const expected = indexable.map(route).sort();
   assert.deepEqual([...urls].sort(), expected, 'sitemap and indexable pages differ');
