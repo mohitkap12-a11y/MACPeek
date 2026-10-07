@@ -1,0 +1,291 @@
+# MacPeek: utilities
+
+> MacPeek is an open-source collection of lightweight native macOS utilities for finding, inspecting and understanding the things macOS makes unnecessarily difficult to see.
+
+## PortPeek
+URL: https://www.macpeekapp.com/utilities/portpeek/
+Question it answers: What is using port 3000?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: “Port 3000 is already in use.” macOS gives you no screen that says which app owns a port, so you drop to Terminal, remember the right lsof flags, copy a PID and hope it is still the right process when you kill it.
+
+The solution: PortPeek shows every listening port visible to your user with the process, PID and address behind it. Search by port, process or PID, and free a port without Terminal. It asks the process to quit gracefully first and re-checks the target so a reused PID is never killed by mistake.
+
+Features:
+- Listening TCP and UDP ports, IPv4 and IPv6, with process, PID, address and state
+- Instant search by port (partial too), process name, PID or address
+- Safe kill: re-check → verify the same process → SIGTERM → confirm the port is free
+- Explicit force kill only after a graceful attempt fails, with a second re-check
+- Clear permission states: can terminate, permission required, protected
+- Copy port, PID, process name or address; refreshes live only while its screen is open
+
+How it works:
+1. Open MacPeek and choose PortPeek.
+2. Search for the port or process, then select a row to inspect it.
+3. Kill Process: PortPeek verifies the target, asks it to quit, and confirms the port was released.
+
+Reads (locally):
+- Listening sockets and the processes that own them, for your user account (via lsof)
+Access needed: None to view. You can terminate only processes your user owns.
+
+## DisplayPeek
+URL: https://www.macpeekapp.com/utilities/displaypeek/
+Question it answers: What display configuration am I actually running?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: Your external monitor looks soft, or you paid for 120 Hz. System Settings shows a slider and a list of scaled modes, but not a plain answer to “what is this display really running at?”.
+
+The solution: DisplayPeek lists every connected display with its panel resolution, the “looks like” desktop resolution, the refresh rate and the scaling that results, plus anything else macOS reports about it. One click copies it all. Where macOS does not report a detail (such as cable type), DisplayPeek leaves it out instead of guessing.
+
+Features:
+- Name, GPU, main display, mirroring and online state for every display
+- Panel resolution and the “looks like” desktop resolution, with the refresh rate macOS reports
+- Scaling worked out from the two: native, HiDPI (2×) or scaled
+- Everything else macOS reports about the display, shown as reported; serial numbers are always left out
+- Copy Display Details for support threads and bug reports
+- Never invents cable, HDR or protocol details that macOS does not report
+
+How it works:
+1. Open DisplayPeek from the launcher.
+2. Each connected display gets a card with its configuration.
+3. Copy the details to share.
+
+Reads (locally):
+- Display properties from macOS (via system_profiler), only while DisplayPeek is open
+Access needed: None.
+
+## USBPeek
+URL: https://www.macpeekapp.com/utilities/usbpeek/
+Question it answers: What is connected, and at what speed?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: Your external SSD feels slow. Is it on a fast port? Is the cable limiting it? The answer is buried in System Information, in a tree that is hard to read.
+
+The solution: USBPeek shows connected USB devices as a readable tree by bus, with the vendor and the link speed macOS reports for each one, and the status and speed of your Thunderbolt and USB4 ports. Serial numbers are never read, so they cannot be shown or copied by accident.
+
+Features:
+- USB devices as a tree by bus, with hubs and the devices behind them
+- Device name, vendor, and vendor:product ID
+- The link speed macOS negotiated (for example 480 Mb/s or 5 Gb/s), the USB version the device declares, and its class
+- Thunderbolt and USB4 ports with their status and speed, and the devices macOS lists on them
+- Serial numbers are never read: they cannot be displayed, copied or logged
+- Updates every few seconds while open, so plugging or unplugging a device shows up live
+- Copy device details
+
+How it works:
+1. Open USBPeek from the launcher.
+2. Browse the device tree and tap a device for its details.
+3. Check the link speed next to each device.
+
+Reads (locally):
+- USB devices from the I/O registry (ioreg) and Thunderbolt port status (system_profiler), only while USBPeek is open
+Access needed: None.
+
+## NetPeek
+URL: https://www.macpeekapp.com/utilities/netpeek/
+Question it answers: Is my network connection actually healthy?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: The internet feels flaky. Is it Wi-Fi signal, the router, DNS or your ISP? Answering that today means several Terminal commands and a Wi-Fi menu you have to Option-click.
+
+The solution: NetPeek shows how your Mac is connected: the active interface, its addresses, your router and DNS servers, and the Wi-Fi details macOS exposes (signal, noise, channel, standard, link rate). When you press Run checks it pings your router and DNS servers and tells you what it measured, separately from what it only suspects. There are no background tests and no speed tests.
+
+Features:
+- Active interface, IPv4 and IPv6 addresses, router and DNS servers at a glance
+- Wi-Fi signal, noise and signal-to-noise, channel and band, standard, link rate and security
+- Run checks: three pings to your router and each DNS server, on request only
+- Measured facts labelled apart from likely explanations; no reply is never presented as proof of an outage
+- Honest about limits: macOS hides the Wi-Fi network name from apps without Location access, and MacPeek does not ask for it
+- Copy connection details for a support thread
+
+How it works:
+1. Open NetPeek from the launcher.
+2. Read your interface, router and DNS details.
+3. Press Run checks to measure latency to your router and DNS servers.
+
+Reads (locally):
+- Network configuration (route, scutil, networksetup) and Wi-Fi details (system_profiler) while NetPeek is open; pings to your router and DNS servers only when you press Run checks
+Access needed: None. macOS hides the Wi-Fi network name from apps without Location access, and MacPeek does not request it.
+
+## BatteryPeek (coming soon, not released)
+URL: https://www.macpeekapp.com/utilities/batterypeek/
+Question it answers: What is my MacBook battery actually doing?
+Availability: planned, not released
+
+The problem: How healthy is your battery, how many cycles has it done, and why is it not charging? macOS spreads the answers over Settings, System Information and Terminal.
+
+The solution: BatteryPeek will show charge, power source, charging state, cycle count and the health and capacity indicators macOS reports. Estimates are labelled as estimates.
+
+Planned features:
+- Charge percentage, power source and charging state
+- Cycle count and capacity/health indicators as macOS reports them
+- Charging details and time estimates where available
+- Temperature only where macOS exposes it reliably
+- Never claims exact degradation when the OS gives an estimate
+
+How it works:
+1. Open BatteryPeek from the launcher.
+2. Read the live state and health indicators.
+3. Copy details if you need to share them.
+
+Will read (locally):
+- Battery and power-source information from macOS power services
+Access needed: None.
+
+## SleepPeek
+URL: https://www.macpeekapp.com/utilities/sleeppeek/
+Question it answers: Why isn't my Mac sleeping?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: Your Mac will not go to sleep, or wakes in the night. Something is holding it awake, but which process, and why, is hidden in pmset output.
+
+The solution: SleepPeek lists the active sleep assertions and the processes holding them, and can load recent sleep and wake events with the reason macOS logged. Every statement is labelled: “Reported by macOS” for what the system says, “Likely (inference)” for a common explanation. It is read-only and never changes a power setting.
+
+Features:
+- A clear headline: what is keeping the Mac or its display awake, if anything
+- Each blocking assertion with its process, PID, type, name and how long it has been held
+- macOS’s own “sleep prevented by” summary, quoted as reported
+- Facts and inferences labelled separately, with only a short list of conservative explanations
+- Recent sleep, wake and background-wake events with the reason exactly as macOS logged it, loaded only when you ask (it can take up to a minute)
+- Read-only: it never changes power settings. Copy the diagnosis for a bug report.
+
+How it works:
+1. Open SleepPeek from the launcher.
+2. See what is currently blocking sleep and what macOS says about it.
+3. Load the recent sleep and wake history when you want it.
+
+Reads (locally):
+- Power-management assertions and settings (pmset); the sleep/wake log only when you ask for it
+Access needed: None.
+
+## FileLockPeek
+URL: https://www.macpeekapp.com/utilities/filelockpeek/
+Question it answers: What process is using this file?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: “The operation can’t be completed because the item is in use.” Or a drive that will not eject. Something has the file or folder open, but macOS does not tell you what.
+
+The solution: FileLockPeek lets you choose a file or folder (or drop it in, or paste a path) and lists the processes holding it, with the process, PID and how it holds the path: open for reading or writing, locked, working directory, executable or memory-mapped. Ending a holder is optional and uses the same safe-termination checks as PortPeek; MacPeek never terminates anything by default.
+
+Features:
+- Choose, drop or paste a file or folder; folder scans include everything inside
+- Each holder shown with process name, PID and user
+- How it holds the path: open (read/write), locked, working directory, executable or memory-mapped
+- Copy PID or path, and reveal the item in Finder
+- Optional Kill Process through the shared safe-termination service: re-checked, SIGTERM first, explicit force kill
+- Scans only when you ask: no polling, nothing running in the background
+
+How it works:
+1. Open FileLockPeek and choose, drop or paste a path.
+2. See which processes hold it and how.
+3. Optionally end a holder you own: MacPeek re-checks it, asks it to quit, and confirms the file was released.
+
+Reads (locally):
+- Open files of processes owned by your user (via lsof), only for the path you choose, only when you scan
+Access needed: None to scan. Other users’ processes are not listed, and you can terminate only processes your user owns.
+
+## ProcessPeek
+URL: https://www.macpeekapp.com/utilities/processpeek/
+Question it answers: What exactly is this process?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: You see an unfamiliar process name. Where did it come from, what started it, and what is it listening on?
+
+The solution: ProcessPeek lists your processes in a searchable list. Open one to see how it was launched (its command name), parent, user, start time, how long it has been running, CPU and memory, its full command line, the ports it listens on, and its child processes, and jump to the parent or any child. It is deliberately not Activity Monitor: it explains one process rather than charting all of them. Ending a process is optional and uses the same safe-termination checks as PortPeek; nothing is ever ended by default.
+
+Features:
+- Search by name, PID, user or path; sort by name, CPU, memory or PID
+- Name, PID, parent, user, start time and running time
+- How it was launched (its command name) and the full command line, read only when you open a process
+- Listening TCP and UDP ports of that process (for your own processes; macOS does not let MacPeek see other users’)
+- Parent and children, one click to jump to any of them
+- Your processes by default; other users’ processes only if you include them
+- Optional Kill Process through the shared safe-termination service: confirmed, identity re-checked (so a reused PID is never hit), SIGTERM first, explicit force kill
+
+How it works:
+1. Open ProcessPeek and search for a process.
+2. Open a row to read its identity and relationships.
+3. Jump to its parent or children.
+
+Reads (locally):
+- The process list (ps); a process’s command line and listening ports only when you open it
+Access needed: None to inspect. Some details are unavailable for other users’ processes, and you can terminate only processes your user owns.
+
+## DiskPeek
+URL: https://www.macpeekapp.com/utilities/diskpeek/
+Question it answers: Which app is using my disk right now?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: The fans spin up and the disk light is on. Which app is reading and writing so much?
+
+The solution: DiskPeek samples the disk read and write counters macOS keeps for each of your processes, every couple of seconds, and shows the busiest ones as rates and as totals since you opened it. Everything is labelled as sampled. Sampling stops the moment you leave the screen, and it starts from a fresh baseline each time.
+
+Features:
+- Per-process read and write rates over the last sampling interval
+- Totals since you opened DiskPeek, so brief bursts are not missed
+- Order by what is busy right now or by the total since opening
+- Clearly labelled as sampled values
+- Samples only while the screen is open; nothing runs in the background
+- Other users’ and protected processes are counted but not shown, and it says so
+- Not a disk-space cleaner
+
+How it works:
+1. Open DiskPeek from the launcher.
+2. Wait one sampling interval for the first rates.
+3. Leave the screen and sampling stops.
+
+Reads (locally):
+- Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open
+Access needed: None. Other users’ processes are not shown.
+
+## EnvPeek
+URL: https://www.macpeekapp.com/utilities/envpeek/
+Question it answers: What environment variables does this environment see?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: Why is the wrong Node first in PATH? Does this app even see that variable? The answer depends on which shell or process you ask.
+
+The solution: EnvPeek lets you search variables, inspect PATH entry by entry, and copy a name, a value or NAME=value. It shows MacPeek’s own environment, which is usually not your terminal’s, or the environment of one running process whose PID you enter. Each list is labelled by its source, so a per-process value is never presented as global.
+
+Features:
+- Search names and values; copy the name, the value or NAME=value
+- PATH, MANPATH and similar variables entry by entry, flagging duplicates, missing folders, relative and empty entries
+- Two sources, always labelled: MacPeek’s own environment, or one process you choose by PID
+- Values that look like credentials (tokens, secrets, passwords, keys) are hidden until you reveal them
+- Values stay on screen and in memory only while the screen is open; they are never logged or stored
+- Honest about limits: macOS hides the environment of protected system processes and of other users’ processes
+
+How it works:
+1. Open EnvPeek from the launcher.
+2. Search for a variable, or switch to a process and enter its PID.
+3. Copy it, or open PATH entry by entry.
+
+Reads (locally):
+- MacPeek’s own environment and, where macOS permits, the environment of one process whose PID you enter
+Access needed: None. Values are shown on screen only and never logged.
+
+## DNSPeek
+URL: https://www.macpeekapp.com/utilities/dnspeek/
+Question it answers: Which DNS servers is my Mac using, and do they respond?
+Availability: built into the MacPeek source; the first signed release is not published yet, so there is no download
+
+The problem: Pages hang or a domain will not resolve. Which DNS servers is your Mac actually asking, and are they answering?
+
+The solution: DNSPeek shows the DNS servers macOS uses for ordinary lookups, the interface and reachability behind them, search domains and the other resolvers (per-domain and multicast). Press Run lookup to resolve a name through macOS and to ask each server directly. It is read-only and never changes DNS settings.
+
+Features:
+- The DNS servers in use, in order, with their interface and reachability as macOS reports it
+- Search domains, per-domain resolvers, and the multicast (.local) and scoped resolvers explained
+- Run lookup: resolve a name the way apps do, then ask each server directly and see who answers, how fast and with what status
+- Only the name you type is ever queried, only when you press the button
+- Read-only: it never changes DNS settings
+- Copy the configuration for a support thread
+
+How it works:
+1. Open DNSPeek from the launcher.
+2. Read the DNS servers in use.
+3. Press Run lookup to test a domain against your resolver and each server.
+
+Reads (locally):
+- The system resolver configuration (scutil --dns); DNS lookups only when you press Run lookup
+Access needed: None.

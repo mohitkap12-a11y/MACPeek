@@ -1,0 +1,63 @@
+# MacPeek
+
+> MacPeek is an open-source collection of lightweight native macOS utilities for finding, inspecting and understanding the things macOS makes unnecessarily difficult to see.
+
+MacPeek is free and open source (MIT). No account, no telemetry. It runs as your macOS user (macOS 13 or later, Apple silicon and Intel) and never asks for administrator rights. 10 utilities are built into the app today; the first signed release is not published yet. Source: https://github.com/mohitkap12-a11y/MACPeek
+
+## Utilities
+- [PortPeek](https://www.macpeekapp.com/utilities/portpeek/): What is using port 3000? See what's using your ports. Kill it in one click.
+- [DisplayPeek](https://www.macpeekapp.com/utilities/displaypeek/): What display configuration am I actually running? Know exactly how your displays are configured.
+- [USBPeek](https://www.macpeekapp.com/utilities/usbpeek/): What is connected, and at what speed? See what's connected to your Mac.
+- [NetPeek](https://www.macpeekapp.com/utilities/netpeek/): Is my network connection actually healthy? Understand your network connection.
+- [BatteryPeek](https://www.macpeekapp.com/utilities/batterypeek/): What is my MacBook battery actually doing? Understand your MacBook battery. (coming soon, not released)
+- [SleepPeek](https://www.macpeekapp.com/utilities/sleeppeek/): Why isn't my Mac sleeping? Find out why your Mac isn't sleeping.
+- [FileLockPeek](https://www.macpeekapp.com/utilities/filelockpeek/): What process is using this file? Find what's holding a file open.
+- [ProcessPeek](https://www.macpeekapp.com/utilities/processpeek/): What exactly is this process? Inspect a process and its relationships.
+- [DiskPeek](https://www.macpeekapp.com/utilities/diskpeek/): Which app is using my disk right now? See which processes are hitting your disk.
+- [EnvPeek](https://www.macpeekapp.com/utilities/envpeek/): What environment variables does this environment see? Inspect and search environment variables.
+- [DNSPeek](https://www.macpeekapp.com/utilities/dnspeek/): Which DNS servers is my Mac using, and do they respond? Inspect DNS configuration and resolver behavior.
+
+## Documentation
+- [Installation](https://www.macpeekapp.com/docs/installation/): Install MacPeek and open it from the menu bar.
+- [Using MacPeek](https://www.macpeekapp.com/docs/usage/): The launcher, search, refresh and settings.
+- [Managing utilities](https://www.macpeekapp.com/docs/managing-utilities/): Choose which utilities appear and in what order.
+- [Overview](https://www.macpeekapp.com/docs/utilities/): Every utility at a glance and the rules they all follow.
+- [PortPeek](https://www.macpeekapp.com/docs/ports/): Which ports are listening, and why some sockets are missing.
+- [FileLockPeek](https://www.macpeekapp.com/docs/utilities/filelockpeek/): Find the process holding a file or folder open.
+- [ProcessPeek](https://www.macpeekapp.com/docs/utilities/processpeek/): Inspect any process, then end it safely.
+- [DiskPeek](https://www.macpeekapp.com/docs/utilities/diskpeek/): See which processes are reading and writing the disk.
+- [EnvPeek](https://www.macpeekapp.com/docs/utilities/envpeek/): Inspect environment variables and PATH, with secrets hidden.
+- [NetPeek](https://www.macpeekapp.com/docs/utilities/netpeek/): Connection, Wi-Fi signal and on-demand ping checks.
+- [DNSPeek](https://www.macpeekapp.com/docs/utilities/dnspeek/): DNS servers in use, and whether each one answers.
+- [DisplayPeek](https://www.macpeekapp.com/docs/utilities/displaypeek/): Real resolution, refresh rate and scaling per display.
+- [USBPeek](https://www.macpeekapp.com/docs/utilities/usbpeek/): USB and Thunderbolt devices and their negotiated speed.
+- [SleepPeek](https://www.macpeekapp.com/docs/utilities/sleeppeek/): What keeps your Mac awake, and its sleep history.
+- [Killing safely](https://www.macpeekapp.com/docs/killing-processes/): Graceful first, identity re-checks, explicit force kill.
+- [Permissions](https://www.macpeekapp.com/docs/permissions/): What each utility can read and do, and what it never asks for.
+- [Troubleshooting](https://www.macpeekapp.com/docs/troubleshooting/): Fixes for the problems people hit most.
+- [Privacy](https://www.macpeekapp.com/privacy/): Exactly what MacPeek reads. Nothing leaves your Mac.
+- [Security](https://www.macpeekapp.com/security/): How MacPeek is built and how to report an issue.
+
+## Guides
+- [Find what is using a port on Mac](https://www.macpeekapp.com/blog/how-to-find-what-is-using-a-port-on-mac/)
+- [Kill a process on a port on Mac](https://www.macpeekapp.com/blog/how-to-kill-a-process-on-a-port-on-mac/)
+- [Free port 3000 on Mac](https://www.macpeekapp.com/blog/how-to-free-port-3000-on-mac/)
+- [lsof on Mac: find process by port](https://www.macpeekapp.com/blog/lsof-mac-find-process-by-port/)
+- [Mac port manager](https://www.macpeekapp.com/blog/mac-port-manager/)
+- [Mac port monitor](https://www.macpeekapp.com/blog/mac-port-monitor/)
+- [Find what process is using a file on Mac](https://www.macpeekapp.com/blog/how-to-find-what-process-is-using-a-file-on-mac/)
+- [Check monitor refresh rate on Mac](https://www.macpeekapp.com/blog/how-to-check-monitor-refresh-rate-on-mac/)
+- [See USB devices on Mac](https://www.macpeekapp.com/blog/how-to-see-usb-devices-on-mac/)
+- [Why won't my Mac go to sleep?](https://www.macpeekapp.com/blog/why-wont-my-mac-go-to-sleep/)
+- [Check MacBook battery health](https://www.macpeekapp.com/blog/how-to-check-macbook-battery-health/)
+- [Check Wi-Fi signal strength on Mac](https://www.macpeekapp.com/blog/how-to-check-wifi-signal-strength-on-mac/)
+- [Find and kill a process on Mac](https://www.macpeekapp.com/blog/how-to-find-and-kill-a-process-on-mac/)
+- [See which app is using your disk](https://www.macpeekapp.com/blog/how-to-see-what-is-using-your-disk-on-mac/)
+- [See environment variables on Mac](https://www.macpeekapp.com/blog/how-to-see-environment-variables-on-mac/)
+- [Check your DNS servers on Mac](https://www.macpeekapp.com/blog/how-to-check-dns-servers-on-mac/)
+
+## Optional
+- [Full text of every utility page](https://www.macpeekapp.com/llms-full.txt)
+- [Privacy](https://www.macpeekapp.com/privacy/)
+- [Security](https://www.macpeekapp.com/security/)
+- [Download](https://www.macpeekapp.com/download/)

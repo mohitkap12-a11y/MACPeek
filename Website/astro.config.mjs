@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import vercel from '@astrojs/vercel/static';
 import { readFileSync, existsSync } from 'node:fs';
 
 // Canonical origin: the production domain, www.macpeekapp.com (www is the primary host). Canonicals, og:url, the sitemap,
@@ -20,6 +21,9 @@ function lastmodFor(pathname) {
 
 export default defineConfig({
   site,
+  adapter: vercel({
+    webAnalytics: { enabled: true }
+  }),
   trailingSlash: 'always',
   // Privacy moved from /docs/privacy/ to the top-level /privacy/ (vercel.json adds the real 301).
   redirects: { '/docs/privacy/': '/privacy/' },

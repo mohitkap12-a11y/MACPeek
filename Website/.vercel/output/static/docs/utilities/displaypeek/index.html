@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en" data-theme="dark"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DisplayPeek: Resolution and Refresh Rate | MacPeek Docs</title><meta name="description" content="How to use DisplayPeek to see each display's real resolution, refresh rate and scaling on your Mac, and what it can and cannot tell you."><link rel="canonical" href="https://www.macpeekapp.com/docs/utilities/displaypeek/"><meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"><meta name="color-scheme" content="dark light"><meta name="theme-color" content="#07080b"><!-- Dark by default; runs before paint so a saved "light" choice never flashes dark. --><script>
+      (function () {
+        var t = 'dark';
+        try { var s = localStorage.getItem('portpeek-theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.classList.add('js');
+      })();
+    </script><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-48.png" type="image/png" sizes="48x48"><link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="alternate" type="application/rss+xml" title="MacPeek guides" href="/rss.xml"><link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt"><meta property="og:site_name" content="MacPeek"><meta property="og:type" content="article"><meta property="og:title" content="DisplayPeek: Resolution and Refresh Rate | MacPeek Docs"><meta property="og:description" content="How to use DisplayPeek to see each display's real resolution, refresh rate and scaling on your Mac, and what it can and cannot tell you."><meta property="og:url" content="https://www.macpeekapp.com/docs/utilities/displaypeek/"><meta property="og:image" content="https://www.macpeekapp.com/og-image.png"><meta property="og:image:type" content="image/png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="MacPeek: the tiny utilities macOS should have built in"><meta property="og:locale" content="en_US"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="DisplayPeek: Resolution and Refresh Rate | MacPeek Docs"><meta name="twitter:description" content="How to use DisplayPeek to see each display's real resolution, refresh rate and scaling on your Mac, and what it can and cannot tell you."><meta name="twitter:image" content="https://www.macpeekapp.com/og-image.png"><meta name="twitter:image:alt" content="MacPeek: the tiny utilities macOS should have built in"><script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"DisplayPeek","description":"How to use DisplayPeek to see each display's real resolution, refresh rate and scaling on your Mac, and what it can and cannot tell you.","datePublished":"2026-10-06","dateModified":"2026-10-06","mainEntityOfPage":"https://www.macpeekapp.com/docs/utilities/displaypeek/","inLanguage":"en","image":"https://www.macpeekapp.com/og-image.png","author":{"@type":"Organization","name":"MacPeek contributors"},"publisher":{"@type":"Organization","name":"MacPeek","url":"https://www.macpeekapp.com/"}}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.macpeekapp.com/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://www.macpeekapp.com/docs/"},{"@type":"ListItem","position":3,"name":"DisplayPeek","item":"https://www.macpeekapp.com/docs/utilities/displaypeek/"}]}</script><link rel="stylesheet" href="/_astro/how-to-check-dns-servers-on-mac.G0xVffxx.css"><script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+		var script = document.createElement('script');
+		script.defer = true;
+		script.src = '/_vercel/insights/script.js';
+		var head = document.querySelector('head');
+		head.appendChild(script);
+	</script></head> <body> <a class="skip" href="#main">Skip to content</a> <header class="site"> <div class="wrap"> <div class="bar"> <a class="brand" href="/" aria-label="MacPeek home"><img src="/favicon.svg" width="26" height="26" alt=""><span class="brand-text">MacPeek</span></a> <nav class="main" aria-label="Primary"> <a class="link" href="/utilities/">Utilities</a> <a class="link" href="/docs/">Docs</a> <a class="link" href="/blog/">Guides</a> <a class="link" href="https://github.com/mohitkap12-a11y/MACPeek">GitHub</a> <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to light mode" title="Switch theme"> <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg> <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg> </button> <a class="btn primary small nav-cta" href="/download/">Download</a> <button id="menu-toggle" class="icon-btn menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu"> <svg class="open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg> <svg class="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg> </button> </nav> </div> <div id="mobile-menu" class="mobile-menu" hidden> <a href="/utilities/">Utilities</a> <a href="/docs/">Docs</a> <a href="/blog/">Guides</a> <a href="https://github.com/mohitkap12-a11y/MACPeek">GitHub</a> <a class="btn primary" href="/download/">Download</a> </div> </div> </header> <main id="main"> <div class="wrap dx"> <details class="dx-mobile"> <summary><span>Documentation</span><span class="dx-chev" aria-hidden="true">Menu ▾</span></summary> <div class="dx-side-inner"> <label class="dx-search"><span class="sr">Filter documentation</span><input type="search" placeholder="Filter documentation…" data-dx-filter autocomplete="off"></label> <div class="dx-group"> <div class="dx-group-title">Getting started</div> <a href="/docs/installation/">Installation</a><a href="/docs/usage/">Using MacPeek</a><a href="/docs/managing-utilities/">Managing utilities</a> </div><div class="dx-group"> <div class="dx-group-title">Utilities</div> <a href="/docs/utilities/">Overview</a><a href="/docs/ports/">PortPeek</a><a href="/docs/utilities/filelockpeek/">FileLockPeek</a><a href="/docs/utilities/processpeek/">ProcessPeek</a><a href="/docs/utilities/diskpeek/">DiskPeek</a><a href="/docs/utilities/envpeek/">EnvPeek</a><a href="/docs/utilities/netpeek/">NetPeek</a><a href="/docs/utilities/dnspeek/">DNSPeek</a><a href="/docs/utilities/displaypeek/" aria-current="page">DisplayPeek</a><a href="/docs/utilities/usbpeek/">USBPeek</a><a href="/docs/utilities/sleeppeek/">SleepPeek</a> </div><div class="dx-group"> <div class="dx-group-title">Safety</div> <a href="/docs/killing-processes/">Killing safely</a><a href="/docs/permissions/">Permissions</a> </div><div class="dx-group"> <div class="dx-group-title">Reference</div> <a href="/docs/troubleshooting/">Troubleshooting</a><a href="/privacy/">Privacy</a><a href="/security/">Security</a> </div> </div> </details> <aside class="dx-side" aria-label="Documentation"> <div class="dx-side-inner"> <label class="dx-search"><span class="sr">Filter documentation</span><input type="search" placeholder="Filter documentation…" data-dx-filter autocomplete="off"></label> <div class="dx-group"> <div class="dx-group-title">Getting started</div> <a href="/docs/installation/">Installation</a><a href="/docs/usage/">Using MacPeek</a><a href="/docs/managing-utilities/">Managing utilities</a> </div><div class="dx-group"> <div class="dx-group-title">Utilities</div> <a href="/docs/utilities/">Overview</a><a href="/docs/ports/">PortPeek</a><a href="/docs/utilities/filelockpeek/">FileLockPeek</a><a href="/docs/utilities/processpeek/">ProcessPeek</a><a href="/docs/utilities/diskpeek/">DiskPeek</a><a href="/docs/utilities/envpeek/">EnvPeek</a><a href="/docs/utilities/netpeek/">NetPeek</a><a href="/docs/utilities/dnspeek/">DNSPeek</a><a href="/docs/utilities/displaypeek/" aria-current="page">DisplayPeek</a><a href="/docs/utilities/usbpeek/">USBPeek</a><a href="/docs/utilities/sleeppeek/">SleepPeek</a> </div><div class="dx-group"> <div class="dx-group-title">Safety</div> <a href="/docs/killing-processes/">Killing safely</a><a href="/docs/permissions/">Permissions</a> </div><div class="dx-group"> <div class="dx-group-title">Reference</div> <a href="/docs/troubleshooting/">Troubleshooting</a><a href="/privacy/">Privacy</a><a href="/security/">Security</a> </div> <p class="dx-empty" hidden>No matches.</p> </div> </aside> <article class="dx-main"> <div class="crumbs"><a href="/">Home</a><span aria-hidden="true">/</span><a href="/docs/">Docs</a></div> <h1>DisplayPeek</h1> <p class="dx-lede">How to use DisplayPeek to see each display&#39;s real resolution, refresh rate and scaling on your Mac, and what it can and cannot tell you.</p> <div class="dx-meta"><span>Updated <time datetime="2026-10-06">October 6, 2026</time></span><a href="https://github.com/mohitkap12-a11y/MACPeek/edit/main/Website/src/pages/docs/utilities/displaypeek.md">Edit this page on GitHub</a></div> <div class="prose"><p><strong>The question it answers:</strong> what display configuration am I actually running?</p>
+<h2 id="what-you-see">What you see</h2>
+<p>One card per connected display:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Field</th><th>Meaning</th></tr></thead><tbody><tr><td>Panel resolution</td><td>The display’s native pixels</td></tr><tr><td>Looks like</td><td>The resolution macOS presents to your apps</td></tr><tr><td>Refresh rate</td><td>The rate macOS reports for the current mode</td></tr><tr><td>Scaling</td><td>Worked out from the two resolutions: native (1×), HiDPI (2×) or scaled</td></tr><tr><td>Main, mirrored, online</td><td>Shown only when macOS reports them</td></tr><tr><td>Vendor / product ID, manufactured</td><td>Identify the panel model and when it was made</td></tr></tbody></table>
+<p>Anything else macOS reports about a display appears below as extra detail. If macOS does not report something, DisplayPeek leaves it out instead of guessing. It never infers cable type, HDR or connection protocol.</p>
+<h2 id="how-to-use-it">How to use it</h2>
+<ol>
+<li>Open <strong>DisplayPeek</strong> from the launcher. It reads your display configuration when the screen opens.</li>
+<li>Press <code>⌘R</code> after you change a setting or plug in a monitor to read again.</li>
+<li>Use the copy button on a card to copy its details for a support thread.</li>
+</ol>
+<h2 id="good-to-know">Good to know</h2>
+<ul>
+<li><strong>Serial numbers are never read</strong> or shown, so copied details are safe to share.</li>
+<li>“Rotation: Supported” means the display <em>can</em> rotate, not that it is rotated.</li>
+<li>A refresh rate below what the monitor advertises usually means a cable, adapter or the selected mode is the limit. See <a href="/blog/how-to-check-monitor-refresh-rate-on-mac/">check monitor refresh rate on Mac</a>.</li>
+</ul>
+<h2 id="privacy">Privacy</h2>
+<p>Read-only. Nothing runs in the background and nothing is sent anywhere. See <a href="/docs/permissions/">permissions</a>.</p></div>  <nav class="dx-pager" aria-label="Previous and next"> <a class="prev" href="/docs/utilities/dnspeek/"><small>Previous</small><span>← DNSPeek</span></a> <a class="next" href="/docs/utilities/usbpeek/"><small>Next</small><span>USBPeek →</span></a> </nav> <nav class="related" aria-label="Related"> <h2>Related</h2> <ul><li><a href="/blog/how-to-find-what-is-using-a-port-on-mac/">Find what is using a port on Mac</a></li><li><a href="/blog/how-to-kill-a-process-on-a-port-on-mac/">Kill a process on a port on Mac</a></li><li><a href="/blog/how-to-free-port-3000-on-mac/">Free port 3000 on Mac</a></li><li><a href="/blog/lsof-mac-find-process-by-port/">lsof on Mac: find process by port</a></li><li><a href="/blog/mac-port-manager/">Mac port manager</a></li></ul> </nav> </article> <aside class="dx-toc" aria-label="On this page"> <div class="dx-toc-inner"> <div class="dx-group-title">On this page</div> <a href="#what-you-see" class>What you see</a><a href="#how-to-use-it" class>How to use it</a><a href="#good-to-know" class>Good to know</a><a href="#privacy" class>Privacy</a> </div> </aside> </div> <script>
+    (function () {
+      // Sidebar filter: hides non-matching links and empty groups.
+      document.querySelectorAll('[data-dx-filter]').forEach(function (input) {
+        var root = input.closest('.dx-side-inner');
+        input.addEventListener('input', function () {
+          var q = input.value.trim().toLowerCase(), any = false;
+          root.querySelectorAll('.dx-group').forEach(function (g) {
+            var shown = 0;
+            g.querySelectorAll('a').forEach(function (a) { var ok = !q || a.textContent.toLowerCase().indexOf(q) > -1; a.hidden = !ok; if (ok) shown++; });
+            g.hidden = shown === 0; if (shown) any = true;
+          });
+          var e = root.querySelector('.dx-empty'); if (e) e.hidden = any;
+        });
+      });
+      // Heading anchors and code-copy buttons.
+      document.querySelectorAll('.prose h2[id], .prose h3[id]').forEach(function (h) {
+        var a = document.createElement('a'); a.href = '#' + h.id; a.className = 'anchor'; a.setAttribute('aria-label', 'Link to this section'); a.textContent = '#'; h.appendChild(a);
+      });
+      document.querySelectorAll('.prose pre').forEach(function (pre) {
+        // Capture the code text before the button is added, so the label can never end up in the copied text.
+        var text = pre.textContent.replace(/\n$/, '');
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'copy'; b.textContent = 'Copy';
+        b.addEventListener('click', function () {
+          var t = text;
+          var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, function () {});
+        });
+        pre.appendChild(b);
+      });
+      // Highlight the section being read in "On this page".
+      var links = [].slice.call(document.querySelectorAll('.dx-toc a'));
+      if (links.length && 'IntersectionObserver' in window) {
+        var map = {}; links.forEach(function (l) { map[l.getAttribute('href').slice(1)] = l; });
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { links.forEach(function (l) { l.removeAttribute('aria-current'); }); var l = map[en.target.id]; if (l) l.setAttribute('aria-current', 'true'); }
+          });
+        }, { rootMargin: '-80px 0px -70% 0px' });
+        Object.keys(map).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+      }
+    })();
+  </script> </main> <footer class="site"> <div class="wrap cols"> <div> <strong>MacPeek</strong><br>Free &amp; open source (MIT). No account. No telemetry.<br>
+Not affiliated with Apple. macOS is a trademark of Apple Inc.
+</div> <div> <a href="/utilities/">Utilities</a><br><a href="/docs/">Documentation</a><br><a href="/blog/">Guides</a><br><a href="/download/">Download</a> </div> <div> <a href="/utilities/portpeek/">PortPeek</a><br><a href="/utilities/displaypeek/">DisplayPeek</a><br><a href="/utilities/usbpeek/">USBPeek</a><br><a href="/utilities/netpeek/">NetPeek</a><br><a href="/utilities/sleeppeek/">SleepPeek</a><br><a href="/utilities/filelockpeek/">FileLockPeek</a><br><a href="/utilities/processpeek/">ProcessPeek</a><br><a href="/utilities/diskpeek/">DiskPeek</a><br><a href="/utilities/envpeek/">EnvPeek</a><br><a href="/utilities/dnspeek/">DNSPeek</a><br> </div> <div> <a href="https://github.com/mohitkap12-a11y/MACPeek">GitHub</a><br><a href="/privacy/">Privacy</a><br><a href="/security/">Security</a> </div> </div> </footer> <script>
+      (function () {
+        var btn = document.getElementById('theme-toggle');
+        if (!btn) return;
+        function sync() {
+          var dark = document.documentElement.getAttribute('data-theme') !== 'light';
+          btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+          btn.setAttribute('aria-pressed', dark ? 'false' : 'true');
+        }
+        btn.addEventListener('click', function () {
+          var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', next);
+          try { localStorage.setItem('portpeek-theme', next); } catch (e) {}
+          sync();
+        });
+        sync();
+      })();
+      (function () {
+        var btn = document.getElementById('menu-toggle'), menu = document.getElementById('mobile-menu');
+        if (!btn || !menu) return;
+        function set(open) {
+          menu.hidden = !open;
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+          document.documentElement.classList.toggle('menu-open', open);
+        }
+        btn.addEventListener('click', function () { set(menu.hidden); });
+        menu.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+        window.matchMedia('(min-width: 761px)').addEventListener('change', function (m) { if (m.matches) set(false); });
+      })();
+    </script> </body> </html>
