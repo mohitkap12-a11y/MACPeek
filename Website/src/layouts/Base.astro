@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Analytics from '@vercel/analytics/astro';
 import { SITE, downloadHref } from '../site';
 import { utilities } from '../data/utilities';
 
@@ -97,7 +98,7 @@ const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
     <footer class="site">
       <div class="wrap cols">
         <div>
-          <strong>MacPeek</strong><br />Free &amp; open source (MIT). No account. No telemetry.<br />
+          <strong>MacPeek</strong><br />The app is free &amp; open source (MIT), with no account and no telemetry. This website counts page views with cookie-less analytics (<a href="/privacy/">details</a>).<br />
           Not affiliated with Apple. macOS is a trademark of Apple Inc.
         </div>
         <div>
@@ -111,6 +112,7 @@ const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
         </div>
       </div>
     </footer>
+    <Analytics />
     <script is:inline>
       (function () {
         var btn = document.getElementById('theme-toggle');
