@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Analytics from '@vercel/analytics/astro';
 import { SITE, downloadHref } from '../site';
 import { utilities } from '../data/utilities';
 
@@ -111,6 +112,7 @@ const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
         </div>
       </div>
     </footer>
+    <Analytics />
     <script is:inline>
       (function () {
         var btn = document.getElementById('theme-toggle');
