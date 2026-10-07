@@ -4,7 +4,7 @@
   --text: #f4f5f9; --muted: #98a2b6; --faint: #667085; --line: rgba(255,255,255,.09); --line-strong: rgba(255,255,255,.16);
   --accent: #6c93ff; --accent-2: #9d7bff; --accent-3: #4fd1c5; --on-accent: #fff;
   --glow: rgba(108,147,255,.22); --glow-2: rgba(157,123,255,.16); --shadow: 0 40px 100px rgba(0,0,0,.65);
-  --nav-bg: rgba(10,11,15,.72); --code-bg: #0b0d12; --code-text: #e7eaf2; --ok: #3ddc97; --danger: #ff5c6c; --inline-code: rgba(255,255,255,.08);
+  --grid: rgba(255,255,255,.035); --nav-bg: rgba(14,15,20,.78); --code-bg: #0b0d12; --code-text: #e7eaf2; --ok: #3ddc97; --danger: #ff5c6c; --inline-code: rgba(255,255,255,.08);
   color-scheme: dark;
 }
 :root[data-theme='light'] {
@@ -12,24 +12,45 @@
   --text: #11141b; --muted: #596277; --faint: #8a93a6; --line: rgba(17,20,27,.1); --line-strong: rgba(17,20,27,.2);
   --accent: #2f61f0; --accent-2: #7447ee; --accent-3: #0e9f8e; --on-accent: #fff;
   --glow: rgba(47,97,240,.16); --glow-2: rgba(116,71,238,.1); --shadow: 0 30px 80px rgba(20,30,70,.22);
-  --nav-bg: rgba(246,247,251,.78); --code-bg: #0f1218; --code-text: #e7eaf2; --ok: #14934f; --danger: #d6303f; --inline-code: rgba(17,20,27,.07);
+  --grid: rgba(17,20,27,.05); --nav-bg: rgba(246,247,251,.78); --code-bg: #0f1218; --code-text: #e7eaf2; --ok: #14934f; --danger: #d6303f; --inline-code: rgba(17,20,27,.07);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; overflow-x: clip; }
-body { margin: 0; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+html { background: var(--bg); }
+body { margin: 0; background: transparent; color: var(--text); -webkit-font-smoothing: antialiased;
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif; transition: background .25s, color .25s; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
 img, svg { max-width: 100%; }
 .skip { position: absolute; left: -999px; } .skip:focus { left: 8px; top: 8px; background: var(--card-solid); padding: 8px 12px; z-index: 20; border-radius: 8px; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; } .narrow { max-width: 760px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 max(22px, env(safe-area-inset-right)) 0 max(22px, env(safe-area-inset-left)); } .narrow { max-width: 760px; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
 
-/* Header: floating glass bar */
-header.site { position: sticky; top: 0; z-index: 10; padding: 12px 0; pointer-events: none; }
+/* Page backdrop: fixed gradient glows + faint grid. It also fills the iPhone status-bar / notch area (viewport-fit=cover). */
+body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 34% at 50% -6%, var(--glow), transparent 72%),
+    radial-gradient(38% 26% at 28% 16%, var(--glow), transparent 72%),
+    radial-gradient(36% 24% at 74% 12%, var(--glow-2), transparent 72%),
+    radial-gradient(42% 32% at 12% 34%, var(--glow-2), transparent 70%),
+    radial-gradient(40% 30% at 92% 62%, var(--glow), transparent 72%),
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--bg);
+  -webkit-mask-image: none; }
+
+/* Header: transparent at the top of the page, morphs into a floating glass pill once scrolled */
+header.site { position: sticky; top: 0; z-index: 10; padding: calc(12px + env(safe-area-inset-top)) 0 12px; pointer-events: none; }
+header.site::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top) + 28px); z-index: -1; pointer-events: none; opacity: 0; transition: opacity .35s ease;
+  background: linear-gradient(var(--bg), transparent); -webkit-mask-image: linear-gradient(#000 35%, transparent); mask-image: linear-gradient(#000 35%, transparent); }
+header.site.scrolled::before { opacity: .85; }
 header.site .bar { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 54px; padding: 0 12px 0 18px;
-  background: var(--nav-bg); border: 1px solid var(--line); border-radius: 999px; backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); }
+  background: transparent; border: 1px solid transparent; border-radius: 999px; box-shadow: 0 0 0 rgba(0,0,0,0);
+  backdrop-filter: blur(0) saturate(100%); -webkit-backdrop-filter: blur(0) saturate(100%);
+  transition: background-color .35s ease, border-color .35s ease, box-shadow .35s ease, backdrop-filter .35s ease, -webkit-backdrop-filter .35s ease; }
+header.site.scrolled .bar { background: var(--nav-bg); border-color: var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.28);
+  backdrop-filter: saturate(180%) blur(18px); -webkit-backdrop-filter: saturate(180%) blur(18px); }
 .brand { font-weight: 700; font-size: 17px; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 9px; letter-spacing: -.02em; }
 nav.main { display: flex; gap: 6px; align-items: center; font-size: 14.5px; }
 nav.main a.link { color: var(--muted); text-decoration: none; padding: 7px 12px; border-radius: 999px; }
@@ -50,9 +71,7 @@ nav.main a.link:hover { color: var(--text); background: var(--card); }
 
 /* Hero */
 .hero { position: relative; padding: 70px 0 110px; text-align: center; overflow: hidden; isolation: isolate; }
-.hero::before { content: ''; position: absolute; inset: -260px -10% auto; height: 760px; z-index: -1;
-  background: radial-gradient(40% 50% at 30% 40%, var(--glow), transparent 70%), radial-gradient(40% 50% at 72% 35%, var(--glow-2), transparent 70%); }
-.hero::after { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .5;
+.hero::after { content: ''; position: absolute; inset: -80px 0 0; z-index: -1; opacity: .5;
   background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 28px 28px; mask-image: radial-gradient(60% 55% at 50% 25%, #000, transparent 75%); -webkit-mask-image: radial-gradient(60% 55% at 50% 25%, #000, transparent 75%); }
 .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--card); color: var(--muted); font-size: 13.5px; margin-bottom: 26px; }
 .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
@@ -134,7 +153,7 @@ footer.site .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: 
   nav.main { gap: 2px; }
   nav.main a.link { padding: 7px 9px; }
   .nav-cta { padding: 8px 13px; }
-  .wrap { padding: 0 16px; }
+  .wrap { padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .hero .pill, .hero h1, .hero .lead, .hero .cta, .hero .fine { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
@@ -212,8 +231,8 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 .dx-meta a { color: var(--muted); }
 .prose { font-size: 16px; line-height: 1.75; }
 .prose > :first-child { margin-top: 0; }
-.prose h2 { font-size: 1.55rem; letter-spacing: -.025em; margin: 2.4em 0 .6em; padding-top: .2em; scroll-margin-top: 90px; font-weight: 680; }
-.prose h3 { font-size: 1.15rem; letter-spacing: -.01em; margin: 1.8em 0 .5em; scroll-margin-top: 90px; }
+.prose h2 { font-size: 1.55rem; letter-spacing: -.025em; margin: 2.4em 0 .6em; padding-top: .2em; scroll-margin-top: calc(90px + env(safe-area-inset-top)); font-weight: 680; }
+.prose h3 { font-size: 1.15rem; letter-spacing: -.01em; margin: 1.8em 0 .5em; scroll-margin-top: calc(90px + env(safe-area-inset-top)); }
 .prose h2 .anchor, .prose h3 .anchor { margin-left: 8px; color: var(--faint); text-decoration: none; font-weight: 400; opacity: 0; transition: opacity .15s; }
 .prose h2:hover .anchor, .prose h3:hover .anchor, .prose .anchor:focus { opacity: 1; }
 .prose p { margin: 1em 0; } .prose ul, .prose ol { padding-left: 1.4em; } .prose li { margin: .35em 0; } .prose li::marker { color: var(--faint); }
