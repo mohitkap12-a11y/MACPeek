@@ -131,7 +131,14 @@ test('download buttons never point at a missing release', () => {
 
 test('no third-party scripts or trackers', () => {
   // Same-origin scripts (the bundled Vercel Web Analytics module) are fine; anything loaded from another origin is not.
-  for (const p of pages) assert.doesNotMatch(html(p), /<script[^>]+src="(https?:)?\/\//i, `${p}: external script`);
+  // Parse every script's src (any quoting) and reject anything that resolves to another origin.
+  const here = 'https://site.invalid';
+  for (const p of pages) {
+    for (const m of html(p).matchAll(/<script\b[^>]*?\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)) {
+      const src = m[1] ?? m[2] ?? m[3];
+      assert.equal(new URL(src, here).origin, here, `${p}: external script ${src}`);
+    }
+  }
 });
 
 test('homepage has download + GitHub CTAs and JSON-LD', () => {
