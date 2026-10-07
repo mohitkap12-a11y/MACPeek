@@ -100,7 +100,7 @@ test('llms.txt covers every utility, doc and guide with absolute links', () => {
 
 test('feed, icons and og image exist', () => {
   assert.match(html(join(dist, 'rss.xml')), /<rss version="2.0"/);
-  for (const f of ['favicon.svg', 'favicon-48.png', 'favicon-192.png', 'apple-touch-icon.png', 'og-image.png']) assert.ok(existsSync(join(dist, f)), f);
+  for (const f of ['favicon.ico', 'favicon.svg', 'favicon-48.png', 'favicon-192.png', 'apple-touch-icon.png', 'og-image.png']) assert.ok(existsSync(join(dist, f)), f);
 });
 
 test('every internal link resolves to a built page', () => {
