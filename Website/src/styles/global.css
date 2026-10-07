@@ -24,7 +24,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
 img, svg { max-width: 100%; }
 .skip { position: absolute; left: -999px; } .skip:focus { left: 8px; top: 8px; background: var(--card-solid); padding: 8px 12px; z-index: 20; border-radius: 8px; }
-.wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; } .narrow { max-width: 760px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 max(22px, env(safe-area-inset-right)) 0 max(22px, env(safe-area-inset-left)); } .narrow { max-width: 760px; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
 
 /* Page backdrop: fixed gradient glows + faint grid. It also fills the iPhone status-bar / notch area (viewport-fit=cover). */
@@ -153,7 +153,7 @@ footer.site .cols { display: flex; flex-wrap: wrap; gap: 32px; justify-content: 
   nav.main { gap: 2px; }
   nav.main a.link { padding: 7px 9px; }
   .nav-cta { padding: 8px 13px; }
-  .wrap { padding: 0 16px; }
+  .wrap { padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .hero .pill, .hero h1, .hero .lead, .hero .cta, .hero .fine { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
@@ -231,8 +231,8 @@ figure.stage { margin-inline: auto; } figure.stage figcaption { text-align: cent
 .dx-meta a { color: var(--muted); }
 .prose { font-size: 16px; line-height: 1.75; }
 .prose > :first-child { margin-top: 0; }
-.prose h2 { font-size: 1.55rem; letter-spacing: -.025em; margin: 2.4em 0 .6em; padding-top: .2em; scroll-margin-top: 90px; font-weight: 680; }
-.prose h3 { font-size: 1.15rem; letter-spacing: -.01em; margin: 1.8em 0 .5em; scroll-margin-top: 90px; }
+.prose h2 { font-size: 1.55rem; letter-spacing: -.025em; margin: 2.4em 0 .6em; padding-top: .2em; scroll-margin-top: calc(90px + env(safe-area-inset-top)); font-weight: 680; }
+.prose h3 { font-size: 1.15rem; letter-spacing: -.01em; margin: 1.8em 0 .5em; scroll-margin-top: calc(90px + env(safe-area-inset-top)); }
 .prose h2 .anchor, .prose h3 .anchor { margin-left: 8px; color: var(--faint); text-decoration: none; font-weight: 400; opacity: 0; transition: opacity .15s; }
 .prose h2:hover .anchor, .prose h3:hover .anchor, .prose .anchor:focus { opacity: 1; }
 .prose p { margin: 1em 0; } .prose ul, .prose ol { padding-left: 1.4em; } .prose li { margin: .35em 0; } .prose li::marker { color: var(--faint); }
