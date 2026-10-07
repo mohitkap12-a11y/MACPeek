@@ -21,7 +21,7 @@ const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -129,6 +129,17 @@ const imageAlt = 'MacPeek: the tiny utilities macOS should have built in';
           sync();
         });
         sync();
+      })();
+      (function () {
+        var h = document.querySelector('header.site');
+        if (!h) return;
+        var on = null;
+        function check() {
+          var s = (window.scrollY || document.documentElement.scrollTop) > 12;
+          if (s !== on) { on = s; h.classList.toggle('scrolled', s); }
+        }
+        window.addEventListener('scroll', check, { passive: true });
+        check();
       })();
       (function () {
         var btn = document.getElementById('menu-toggle'), menu = document.getElementById('mobile-menu');
