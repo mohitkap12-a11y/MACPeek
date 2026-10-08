@@ -6,6 +6,8 @@ MacPeek is a native, lightweight, open-source collection of focused macOS menu-b
 inspecting and understanding the things macOS makes unnecessarily difficult to see. One small app, many
 **Peeks** — switch on the ones you want, switch off the rest.
 
+Website, docs and blog: [MACPeek-Web](https://github.com/mohitkap12-a11y/MACPeek-Web).
+
 > Screenshot/GIF: add `docs/screenshot.png` after the first build.
 
 ## Utilities

@@ -3,7 +3,6 @@
 ## Prerequisites
 - macOS 13+ (deployment target is declared in `Package.swift`)
 - **Full Xcode 15+** — not just the Command Line Tools (see CONTRIBUTING → Troubleshooting the build)
-- Node 22 for the website
 
 ## Commands
 ```bash
@@ -12,7 +11,6 @@ swift test                       # all tests (live lsof tests skip when lsof is 
 swift test --filter MacPeekCoreTests
 swift run MacPeek                # menu-bar app
 open Package.swift               # Xcode
-cd Website && npm ci && npm run check && npm run build && npm test
 ```
 
 ## Fixtures from a real Mac
