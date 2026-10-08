@@ -6,6 +6,7 @@ on:
 # Required repository secrets (never commit these):
 #   DEVELOPER_ID_CERT_P12_BASE64, DEVELOPER_ID_CERT_PASSWORD, DEVELOPER_ID_IDENTITY
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
+# Optional: VERCEL_DEPLOY_HOOK_URL (redeploys the project's site so its download links pick up this release)
 permissions:
   contents: write
 
@@ -73,3 +74,13 @@ jobs:
             dist/MacPeek-${{ env.VERSION }}.dmg
             dist/SHA256SUMS
           generate_release_notes: true
+
+      - name: Trigger site redeploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::warning::VERCEL_DEPLOY_HOOK_URL not set; skipping site redeploy"
+            exit 0
+          fi
+          curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
