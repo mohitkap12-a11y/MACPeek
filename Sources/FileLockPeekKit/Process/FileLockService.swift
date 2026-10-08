@@ -63,7 +63,8 @@ final class FileLockResource: TerminationResource, @unchecked Sendable {
         } catch {
             return .unavailable(error.localizedDescription)
         }
-        lock.lock(); holdersBefore = Set(holders.map(\.pid)); lock.unlock()
+        let ids = Set(holders.map(\.pid))
+        lock.withLock { holdersBefore = ids }
         guard !holders.isEmpty else { return .gone }
         guard let holder = holders.first(where: { $0.pid == pid }) else { return .changed }
         return .owned(processName: holder.processName)
@@ -77,7 +78,7 @@ final class FileLockResource: TerminationResource, @unchecked Sendable {
             return .stillHeld // could not tell; keep polling, never claim success
         }
         if holders.contains(where: { $0.pid == pid }) { return .stillHeld }
-        lock.lock(); let before = holdersBefore; lock.unlock()
+        let before = lock.withLock { holdersBefore }
         // Only a process that was NOT holding the path before counts as a replacement. Other processes that
         // already held it keep holding it; that is not a failure to release by the terminated one.
         if let newcomer = holders.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }

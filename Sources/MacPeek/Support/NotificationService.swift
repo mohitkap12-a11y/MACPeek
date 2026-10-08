@@ -1,6 +1,6 @@
 #if os(macOS)
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Posts a notification after a successful kill ("Port 3000 freed"). Never used for refresh activity.
 @MainActor

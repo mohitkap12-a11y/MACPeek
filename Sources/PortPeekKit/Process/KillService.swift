@@ -50,7 +50,8 @@ final class PortResource: TerminationResource, @unchecked Sendable {
             return .unavailable(error.localizedDescription)
         }
         let onPort = owners(scan)
-        lock.lock(); ownersBefore = Set(onPort.map(\.pid)); lock.unlock()
+        let ids = Set(onPort.map(\.pid))
+        lock.withLock { ownersBefore = ids }
         guard !onPort.isEmpty else { return .gone }
         // The selected *socket* (pid + address) must still exist: a process that closed only the
         // selected address but still listens elsewhere on the port must not be killed for it.
@@ -65,7 +66,7 @@ final class PortResource: TerminationResource, @unchecked Sendable {
         let onPort = owners(scan)
         if onPort.isEmpty { return .released }
         if onPort.contains(where: { $0.pid == pid }) { return .stillHeld }
-        lock.lock(); let before = ownersBefore; lock.unlock()
+        let before = lock.withLock { ownersBefore }
         if let newcomer = onPort.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }
         return .released // others that were already listening still are; the terminated process let go
     }
