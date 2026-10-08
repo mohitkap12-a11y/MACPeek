@@ -40,6 +40,10 @@ final class PortResource: TerminationResource, @unchecked Sendable {
 
     var label: String { "port \(port.port)" }
 
+    // Synchronous so NSLock is usable (it is unavailable directly in async contexts).
+    private func setOwnersBefore(_ ids: Set<Int>) { lock.lock(); ownersBefore = ids; lock.unlock() }
+    private func getOwnersBefore() -> Set<Int> { lock.lock(); defer { lock.unlock() }; return ownersBefore }
+
     private func owners(_ scan: [PortInfo]) -> [PortInfo] {
         scan.filter { $0.port == port.port && $0.protocolType == port.protocolType }
     }
@@ -51,7 +55,7 @@ final class PortResource: TerminationResource, @unchecked Sendable {
         }
         let onPort = owners(scan)
         let ids = Set(onPort.map(\.pid))
-        lock.withLock { ownersBefore = ids }
+        setOwnersBefore(ids)
         guard !onPort.isEmpty else { return .gone }
         // The selected *socket* (pid + address) must still exist: a process that closed only the
         // selected address but still listens elsewhere on the port must not be killed for it.
@@ -66,7 +70,7 @@ final class PortResource: TerminationResource, @unchecked Sendable {
         let onPort = owners(scan)
         if onPort.isEmpty { return .released }
         if onPort.contains(where: { $0.pid == pid }) { return .stillHeld }
-        let before = lock.withLock { ownersBefore }
+        let before = getOwnersBefore()
         if let newcomer = onPort.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }
         return .released // others that were already listening still are; the terminated process let go
     }
