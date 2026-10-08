@@ -32,7 +32,6 @@ tests (`swift test --filter MacPeekCoreTests`) do not need Xcode.
 - `Sources/MacPeek` — the app: `App/` (menu bar), `Shell/` (launcher, router, manager, settings, about),
   `SharedUI/` (reusable native components), `Utilities/<Name>/` (each utility's module + views), `Support/`.
 - `Tests/<Name>KitTests`, `Tests/MacPeekCoreTests` — fixtures in `Fixtures/` keep parser tests deterministic.
-- `Website/` — Astro static site (`npm ci && npm run dev`); see [Website/TESTING.md](Website/TESTING.md).
 - `docs/` — architecture, development, release and per-utility documentation.
 
 ## Adding a utility
