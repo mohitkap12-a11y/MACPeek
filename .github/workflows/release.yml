@@ -83,4 +83,7 @@ jobs:
             echo "::warning::VERCEL_DEPLOY_HOOK_URL not set; skipping site redeploy"
             exit 0
           fi
-          curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
+          # The release is already public here, so a hook failure is a visible warning, not a failed release.
+          if ! curl -fsS --connect-timeout 10 --max-time 30 -X POST "$DEPLOY_HOOK" > /dev/null; then
+            echo "::warning::Site redeploy hook failed; re-run it or redeploy the site manually"
+          fi
