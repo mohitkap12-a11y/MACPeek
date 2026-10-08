@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#047857"/></linearGradient><filter id="sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity=".35"/></filter></defs><rect x="100" y="100" width="824" height="824" rx="185" fill="url(#g)" filter="url(#sh)"/>
-<text x="470" y="590" font-family="Menlo,Courier New,monospace" font-weight="700" font-size="250" fill="#fff" text-anchor="middle">:3000</text>
-<circle cx="600" cy="470" r="215" fill="#ffffff" fill-opacity=".14" stroke="#fff" stroke-width="44"/>
-<line x1="752" y1="622" x2="850" y2="720" stroke="#fff" stroke-width="58" stroke-linecap="round"/></svg>
