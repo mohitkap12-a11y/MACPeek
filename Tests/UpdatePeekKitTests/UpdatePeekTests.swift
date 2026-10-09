@@ -59,7 +59,11 @@ final class HomebrewParserTests: XCTestCase {
     }
 
     func testMalformedOrUnexpectedShapesFail() {
-        for bad in ["", "not json", "[]", "{}", #"{"formulae":[{"name":"x"}]}"#, #"{"formulae":"nope"}"#] {
+        let noInstalled = #"{"formulae":[{"name":"x","current_version":"2"}]}"#
+        let nullInstalled = #"{"formulae":[{"name":"x","installed_versions":null,"current_version":"2"}]}"#
+        let numberInstalled = #"{"casks":[{"name":"x","installed_versions":5,"current_version":"2"}]}"#
+        for bad in ["", "not json", "[]", "{}", #"{"formulae":[{"name":"x"}]}"#, #"{"formulae":"nope"}"#,
+                    noInstalled, nullInstalled, numberInstalled] {
             XCTAssertThrowsError(try HomebrewParser.parse(bad), bad) { XCTAssertEqual($0 as? UpdatePeekError, .malformedData) }
         }
     }

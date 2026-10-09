@@ -29,7 +29,9 @@ public enum HomebrewParser {
             } else if let one = try? container.decode(String.self, forKey: .installedVersions) {
                 installedVersions = [one]
             } else {
-                installedVersions = []
+                // Missing, null or any other shape is malformed data, not "no installed version".
+                throw DecodingError.dataCorruptedError(forKey: .installedVersions, in: container,
+                                                       debugDescription: "installed_versions must be a string or an array of strings")
             }
         }
     }
