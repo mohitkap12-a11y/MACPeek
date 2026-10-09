@@ -29,7 +29,9 @@ enum CoreAudioProperty {
         var address = address
         var result = initial
         var size = UInt32(MemoryLayout<T>.size)
-        let status = AudioObjectGetPropertyData(object, &address, 0, nil, &size, &result)
+        let status = withUnsafeMutableBytes(of: &result) { buffer in
+            AudioObjectGetPropertyData(object, &address, 0, nil, &size, buffer.baseAddress!)
+        }
         return status == noErr ? result : nil
     }
 

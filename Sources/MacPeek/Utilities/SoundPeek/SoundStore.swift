@@ -41,7 +41,7 @@ final class SoundStore: ObservableObject {
     func start() {
         refresh()
         observer.start { [weak self] in
-            Task { @MainActor in self?.deviceChangeNotified() }
+            Task { @MainActor [weak self] in self?.deviceChangeNotified() }
         }
     }
 
