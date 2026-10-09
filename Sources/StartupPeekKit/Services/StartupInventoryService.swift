@@ -191,7 +191,10 @@ public struct StartupInventoryService: StartupInventoryProviding {
         items = try items.map { item in
             try Task.checkCancellation()
             guard let executable = item.executablePath else {
-                return item.replacing(observations: item.observations + Attribution.observations(
+                // Only a parsed property list can be said not to name an executable; items with no property list
+                // (MacPeek's own login item) or one that could not be read already carry their own explanation.
+                guard item.propertyListPath != nil, item.observations.isEmpty else { return item }
+                return item.replacing(observations: Attribution.observations(
                     executablePath: nil, signature: item.signature, executableExists: nil, home: home))
             }
             let exists = FileManager.default.fileExists(atPath: executable)

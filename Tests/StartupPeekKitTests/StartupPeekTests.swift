@@ -205,6 +205,25 @@ final class StartupInventoryTests: XCTestCase {
         XCTAssertEqual(inventory.items(in: .loginItem).count, 1)
     }
 
+    func testNoExecutableNoteOnlyAppliesToParsedPropertyLists() async throws {
+        let folder = try Folder()
+        try folder.write("noexec.plist", try plistData(["Label": "com.noexec"]))
+        try folder.write("broken.plist", Data("<<<garbage".utf8))
+        struct Reader: OwnLoginItemReading {
+            func state() -> OwnLoginItemState? { .enabled }
+        }
+        let service = StartupInventoryService(providers: [
+            OwnLoginItemProvider(reader: Reader()), LaunchdPlistProvider(locations: [folder.location()]),
+        ])
+        let inventory = try await service.inventory()
+        let own = try XCTUnwrap(inventory.items.first { $0.source == .serviceManagement })
+        let noexec = try XCTUnwrap(inventory.items.first { $0.label == "com.noexec" })
+        let broken = try XCTUnwrap(inventory.items.first { $0.name == "broken" })
+        XCTAssertTrue(own.observations.isEmpty)
+        XCTAssertEqual(noexec.observations, ["The property list does not name an executable"])
+        XCTAssertEqual(broken.observations, ["The property list is malformed or unreadable"])
+    }
+
     func testOwnLoginItemMapping() async {
         struct Reader: OwnLoginItemReading {
             let value: OwnLoginItemState?
