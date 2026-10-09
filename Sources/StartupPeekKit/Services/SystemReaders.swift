@@ -17,6 +17,8 @@ public struct SecurityCodeSignatureReader: CodeSignatureReading {
         guard status == errSecSuccess, let info = information as? [String: Any] else { return .unavailable }
         let team = info[kSecCodeInfoTeamIdentifier as String] as? String
         let identifier = info[kSecCodeInfoIdentifier as String] as? String
+        // For unsigned code Security can succeed but return only file facts, with no signing identifier at all.
+        if identifier == nil && team == nil { return .unsigned }
         return .signed(teamID: team, identifier: identifier)
     }
 }
