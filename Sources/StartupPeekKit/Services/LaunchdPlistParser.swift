@@ -51,8 +51,21 @@ public enum LaunchdPlistParser {
             runAtLoad: bool(dictionary["RunAtLoad"]),
             keepAlive: keepAlive(dictionary["KeepAlive"]),
             disabled: bool(dictionary["Disabled"]),
-            hasOnDemandTriggers: triggerKeys.contains { dictionary[$0] != nil },
+            hasOnDemandTriggers: triggerKeys.contains { isActiveTrigger(dictionary[$0]) },
             associatedBundleIdentifiers: bundleIdentifiers(dictionary["AssociatedBundleIdentifiers"]))
+    }
+
+    /// A trigger key only counts when its value actually defines a trigger: a non-empty collection, a positive
+    /// interval or a true flag. An empty `Sockets` or `WatchPaths` does not make a job start on demand.
+    private static func isActiveTrigger(_ value: Any?) -> Bool {
+        switch value {
+        case let flag as Bool: return flag
+        case let number as NSNumber: return number.doubleValue > 0
+        case let dictionary as [String: Any]: return !dictionary.isEmpty
+        case let array as [Any]: return !array.isEmpty
+        case let text as String: return !text.isEmpty
+        default: return false
+        }
     }
 
     private static func bool(_ value: Any?) -> Bool {

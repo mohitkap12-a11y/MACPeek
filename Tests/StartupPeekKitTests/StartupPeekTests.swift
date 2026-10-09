@@ -54,6 +54,16 @@ final class LaunchdPlistParserTests: XCTestCase {
         XCTAssertEqual(try status(["Label": "x"]), .unknown)
     }
 
+    func testEmptyOrInactiveTriggersDoNotMeanOnDemand() throws {
+        func status(_ dictionary: [String: Any]) throws -> StartupStatus { try LaunchdPlistParser.parse(try plistData(dictionary)).status }
+        XCTAssertEqual(try status(["Sockets": [String: Any]()]), .unknown)
+        XCTAssertEqual(try status(["WatchPaths": [String]()]), .unknown)
+        XCTAssertEqual(try status(["StartInterval": 0]), .unknown)
+        XCTAssertEqual(try status(["StartOnMount": false]), .unknown)
+        XCTAssertEqual(try status(["WatchPaths": ["/tmp/x"]]), .startsOnDemand)
+        XCTAssertEqual(try status(["StartOnMount": true]), .startsOnDemand)
+    }
+
     func testWrongTypesAreIgnoredNotTrusted() throws {
         let description = try LaunchdPlistParser.parse(try plistData([
             "Label": 42, "ProgramArguments": "not-an-array", "RunAtLoad": "yes",
