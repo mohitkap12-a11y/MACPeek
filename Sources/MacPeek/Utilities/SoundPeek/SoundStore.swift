@@ -31,6 +31,9 @@ final class SoundStore: ObservableObject {
             guard !Task.isCancelled else { return }
             snapshot = result
             error = nil
+            // Undo only makes sense while the default is still the one this app set; if it was changed elsewhere,
+            // restoring the old device would override that newer choice.
+            if let change = lastChange, result.defaultID(change.direction) != change.newID { lastChange = nil }
         } catch {
             if Task.isCancelled { return }
             self.error = error.localizedDescription
