@@ -15,6 +15,12 @@ final class SoundStore: ObservableObject {
 
     private let service: SoundPeekService
     private let observer: AudioChangeObserving
+    /// What a finished action does to the saved Undo.
+    private enum UndoUpdate: Sendable {
+        case keep, clear
+        case set(DefaultDeviceChange)
+    }
+
     private var refreshTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
     private var actionTask: Task<Void, Never>?
@@ -79,7 +85,7 @@ final class SoundStore: ObservableObject {
     func setDefault(_ id: UInt32, direction: AudioDirection) {
         run { service in
             let (snapshot, change) = try await service.setDefault(id, direction: direction)
-            return (snapshot, change, change.map { _ in "\(direction.label) switched." })
+            return (snapshot, change.map(UndoUpdate.set) ?? .keep, change.map { _ in "\(direction.label) switched." })
         }
     }
 
@@ -87,30 +93,33 @@ final class SoundStore: ObservableObject {
         guard let change = lastChange else { return }
         run { service in
             let snapshot = try await service.restore(change)
-            return (snapshot, nil, "Restored the previous \(change.direction.label.lowercased()) device.")
+            return (snapshot, .clear, "Restored the previous \(change.direction.label.lowercased()) device.")
         }
-        lastChange = nil
     }
 
     func toggleMute(_ device: AudioDevice, direction: AudioDirection) {
         let muted = !(device.controls(direction).isMuted ?? false)
         run { service in
             let snapshot = try await service.setMuted(muted, deviceID: device.id, direction: direction)
-            return (snapshot, nil, muted ? "Muted." : "Unmuted.")
+            return (snapshot, .clear, muted ? "Muted." : "Unmuted.")
         }
     }
 
-    private func run(_ operation: @escaping @Sendable (SoundPeekService) async throws -> (AudioSnapshot, DefaultDeviceChange?, String?)) {
+    private func run(_ operation: @escaping @Sendable (SoundPeekService) async throws -> (AudioSnapshot, UndoUpdate, String?)) {
         actionTask?.cancel()
         let service = self.service
         actionTask = Task { [weak self] in
             do {
-                let (snapshot, change, message) = try await operation(service)
+                let (snapshot, undo, message) = try await operation(service)
                 guard let self, !Task.isCancelled else { return }
                 self.snapshot = snapshot
                 self.error = nil
-                // Undo is offered only right after a default-device change, never after a later mute or refresh.
-                self.lastChange = change
+                // Undo is set by a default-device change, kept by a no-op, and cleared only once an undo or mute succeeded.
+                switch undo {
+                case .set(let change): self.lastChange = change
+                case .clear: self.lastChange = nil
+                case .keep: break
+                }
                 if let message { self.banner = Banner(kind: .success, text: message) }
             } catch {
                 guard let self, !Task.isCancelled else { return }
