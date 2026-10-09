@@ -92,9 +92,43 @@ public enum UtilityCatalog {
         permissions: ["None"]
     )
 
+    public static let soundPeek = UtilityInfo(
+        id: "soundpeek", name: "SoundPeek", question: "Why is my audio going to the wrong place?",
+        tagline: "See your audio devices and which are active.",
+        summary: "Lists your audio input and output devices with the current defaults, connection type, sample rate, channels and the volume and mute state a device exposes. You can pick a default device or mute one when the device allows it, and undo a change. It never records or listens to audio, and values a device doesn't report are shown as unavailable.",
+        icon: "speaker.wave.2", category: .everyday, availability: .available,
+        reads: ["Audio device properties from Core Audio (names, connection, formats, volume and mute); device changes while SoundPeek is open"],
+        permissions: ["None. SoundPeek never opens an audio stream, so macOS never asks for Microphone access."]
+    )
+    public static let startupPeek = UtilityInfo(
+        id: "startuppeek", name: "StartupPeek", question: "What starts automatically on this Mac?",
+        tagline: "See what launches at login or runs in the background.",
+        summary: "A read-only inventory of launch agents and daemons you can read, plus MacPeek's own login item, each labelled with where it was found, what kind it is and what it appears to belong to. It cannot list the apps shown in System Settings' Login Items list, says so, and never disables, removes or edits anything.",
+        icon: "power", category: .everyday, availability: .available,
+        reads: ["Launch agent and daemon property lists in ~/Library/LaunchAgents, /Library/LaunchAgents and /Library/LaunchDaemons; code-signature team IDs of the programs they name"],
+        permissions: ["None. Items macOS or the file system keeps private are listed as not visible, not worked around."]
+    )
+    public static let updatePeek = UtilityInfo(
+        id: "updatepeek", name: "UpdatePeek", question: "What updates can MacPeek verify?",
+        tagline: "See your macOS version and outdated Homebrew packages.",
+        summary: "Shows your macOS version and build, opens Software Update, and, when Homebrew is installed and you press Check, lists the packages Homebrew reports as outdated. It does not check for macOS or other app updates, never installs anything, and never claims your Mac is up to date.",
+        icon: "arrow.triangle.2.circlepath", category: .everyday, availability: .available,
+        reads: ["The macOS version and build; `brew outdated` (read-only, no brew update) only when Homebrew is installed and you press Check"],
+        permissions: ["None. Updates are never installed from MacPeek."]
+    )
+    public static let privacyPeek = UtilityInfo(
+        id: "privacypeek", name: "PrivacyPeek", question: "What does this macOS privacy permission mean?",
+        tagline: "Learn what each privacy permission means.",
+        summary: "A plain-language guide to macOS privacy permissions with a button to open each pane in System Settings. Informational only: it does not read which apps hold a permission and cannot grant, revoke or reset one.",
+        icon: "hand.raised", category: .everyday, availability: .available,
+        reads: ["Nothing from your Mac. The guide is built into MacPeek."],
+        permissions: ["None. It never requests, reads or changes any permission."]
+    )
+
     public static let all: [UtilityInfo] = [
         portPeek, displayPeek, usbPeek, netPeek, batteryPeek, sleepPeek,
         fileLockPeek, processPeek, diskPeek, envPeek, dnsPeek,
+        soundPeek, startupPeek, updatePeek, privacyPeek,
     ]
 
     public static func info(for id: String) -> UtilityInfo? { all.first { $0.id == id } }

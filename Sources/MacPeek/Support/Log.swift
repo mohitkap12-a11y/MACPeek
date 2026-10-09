@@ -15,6 +15,10 @@ enum Log {
     static let diskPeek = Logger(subsystem: subsystem, category: "MacPeek.DiskPeek")
     static let netPeek = Logger(subsystem: subsystem, category: "MacPeek.NetPeek")
     static let dnsPeek = Logger(subsystem: subsystem, category: "MacPeek.DNSPeek")
+    // SoundPeek never logs device names, IDs or UIDs; StartupPeek never logs paths or labels; PrivacyPeek has nothing to log.
+    static let soundPeek = Logger(subsystem: subsystem, category: "MacPeek.SoundPeek")
+    static let startupPeek = Logger(subsystem: subsystem, category: "MacPeek.StartupPeek")
+    static let updatePeek = Logger(subsystem: subsystem, category: "MacPeek.UpdatePeek")
     // EnvPeek deliberately never logs variable names or values, only that a read failed.
     static let envPeek = Logger(subsystem: subsystem, category: "MacPeek.EnvPeek")
 }

@@ -13,3 +13,9 @@ which statements are verified OS facts versus inference.
 - [EnvPeek](envpeek.md)
 - [NetPeek](netpeek.md)
 - [DNSPeek](dnspeek.md)
+- [SoundPeek](soundpeek.md)
+- [StartupPeek](startuppeek.md)
+- [UpdatePeek](updatepeek.md)
+- [PrivacyPeek](privacypeek.md)
+
+Cross-cutting feasibility, permission diff and release checklist for the newest four: [next-peeks-capability-report.md](../next-peeks-capability-report.md).

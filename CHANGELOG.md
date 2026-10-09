@@ -4,6 +4,18 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **SoundPeek**: audio input/output devices with the current defaults, connection type, sample rate, channels and the volume
+  and mute state each device exposes (anything else reads "Not reported"). Updates when devices are plugged in or out while
+  open. Set a default device or mute a device on request, with Undo. Never opens an audio stream, so no Microphone prompt.
+- **StartupPeek**: read-only inventory of launch agents, launch daemons and MacPeek's own login item, each labelled with its
+  source, scope and status, a "likely associated with" attribution and the signing team ID. States plainly that it cannot
+  list System Settings' Login Items and never disables, removes or edits anything.
+- **UpdatePeek**: macOS version and build, a button to Software Update, and, on request, the packages Homebrew reports as
+  outdated (read-only, no `brew update`), with a copyable upgrade command. Does not check for macOS or other app updates and
+  never claims anything is up to date.
+- **PrivacyPeek**: informational guide to macOS privacy permissions with buttons to open each System Settings pane. Reads no
+  per-app permission status and changes nothing.
+- Shared `SystemSettingsPane` (MacPeekCore): System Settings deep links with ordered fallbacks.
 - **NetPeek**: active interface, IPv4/IPv6 addresses, router and DNS servers, Wi-Fi signal/noise/channel/standard/link rate
   (macOS hides the network name without Location access, and NetPeek says so), and, only when you press Run checks, pings
   to your router and DNS servers. Measured facts are labelled apart from inference.
