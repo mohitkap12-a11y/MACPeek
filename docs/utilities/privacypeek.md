@@ -12,7 +12,7 @@ authorization and that granted/absent does not imply unsafe/safe.
 
 ## Settings routes
 `x-apple.systempreferences:com.apple.preference.security?Privacy_<Anchor>` → Privacy & Security → System Settings root.
-Each pane lists its fallbacks in order; the opener tries them until macOS accepts one, and shows an error banner if none does.
+Each pane lists its fallbacks in order and the opener tries them until macOS accepts one; the banner shows only if every open fails. macOS reports a handed-off URL as opened even if the pane identifier no longer exists, so a stale route is **not** detected: it is likely to land on System Settings' last-viewed page instead.
 These deep links are an Apple convention, not a documented API. They are tested here for shape and fallback order, but
 **must be checked by hand on each supported macOS version** before release (see the capability report).
 
