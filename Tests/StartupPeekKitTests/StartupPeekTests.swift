@@ -140,6 +140,15 @@ final class StartupInventoryTests: XCTestCase {
         XCTAssertEqual(item.observations, ["The property list is malformed or unreadable"])
     }
 
+    func testOversizedPlistIsRejectedAsMalformed() async throws {
+        let folder = try Folder()
+        try folder.write("huge.plist", Data(count: LaunchdPlistParser.maxBytes + 4096))
+        let result = await LaunchdPlistProvider(locations: [folder.location()]).items()
+        let item = try XCTUnwrap(result.items.first)
+        XCTAssertEqual(item.status, .unknown)
+        XCTAssertEqual(item.observations, ["The property list is malformed or unreadable"])
+    }
+
     func testMissingFolderIsNotAnError() async {
         let missing = LaunchdLocation(path: "/definitely/not/here-\(UUID().uuidString)", category: .launchDaemon,
                                       scope: .system, source: .launchDaemons)

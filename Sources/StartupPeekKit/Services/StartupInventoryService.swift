@@ -96,7 +96,13 @@ public struct LaunchdPlistProvider: StartupItemProviding {
 
     private func item(at path: String, fileName: String, in location: LaunchdLocation) -> StartupItem {
         let baseName = String(fileName.dropLast(".plist".count))
-        guard let data = FileManager.default.contents(atPath: path) else {
+        // Read one byte past the parser's limit, never the whole file: an oversized plist is rejected by the parser
+        // without being loaded into memory.
+        let data: Data? = FileHandle(forReadingAtPath: path).flatMap { handle in
+            defer { try? handle.close() }
+            return (try? handle.read(upToCount: LaunchdPlistParser.maxBytes + 1)) ?? nil
+        }
+        guard let data else {
             return StartupItem(id: path, name: baseName, category: location.category, scope: location.scope,
                                status: .unknown, source: location.source, propertyListPath: path,
                                observations: ["The property list could not be opened"])
