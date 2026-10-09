@@ -112,7 +112,7 @@ private struct ItemCard: View {
                 Label(note, systemImage: "info.circle").font(.caption2).foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
-                if let path = item.executablePath ?? item.propertyListPath, FileManager.default.fileExists(atPath: path) {
+                if let path = [item.executablePath, item.propertyListPath].compactMap({ $0 }).first(where: { FileManager.default.fileExists(atPath: $0) }) {
                     Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)]) }
                         .accessibilityLabel("Reveal \(item.name) in Finder")
                 }
