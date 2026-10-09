@@ -188,6 +188,7 @@ public struct StartupInventoryService: StartupInventoryProviding {
         try Task.checkCancellation()
 
         var checked = 0
+        var skippedSignatures = false
         items = try items.map { item in
             try Task.checkCancellation()
             guard let executable = item.executablePath else {
@@ -202,12 +203,14 @@ public struct StartupInventoryService: StartupInventoryProviding {
             if exists, checked < maxSignatureChecks {
                 checked += 1
                 signature = signatures.signature(atPath: Attribution.enclosingAppBundle(of: executable) ?? executable)
+            } else if exists {
+                skippedSignatures = true
             }
             let notes = item.observations + Attribution.observations(
                 executablePath: executable, signature: signature, executableExists: exists, home: home)
             return item.replacing(signature: signature, observations: notes)
         }
-        if checked >= maxSignatureChecks {
+        if skippedSignatures {
             limitations.append("Developer signatures were read for the first \(maxSignatureChecks) items only.")
         }
 
