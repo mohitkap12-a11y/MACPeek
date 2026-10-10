@@ -101,12 +101,12 @@ public enum UtilityCatalog {
         permissions: ["None. SoundPeek never opens an audio stream, so macOS never asks for Microphone access."]
     )
     public static let updatePeek = UtilityInfo(
-        id: "updatepeek", name: "UpdatePeek", question: "What updates can MacPeek verify?",
-        tagline: "See your macOS version and outdated Homebrew and npm packages.",
-        summary: "Shows your macOS version and build, opens Software Update, and, when you press Check, lists the packages Homebrew reports as outdated and the globally installed npm packages that npm reports as outdated. It does not check for macOS or other app updates, never installs anything, and never claims your Mac is up to date.",
+        id: "updatepeek", name: "UpdatePeek", question: "What updates are available?",
+        tagline: "See macOS, Homebrew and npm updates.",
+        summary: "Shows your macOS version and build and the updates macOS lists (from its own record, or when you press Check now and it asks Apple's update servers), with a button that opens Software Update. When you press Check it also lists outdated Homebrew packages and outdated global npm packages, and can update one npm package after you confirm. It never installs macOS or Homebrew updates and never claims your Mac is up to date.",
         icon: "arrow.triangle.2.circlepath", category: .everyday, availability: .available,
-        reads: ["The macOS version and build; `brew outdated` (read-only, no brew update) only when Homebrew is installed and you press Check; `npm outdated -g` only when npm is installed and you press Check, which asks the npm registry over the network"],
-        permissions: ["None. Updates are never installed from MacPeek."]
+        reads: ["The macOS version and build; macOS's own Software Update record (/Library/Preferences/com.apple.SoftwareUpdate.plist); `softwareupdate --list` only when you press Check now, which asks Apple's update servers; `brew outdated` (read-only, no brew update) only when you press Check; `npm outdated -g` only when you press Check, which asks the npm registry; `npm install -g <package>@latest` only for the one package you press Update on and confirm"],
+        permissions: ["None. macOS and Homebrew updates are never installed from MacPeek, and npm is never run with elevated rights."]
     )
 
     public static let all: [UtilityInfo] = [

@@ -8,10 +8,12 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   and mute state each device exposes (anything else reads "Not reported"). Updates when devices are plugged in or out while
   open. Set a default device (with Undo); on the default output device, move a volume slider and mute it where the device allows it. Never
   opens an audio stream, so no Microphone prompt.
-- **UpdatePeek**: macOS version and build, a button to Software Update, and, on request, the packages Homebrew reports as
-  outdated (read-only, no `brew update`) and the global npm packages `npm outdated -g` reports (npm asks its registry, so this
-  is a network request, made only when you press Check), each with a copyable upgrade command. Does not check for macOS or
-  other app updates and never claims anything is up to date.
+- **UpdatePeek**: macOS version and build; the macOS updates macOS itself lists (read from its own Software Update record, shown
+  on the launcher too) or, when you press Check now, that `softwareupdate --list` reports (asks Apple's update servers); a
+  prominent button to open Software Update; and, on request, the packages Homebrew reports as outdated (read-only, no
+  `brew update`) and the global npm packages `npm outdated -g` reports (asks the npm registry). Each Homebrew and npm package has
+  a copyable upgrade command, and npm packages have an **Update** button that asks you to confirm and then runs
+  `npm install -g <name>@latest` (never elevated, never cancelled halfway). Never installs macOS or Homebrew updates.
 - Shared `SystemSettingsPane` (MacPeekCore): System Settings deep links with ordered fallbacks.
 - **NetPeek**: active interface, IPv4/IPv6 addresses, router and DNS servers, Wi-Fi signal/noise/channel/standard/link rate
   (macOS hides the network name without Location access, and NetPeek says so), and, only when you press Run checks, pings

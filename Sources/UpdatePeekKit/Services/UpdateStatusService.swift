@@ -19,6 +19,11 @@ public protocol NpmLocating: Sendable {
     func npmPath() -> String?
 }
 
+public protocol NpmInstalling: Sendable {
+    /// Installs the latest version of one global package. Throws `UpdatePeekError` with a message that is safe to show.
+    func install(_ name: String) async throws
+}
+
 public protocol NpmChecking: Sendable {
     func outdated() async throws -> PackageReport
 }
@@ -73,6 +78,15 @@ public struct BrewOutdatedChecker: HomebrewChecking {
     }
 }
 
+/// The part every npm invocation shares: `/usr/bin/env` sets a minimal PATH that starts with npm's own directory, because npm
+/// is a script that needs `node` and a menu-bar app has almost no PATH. Hard-coded, never built from user input.
+enum NpmCommand {
+    static func prefix(npm: String) -> [String] {
+        let directory = URL(fileURLWithPath: npm).deletingLastPathComponent().path
+        return ["PATH=\(directory):/usr/bin:/bin:/usr/sbin:/sbin", "npm_config_update_notifier=false", "npm_config_fund=false", npm]
+    }
+}
+
 /// Runs `npm outdated --global --json`: a fixed executable and a fixed argument array (no shell). Unlike Homebrew, npm asks
 /// its registry (npmjs.org unless the user's own npm config says otherwise), so this makes network requests and only runs
 /// when the user presses Check. npm is a script that needs `node`; an app launched from the menu bar has a minimal PATH,
@@ -87,9 +101,7 @@ public struct NpmOutdatedChecker: NpmChecking {
     }
 
     static func arguments(npm: String) -> [String] {
-        let directory = URL(fileURLWithPath: npm).deletingLastPathComponent().path
-        return ["PATH=\(directory):/usr/bin:/bin:/usr/sbin:/sbin", "npm_config_update_notifier=false", "npm_config_fund=false",
-                npm, "outdated", "--global", "--json"]
+        NpmCommand.prefix(npm: npm) + ["outdated", "--global", "--json"]
     }
 
     public func outdated() async throws -> PackageReport {
@@ -111,6 +123,48 @@ public struct NpmOutdatedChecker: NpmChecking {
             return PackageReport(packages: try NpmParser.parse(trimmed))
         } catch UpdatePeekError.malformedData {
             throw UpdatePeekError.operationFailed("npm's answer could not be understood.")
+        }
+    }
+}
+
+/// Runs `npm install --global <name>@latest` for one package the user chose and confirmed. A fixed executable and argument
+/// array (no shell); the name must pass the strict npm-name check, so it cannot become an option or a second argument.
+/// It never elevates: if npm cannot write to the global folder the install fails with an explanation, and the user can
+/// run the copied command themselves. Installing runs the package's own install scripts, as it would in Terminal.
+public struct NpmGlobalInstaller: NpmInstalling {
+    public static let permissionMessage =
+        "npm doesn't have permission to change its global packages on this Mac. Run the copied command in Terminal with the permissions your Node install needs."
+
+    private let runner: CommandRunning
+    private let locator: NpmLocating
+
+    public init(runner: CommandRunning = ShellCommand(timeout: 300), locator: NpmLocating = StandardNpmLocator()) {
+        self.runner = runner
+        self.locator = locator
+    }
+
+    static func arguments(npm: String, name: String) -> [String] {
+        NpmCommand.prefix(npm: npm) + ["install", "--global", "--no-audit", "--no-fund", "\(name)@latest"]
+    }
+
+    public func install(_ name: String) async throws {
+        guard UpdateActions.isValidNpmPackageName(name) else {
+            throw UpdatePeekError.operationFailed("MacPeek can't update a package with that name.")
+        }
+        guard let npm = locator.npmPath() else { throw UpdatePeekError.sourceUnavailable("npm was not found.") }
+        let output: CommandOutput
+        do {
+            output = try await runner.run("/usr/bin/env", Self.arguments(npm: npm, name: name))
+        } catch let error as CommandError {
+            throw UpdatePeekError.operationFailed(error.localizedDescription)
+        }
+        guard output.status == 0 else {
+            // Only used to pick a fixed message; npm's own text is never shown.
+            let text = (output.stdout + output.stderr).lowercased()
+            if text.contains("eacces") || text.contains("eperm") || text.contains("permission denied") {
+                throw UpdatePeekError.operationFailed(Self.permissionMessage)
+            }
+            throw UpdatePeekError.operationFailed("npm could not update \(name).")
         }
     }
 }
@@ -143,6 +197,12 @@ public enum UpdateActions {
         return isValidPart(Substring(name))
     }
 
+    /// Whether MacPeek itself can update this package (after the user confirms): only npm packages, only ones npm just
+    /// listed, with a well-formed name. Homebrew packages stay copy-only because cask upgrades can ask for a password.
+    public static func canUpdateInMacPeek(_ package: OutdatedPackage, among known: [OutdatedPackage]) -> Bool {
+        package.kind == .npm && known.contains(package) && isValidNpmPackageName(package.name)
+    }
+
     /// A copyable upgrade command, only for a package that its package manager just listed and whose name is well-formed.
     /// MacPeek does not run `brew upgrade` or `npm install`: casks can ask for a password, global npm installs can need
     /// elevated rights depending on how Node was installed, and neither route is verified to work without elevation, so
@@ -164,7 +224,7 @@ public enum UpdateActions {
 /// output is not a stable API and was not verified on every supported version, so the honest answer is "open Software Update".
 public struct UpdateStatusService: Sendable {
     public static let osUpdateNotice =
-        "MacPeek does not check for macOS updates. Open Software Update to see what Apple offers for this Mac."
+        "MacPeek only reports what macOS says. Check now asks Apple's update servers; Software Update is where updates are installed."
     public static let otherAppsNotice =
         "Other apps: update status unavailable. No supported update source is available for them, so they are not checked."
 
@@ -173,14 +233,21 @@ public struct UpdateStatusService: Sendable {
     private let homebrew: HomebrewChecking
     private let npmLocator: NpmLocating
     private let npm: NpmChecking
+    private let npmInstaller: NpmInstalling
+    private let macOSRecord: SoftwareUpdateRecordReading
+    private let macOSChecker: MacOSUpdateChecking
 
     public init(os: OperatingSystemProviding, locator: HomebrewLocating, homebrew: HomebrewChecking,
-                npmLocator: NpmLocating, npm: NpmChecking) {
+                npmLocator: NpmLocating, npm: NpmChecking, npmInstaller: NpmInstalling,
+                macOSRecord: SoftwareUpdateRecordReading, macOSChecker: MacOSUpdateChecking) {
         self.os = os
         self.locator = locator
         self.homebrew = homebrew
         self.npmLocator = npmLocator
         self.npm = npm
+        self.npmInstaller = npmInstaller
+        self.macOSRecord = macOSRecord
+        self.macOSChecker = macOSChecker
     }
 
     public func operatingSystem() -> OperatingSystemInfo { os.current() }
@@ -200,6 +267,40 @@ public struct UpdateStatusService: Sendable {
     public func checkNpm() async -> PackageCheckState {
         guard npmLocator.npmPath() != nil else { return .notInstalled }
         return await state(failure: "npm could not be checked.") { try await npm.outdated() }
+    }
+
+    /// Updates macOS's own record already lists (local, no request), else "not checked": an empty record proves nothing.
+    public func initialMacOSState() -> MacOSUpdateState {
+        macOSRecord.read().map(MacOSUpdateState.known) ?? .notChecked
+    }
+
+    /// Asks Apple's update servers through `softwareupdate --list` (a network request), only when the user presses Check now.
+    public func checkMacOS() async -> MacOSUpdateState {
+        do {
+            let updates = try await macOSChecker.list()
+            return .known(MacOSUpdateReport(updates: updates, source: .softwareUpdateTool, checkedAt: Date()))
+        } catch is CancellationError {
+            return initialMacOSState()
+        } catch let error as UpdatePeekError {
+            return .failed(message: error.localizedDescription)
+        } catch {
+            return .failed(message: "macOS could not be checked for updates.")
+        }
+    }
+
+    /// Updates one npm package the user confirmed. Refuses anything npm did not just list or that fails the name check.
+    public func updateNpmPackage(_ package: OutdatedPackage, among known: [OutdatedPackage]) async -> PackageInstallOutcome {
+        guard UpdateActions.canUpdateInMacPeek(package, among: known) else {
+            return .failed(message: "MacPeek can't update that package.")
+        }
+        do {
+            try await npmInstaller.install(package.name)
+            return .installed
+        } catch let error as UpdatePeekError {
+            return .failed(message: error.localizedDescription)
+        } catch {
+            return .failed(message: "npm could not update \(package.name).")
+        }
     }
 
     private func state(failure: String, _ check: () async throws -> PackageReport) async -> PackageCheckState {

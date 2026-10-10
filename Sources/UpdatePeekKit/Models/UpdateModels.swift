@@ -76,6 +76,59 @@ public enum PackageCheckState: Equatable, Sendable {
     case failed(message: String, retryable: Bool)
 }
 
+/// A macOS update that macOS itself reported (from `softwareupdate --list` or its own record of its last check).
+public struct MacOSUpdate: Identifiable, Equatable, Sendable {
+    public let name: String
+    public let version: String?
+    /// nil = not reported.
+    public let isRecommended: Bool?
+    public let requiresRestart: Bool?
+
+    public var id: String { "\(name)|\(version ?? "")" }
+
+    public init(name: String, version: String? = nil, isRecommended: Bool? = nil, requiresRestart: Bool? = nil) {
+        self.name = name
+        self.version = version.flatMap { $0.isEmpty ? nil : $0 }
+        self.isRecommended = isRecommended
+        self.requiresRestart = requiresRestart
+    }
+}
+
+/// What macOS reported about available updates, where that came from and when.
+public struct MacOSUpdateReport: Equatable, Sendable {
+    public enum Source: Equatable, Sendable {
+        /// macOS's own record of its last background check (read locally, no request).
+        case macOSRecord
+        /// `softwareupdate --list`, run when the user pressed Check now (asks Apple's update servers).
+        case softwareUpdateTool
+    }
+
+    public let updates: [MacOSUpdate]
+    public let source: Source
+    /// nil when the source does not say.
+    public let checkedAt: Date?
+
+    public init(updates: [MacOSUpdate], source: Source, checkedAt: Date?) {
+        self.updates = updates
+        self.source = source
+        self.checkedAt = checkedAt
+    }
+}
+
+public enum MacOSUpdateState: Equatable, Sendable {
+    /// Nothing is known: macOS has no record of an available update and the user has not pressed Check now.
+    case notChecked
+    case checking
+    case known(MacOSUpdateReport)
+    case failed(message: String)
+}
+
+/// How an attempt to update one package from MacPeek ended.
+public enum PackageInstallOutcome: Equatable, Sendable {
+    case installed
+    case failed(message: String)
+}
+
 public enum UpdatePeekError: Error, LocalizedError, Equatable {
     case sourceUnavailable(String)
     case malformedData

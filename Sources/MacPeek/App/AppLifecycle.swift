@@ -66,7 +66,9 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let updateStore = UpdateStore(service: UpdateStatusService(
             os: SystemOperatingSystem(), locator: updateLocator,
             homebrew: BrewOutdatedChecker(locator: updateLocator),
-            npmLocator: npmLocator, npm: NpmOutdatedChecker(locator: npmLocator)))
+            npmLocator: npmLocator, npm: NpmOutdatedChecker(locator: npmLocator),
+            npmInstaller: NpmGlobalInstaller(locator: npmLocator),
+            macOSRecord: PreferencesSoftwareUpdateRecord(), macOSChecker: SoftwareUpdateChecker()))
 
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),

@@ -33,11 +33,13 @@ The new Kits follow the same pattern, so Linux CI compiles them: Core Audio, Sec
 | Feature | Verdict |
 |---|---|
 | macOS version + build | **Shipped.** |
-| macOS update availability | **Not shipped.** `softwareupdate --list` is unstable output, contacts Apple, and could not be validated on every supported macOS version here. UI says "not checked" and opens Software Update. |
+| macOS update status, local | **Shipped.** macOS's own Software Update record (`RecommendedUpdates`, world-readable plist) is read on open: no command, no request. It can be stale and an empty record proves nothing, so with no record the status stays "Not checked". Key names **unverified on hardware**. |
+| macOS update status, on request | **Shipped.** **Check now** runs `softwareupdate --list` (fixed argv, 120 s limit); this contacts Apple's update servers and only lists. Parser is strict (unrecognised output is a failure, never "nothing to do"). Format is stable but undocumented; **unverified on every supported macOS version**. |
+| Open Software Update | **Shipped**, prominent button; installing macOS updates is left to Software Update. |
 | Homebrew outdated | **Shipped**, read-only, user-initiated, fixed argv, labelled as last-fetched index. Needs validation on a real Homebrew (see §6). |
 | `brew upgrade` from MacPeek | **Not shipped.** Casks may prompt for a password and no-elevation behaviour is unverified. Copy-command instead. |
-| npm outdated (global) | **Shipped**, read-only, user-initiated, fixed argv. **Contacts the npm registry**, so it is the one UpdatePeek check that makes a network request. Needs validation on a real Node install (see §6). |
-| `npm install` from MacPeek | **Not shipped.** Global installs can need elevated rights; copy-command instead. |
+| npm outdated (global) | **Shipped**, read-only, user-initiated, fixed argv. **Contacts the npm registry.** Needs validation on a real Node install (see §6). |
+| `npm install -g` from MacPeek | **Shipped** as an **Update** button for one listed package, after an inline confirmation: fixed argv, strictly validated name, 300 s limit, never elevated (a permission failure gets a fixed explanation), not cancelled when the screen is left. Runs the package's install scripts, as in Terminal. Needs validation with a writable and a non-writable global folder. |
 | npm from nvm / fnm / Volta | **Not detected.** Only `/opt/homebrew/bin/npm` and `/usr/local/bin/npm`; stated in the UI. |
 | Other apps | **"No supported update source"**, never inferred. |
 
@@ -70,12 +72,19 @@ MacPeekCore. Framework used (system, no entitlement): CoreAudio.
    dragging, and a device without a writable volume shows no slider); mute; confirm no
    microphone indicator ever appears and no permission prompt is shown.
 3. UpdatePeek: Homebrew and npm absent / present / outdated packages / broken; npm offline (expect a retryable failure, not an
-   empty list); npm from nvm (expect "not found"); confirm nothing installs and no password prompt.
+   empty list); npm from nvm (expect "not found"). macOS: with a pending update, compare the local record and **Check now**
+   with System Settings → Software Update (names, versions, restart); with none pending expect "macOS reports no new
+   software available"; offline expect a failure, not "no new software". Confirm **Open Software Update** lands on the Software
+   Update pane. npm **Update**: a writable global folder (Homebrew Node) updates and the list refreshes; a non-writable one
+   shows the permission explanation with no password prompt; Homebrew packages have no Update button.
 4. Diff `Resources/` against the previous release: must be empty. Screenshots light + dark.
 
 ## 7. Risks and decisions for the product owner
-- Is "macOS update status: not checked" acceptable for v1, or should a validated `softwareupdate --list` provider be added later?
-- The npm check is a network request to the user's configured registry, made only when Check is pressed. README, the website
-  and the privacy text say so; confirm that wording is acceptable.
+- The `softwareupdate --list` parser and the Software Update record keys were written from the known format without a Mac to
+  verify them; confirm on the oldest and newest supported macOS before release.
+- Three UpdatePeek actions use the network, each only on a button press: Check now (Apple), npm Check and npm Update (the
+  user's configured registry). README, the website and the privacy text say so; confirm that wording is acceptable.
+- The npm **Update** button runs `npm install -g <name>@latest`, which executes the package's install scripts and can jump a
+  major version. It is confirmed inline and never elevated; confirm that is acceptable, or restrict it to non-major updates.
 - Should nvm/fnm/Volta installs be detected? They put npm under the home folder in version-specific paths, which needs a
   decision on which Node version's globals to show.

@@ -24,6 +24,28 @@ private struct FixedNpmLocator: NpmLocating {
     func npmPath() -> String? { path }
 }
 
+private struct FixedRecord: SoftwareUpdateRecordReading {
+    let report: MacOSUpdateReport?
+    func read() -> MacOSUpdateReport? { report }
+}
+
+private struct FixedMacOSChecker: MacOSUpdateChecking {
+    let result: Result<[MacOSUpdate], Error>
+    func list() async throws -> [MacOSUpdate] { try result.get() }
+}
+
+private final class RecordingInstaller: NpmInstalling, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _names: [String] = []
+    let error: Error?
+    init(error: Error? = nil) { self.error = error }
+    var names: [String] { lock.lock(); defer { lock.unlock() }; return _names }
+    func install(_ name: String) async throws {
+        lock.lock(); _names.append(name); lock.unlock()
+        if let error { throw error }
+    }
+}
+
 private struct FixedOS: OperatingSystemProviding {
     func current() -> OperatingSystemInfo { OperatingSystemInfo(major: 15, minor: 1, patch: 0, build: "24B83") }
 }
@@ -124,17 +146,84 @@ final class BrewCheckerTests: XCTestCase {
 }
 
 final class UpdateStatusServiceTests: XCTestCase {
+    private func make(brewPath: String? = nil, npmPath: String? = nil, runner: CommandRunning,
+                      installer: NpmInstalling = RecordingInstaller(),
+                      record: MacOSUpdateReport? = nil,
+                      macOS: Result<[MacOSUpdate], Error> = .success([])) -> UpdateStatusService {
+        let brewLocator = FixedLocator(path: brewPath)
+        let npmLocator = FixedNpmLocator(path: npmPath)
+        return UpdateStatusService(os: FixedOS(), locator: brewLocator,
+                                   homebrew: BrewOutdatedChecker(runner: runner, locator: brewLocator),
+                                   npmLocator: npmLocator, npm: NpmOutdatedChecker(runner: runner, locator: npmLocator),
+                                   npmInstaller: installer,
+                                   macOSRecord: FixedRecord(report: record), macOSChecker: FixedMacOSChecker(result: macOS))
+    }
+
     private func service(path: String?, runner: CommandRunning) -> UpdateStatusService {
-        let locator = FixedLocator(path: path)
-        return UpdateStatusService(os: FixedOS(), locator: locator, homebrew: BrewOutdatedChecker(runner: runner, locator: locator),
-                                   npmLocator: FixedNpmLocator(path: nil), npm: NpmOutdatedChecker(runner: runner, locator: FixedNpmLocator(path: nil)))
+        make(brewPath: path, runner: runner)
     }
 
     private func npmService(path: String?, runner: CommandRunning) -> UpdateStatusService {
-        let locator = FixedNpmLocator(path: path)
-        return UpdateStatusService(os: FixedOS(), locator: FixedLocator(path: nil),
-                                   homebrew: BrewOutdatedChecker(runner: runner, locator: FixedLocator(path: nil)),
-                                   npmLocator: locator, npm: NpmOutdatedChecker(runner: runner, locator: locator))
+        make(npmPath: path, runner: runner)
+    }
+
+    func testMacOSIsNotCheckedWithoutARecordOrACheck() {
+        let runner = ScriptedRunner(ok(""))
+        XCTAssertEqual(make(runner: runner).initialMacOSState(), .notChecked)
+        XCTAssertTrue(runner.calls.isEmpty)
+    }
+
+    func testMacOSStartsFromMacOSsOwnRecordWhenItListsAnUpdate() {
+        let report = MacOSUpdateReport(updates: [MacOSUpdate(name: "macOS Sequoia 15.1", version: "15.1")],
+                                       source: .macOSRecord, checkedAt: nil)
+        XCTAssertEqual(make(runner: ScriptedRunner(ok("")), record: report).initialMacOSState(), .known(report))
+    }
+
+    func testCheckNowReportsWhatSoftwareUpdateListed() async {
+        let update = MacOSUpdate(name: "macOS Sequoia 15.1", version: "15.1", isRecommended: true, requiresRestart: true)
+        let state = await make(runner: ScriptedRunner(ok("")), macOS: .success([update])).checkMacOS()
+        guard case .known(let report) = state else { return XCTFail("expected known, got \(state)") }
+        XCTAssertEqual(report.updates, [update])
+        XCTAssertEqual(report.source, .softwareUpdateTool)
+        XCTAssertNotNil(report.checkedAt)
+    }
+
+    func testCheckNowWithNothingListedIsAnEmptyReportNotAFailure() async {
+        let state = await make(runner: ScriptedRunner(ok("")), macOS: .success([])).checkMacOS()
+        guard case .known(let report) = state else { return XCTFail("expected known, got \(state)") }
+        XCTAssertTrue(report.updates.isEmpty)
+    }
+
+    func testCheckNowFailuresAreShownAsFailuresWithAMessage() async {
+        let state = await make(runner: ScriptedRunner(ok("")),
+                               macOS: .failure(UpdatePeekError.operationFailed(SoftwareUpdateChecker.failureMessage))).checkMacOS()
+        XCTAssertEqual(state, .failed(message: SoftwareUpdateChecker.failureMessage))
+    }
+
+    func testUpdatingAnNpmPackageRunsTheInstallerOnlyForListedValidPackages() async {
+        let installer = RecordingInstaller()
+        let listed = OutdatedPackage(name: "typescript", kind: .npm, installedVersions: ["5.4.5"], currentVersion: "5.6.2")
+        let service = make(npmPath: "/opt/homebrew/bin/npm", runner: ScriptedRunner(ok("")), installer: installer)
+        let installed = await service.updateNpmPackage(listed, among: [listed])
+        XCTAssertEqual(installed, .installed)
+        XCTAssertEqual(installer.names, ["typescript"])
+
+        let notListed = await service.updateNpmPackage(listed, among: [])
+        let brew = OutdatedPackage(name: "wget", kind: .formula, installedVersions: ["1"], currentVersion: "2")
+        let wrongKind = await service.updateNpmPackage(brew, among: [brew])
+        let evil = OutdatedPackage(name: "-g", kind: .npm, installedVersions: [], currentVersion: "1")
+        let badName = await service.updateNpmPackage(evil, among: [evil])
+        for outcome in [notListed, wrongKind, badName] {
+            XCTAssertEqual(outcome, .failed(message: "MacPeek can't update that package."))
+        }
+        XCTAssertEqual(installer.names, ["typescript"], "refused updates must not reach the installer")
+    }
+
+    func testAnInstallerFailureIsReportedWithItsSafeMessage() async {
+        let installer = RecordingInstaller(error: UpdatePeekError.operationFailed(NpmGlobalInstaller.permissionMessage))
+        let listed = OutdatedPackage(name: "typescript", kind: .npm, installedVersions: ["5.4.5"], currentVersion: "5.6.2")
+        let outcome = await make(runner: ScriptedRunner(ok("")), installer: installer).updateNpmPackage(listed, among: [listed])
+        XCTAssertEqual(outcome, .failed(message: NpmGlobalInstaller.permissionMessage))
     }
 
     func testNpmInitialStateDependsOnlyOnWhetherNpmWasFound() {
@@ -342,5 +431,201 @@ final class NpmUpdateActionTests: XCTestCase {
         for name in ["lodash", "left-pad", "@types/node", "@angular/cli", "a.b_c~d", "node-gyp"] {
             XCTAssertTrue(UpdateActions.isValidNpmPackageName(name), name)
         }
+    }
+}
+
+final class SoftwareUpdateListParserTests: XCTestCase {
+    private let listed = """
+    Software Update Tool
+
+    Finding available software
+    Software Update found the following new or updated software:
+    * Label: macOS Sequoia 15.1-24B83
+    \tTitle: macOS Sequoia 15.1, Version: 15.1, Size: 3000000KiB, Recommended: YES, Action: restart,
+    * Label: Safari18.1SequoiaAuto-18.1
+    \tTitle: Safari, Version: 18.1, Size: 150000KiB, Recommended: YES,
+    """
+
+    func testParsesUpdatesWithTheirDetails() throws {
+        let updates = try SoftwareUpdateListParser.parse(listed)
+        XCTAssertEqual(updates.map(\.name), ["macOS Sequoia 15.1", "Safari"])
+        XCTAssertEqual(updates[0].version, "15.1")
+        XCTAssertEqual(updates[0].isRecommended, true)
+        XCTAssertEqual(updates[0].requiresRestart, true)
+        XCTAssertNil(updates[1].requiresRestart, "no Action field means not reported")
+    }
+
+    func testNoNewSoftwareIsAnEmptyList() throws {
+        XCTAssertEqual(try SoftwareUpdateListParser.parse("Software Update Tool\n\nFinding available software\nNo new software available.\n"), [])
+    }
+
+    func testATitleWithACommaIsKeptWhole() throws {
+        let text = "* Label: X-1\n\tTitle: Foo, Bar Update, Version: 2.0, Size: 1KiB, Recommended: NO,\n"
+        let update = try XCTUnwrap(SoftwareUpdateListParser.parse(text).first)
+        XCTAssertEqual(update.name, "Foo, Bar Update")
+        XCTAssertEqual(update.version, "2.0")
+        XCTAssertEqual(update.isRecommended, false)
+    }
+
+    func testAnUpdateWithoutDetailsFallsBackToItsLabel() throws {
+        let updates = try SoftwareUpdateListParser.parse("* Label: Lonely-1.0\n")
+        XCTAssertEqual(updates.map(\.name), ["Lonely-1.0"])
+    }
+
+    func testAnythingElseIsMalformedNeverNothingToDo() {
+        for bad in ["", "Software Update Tool\n\nFinding available software\n", "softwareupdate: Can't connect to the server",
+                    "Software Update found the following new or updated software:"] {
+            XCTAssertThrowsError(try SoftwareUpdateListParser.parse(bad), bad) { XCTAssertEqual($0 as? UpdatePeekError, .malformedData) }
+        }
+    }
+}
+
+final class SoftwareUpdateCheckerTests: XCTestCase {
+    func testRunsAFixedExecutableAndArgument() async throws {
+        let runner = ScriptedRunner(.success(CommandOutput(stdout: "* Label: A-1\n\tTitle: A, Version: 1, Size: 1KiB,\n", stderr: "Finding available software\n", status: 0)))
+        let updates = try await SoftwareUpdateChecker(runner: runner).list()
+        XCTAssertEqual(updates.map(\.name), ["A"])
+        let call = try XCTUnwrap(runner.calls.first)
+        XCTAssertEqual(call.0, "/usr/sbin/softwareupdate")
+        XCTAssertEqual(call.1, ["--list"])
+    }
+
+    func testTheListIsReadFromStderrToo() async throws {
+        let runner = ScriptedRunner(.success(CommandOutput(stdout: "", stderr: "No new software available.\n", status: 0)))
+        let updates = try await SoftwareUpdateChecker(runner: runner).list()
+        XCTAssertTrue(updates.isEmpty)
+    }
+
+    func testNonZeroExitDoesNotLeakRawOutput() async {
+        let runner = ScriptedRunner(.success(CommandOutput(stdout: "", stderr: "error at /Users/me/secret", status: 1)))
+        do { _ = try await SoftwareUpdateChecker(runner: runner).list(); XCTFail("expected error") } catch {
+            XCTAssertEqual(error as? UpdatePeekError, .operationFailed(SoftwareUpdateChecker.failureMessage))
+            XCTAssertFalse(error.localizedDescription.contains("secret"))
+        }
+    }
+
+    func testUnrecognisedOutputIsAFailureNotNothingToDo() async {
+        let runner = ScriptedRunner(ok("something unexpected"))
+        do { _ = try await SoftwareUpdateChecker(runner: runner).list(); XCTFail("expected error") } catch {
+            XCTAssertEqual(error as? UpdatePeekError, .operationFailed("macOS's answer could not be understood."))
+        }
+    }
+
+    func testTimeoutIsReportedNotRaw() async {
+        let runner = ScriptedRunner(.failure(CommandError.timedOut("softwareupdate")))
+        do { _ = try await SoftwareUpdateChecker(runner: runner).list(); XCTFail("expected error") } catch {
+            guard case UpdatePeekError.operationFailed = error else { return XCTFail("wrong error \(error)") }
+        }
+    }
+}
+
+final class SoftwareUpdateRecordTests: XCTestCase {
+    private func write(_ object: Any, name: String = UUID().uuidString) throws -> String {
+        let path = NSTemporaryDirectory() + "updatepeek-\(name).plist"
+        let data = try PropertyListSerialization.data(fromPropertyList: object, format: .xml, options: 0)
+        try data.write(to: URL(fileURLWithPath: path))
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
+        return path
+    }
+
+    func testReadsUpdatesMacOSRecordedAndWhenItLastSucceeded() throws {
+        let date = Date(timeIntervalSince1970: 1_700_000_000)
+        let record: [String: Any] = [
+            "RecommendedUpdates": [["Display Name": "macOS Sequoia 15.1", "Display Version": "15.1", "Identifier": "MSU_UPDATE_24B83"]],
+            "LastFullSuccessfulDate": date,
+        ]
+        let path = try write(record)
+        let report = try XCTUnwrap(PreferencesSoftwareUpdateRecord(path: path).read())
+        XCTAssertEqual(report.updates, [MacOSUpdate(name: "macOS Sequoia 15.1", version: "15.1")])
+        XCTAssertEqual(report.source, .macOSRecord)
+        XCTAssertEqual(report.checkedAt, date)
+    }
+
+    func testAnEmptyOrMissingRecordProvesNothingSoItIsNil() throws {
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: try write(["RecommendedUpdates": [[String: Any]]()])).read())
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: try write(["LastUpdatesAvailable": 0])).read())
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: "/nonexistent/com.apple.SoftwareUpdate.plist").read())
+    }
+
+    func testWrongTypesAndGarbageAreIgnored() throws {
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: try write(["RecommendedUpdates": "nope"])).read())
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: try write(["RecommendedUpdates": [["Display Name": 5]]])).read())
+        let path = NSTemporaryDirectory() + "updatepeek-garbage-\(UUID().uuidString).plist"
+        try Data("not a plist".utf8).write(to: URL(fileURLWithPath: path))
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: path).read())
+    }
+
+    func testAnOversizedFileIsRejectedWithoutBeingParsed() throws {
+        let path = NSTemporaryDirectory() + "updatepeek-big-\(UUID().uuidString).plist"
+        try Data(repeating: 0x20, count: 2_100_000).write(to: URL(fileURLWithPath: path))
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
+        XCTAssertNil(PreferencesSoftwareUpdateRecord(path: path).read())
+    }
+}
+
+final class NpmInstallerTests: XCTestCase {
+    func testUsesFixedExecutableAndArgumentsWithNpmsDirectoryOnPath() async throws {
+        let runner = ScriptedRunner(ok(""))
+        try await NpmGlobalInstaller(runner: runner, locator: FixedNpmLocator(path: "/opt/homebrew/bin/npm")).install("@angular/cli")
+        let call = try XCTUnwrap(runner.calls.first)
+        XCTAssertEqual(call.0, "/usr/bin/env")
+        XCTAssertEqual(call.1, ["PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin", "npm_config_update_notifier=false",
+                                "npm_config_fund=false", "/opt/homebrew/bin/npm", "install", "--global", "--no-audit", "--no-fund",
+                                "@angular/cli@latest"])
+    }
+
+    func testInvalidNamesNeverRunAnything() async {
+        let runner = ScriptedRunner(ok(""))
+        let installer = NpmGlobalInstaller(runner: runner, locator: FixedNpmLocator(path: "/usr/local/bin/npm"))
+        for name in ["-g", "--prefix=/x", "a b", "a;rm -rf ~", "$(whoami)", "", "Upper", "a@latest"] {
+            do { try await installer.install(name); XCTFail("expected error for \(name)") } catch {
+                XCTAssertEqual(error as? UpdatePeekError, .operationFailed("MacPeek can't update a package with that name."), name)
+            }
+        }
+        XCTAssertTrue(runner.calls.isEmpty)
+    }
+
+    func testMissingNpmIsSourceUnavailableAndRunsNothing() async {
+        let runner = ScriptedRunner(ok(""))
+        do {
+            try await NpmGlobalInstaller(runner: runner, locator: FixedNpmLocator(path: nil)).install("typescript")
+            XCTFail("expected error")
+        } catch {
+            guard case UpdatePeekError.sourceUnavailable = error else { return XCTFail("wrong error \(error)") }
+        }
+        XCTAssertTrue(runner.calls.isEmpty)
+    }
+
+    func testPermissionFailuresGetTheFixedExplanationAndNeverRawOutput() async {
+        for text in ["npm ERR! code EACCES\nnpm ERR! path /usr/local/lib/node_modules/secret", "Error: EPERM: operation not permitted", "permission denied"] {
+            let runner = ScriptedRunner(.success(CommandOutput(stdout: "", stderr: text, status: 243)))
+            do {
+                try await NpmGlobalInstaller(runner: runner, locator: FixedNpmLocator(path: "/usr/local/bin/npm")).install("typescript")
+                XCTFail("expected error")
+            } catch {
+                XCTAssertEqual(error as? UpdatePeekError, .operationFailed(NpmGlobalInstaller.permissionMessage))
+                XCTAssertFalse(error.localizedDescription.contains("secret"))
+            }
+        }
+    }
+
+    func testOtherFailuresNameThePackageOnly() async {
+        let runner = ScriptedRunner(.success(CommandOutput(stdout: "", stderr: "npm ERR! 404 /Users/me/private", status: 1)))
+        do {
+            try await NpmGlobalInstaller(runner: runner, locator: FixedNpmLocator(path: "/usr/local/bin/npm")).install("typescript")
+            XCTFail("expected error")
+        } catch {
+            XCTAssertEqual(error as? UpdatePeekError, .operationFailed("npm could not update typescript."))
+            XCTAssertFalse(error.localizedDescription.contains("private"))
+        }
+    }
+
+    func testOnlyListedValidNpmPackagesCanBeUpdatedInMacPeek() {
+        let ts = OutdatedPackage(name: "typescript", kind: .npm, installedVersions: ["1"], currentVersion: "2")
+        let wget = OutdatedPackage(name: "wget", kind: .formula, installedVersions: ["1"], currentVersion: "2")
+        XCTAssertTrue(UpdateActions.canUpdateInMacPeek(ts, among: [ts]))
+        XCTAssertFalse(UpdateActions.canUpdateInMacPeek(ts, among: []))
+        XCTAssertFalse(UpdateActions.canUpdateInMacPeek(wget, among: [wget]), "Homebrew stays copy-only")
     }
 }

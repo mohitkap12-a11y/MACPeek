@@ -12,7 +12,7 @@ final class UpdatePeekModule: UtilityModule {
         self.store = store
     }
 
-    func launcherSummary() async -> String? { store.operatingSystem.displayString }
+    func launcherSummary() async -> String? { store.launcherSummary }
 
     func didAppear() { store.reload() }
     func didDisappear() { store.cancel() }
