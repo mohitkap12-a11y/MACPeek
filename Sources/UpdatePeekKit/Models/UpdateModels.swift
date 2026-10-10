@@ -26,10 +26,19 @@ public struct OperatingSystemInfo: Equatable, Sendable {
 
 public enum PackageKind: String, Equatable, Sendable {
     case formula, cask
-    public var label: String { self == .formula ? "Formula" : "Cask" }
+    /// A globally installed npm package (`npm outdated -g`).
+    case npm
+
+    public var label: String {
+        switch self {
+        case .formula: return "Formula"
+        case .cask: return "Cask"
+        case .npm: return "npm"
+        }
+    }
 }
 
-/// A package Homebrew lists as outdated, exactly as Homebrew reported it.
+/// A package a package manager lists as outdated, exactly as it reported it. For npm, `currentVersion` is npm's `latest`.
 public struct OutdatedPackage: Identifiable, Equatable, Sendable {
     public let name: String
     public let kind: PackageKind
@@ -48,9 +57,9 @@ public struct OutdatedPackage: Identifiable, Equatable, Sendable {
     public var installedLabel: String { installedVersions.isEmpty ? "Not reported" : installedVersions.joined(separator: ", ") }
 }
 
-/// Where the Homebrew result came from and when. Homebrew answers from its last-fetched index; MacPeek never runs
-/// `brew update`, so this is "outdated as of Homebrew's last update", not a live check.
-public struct HomebrewReport: Equatable, Sendable {
+/// What a package manager reported and when. Homebrew answers from its last-fetched index (MacPeek never runs
+/// `brew update`); npm compares with the registry at the time of the check.
+public struct PackageReport: Equatable, Sendable {
     public let packages: [OutdatedPackage]
     public let checkedAt: Date
     public init(packages: [OutdatedPackage], checkedAt: Date = Date()) {
@@ -59,11 +68,11 @@ public struct HomebrewReport: Equatable, Sendable {
     }
 }
 
-public enum HomebrewState: Equatable, Sendable {
+public enum PackageCheckState: Equatable, Sendable {
     case notInstalled
     case notChecked
     case checking
-    case checked(HomebrewReport)
+    case checked(PackageReport)
     case failed(message: String, retryable: Bool)
 }
 

@@ -12,7 +12,6 @@ import EnvPeekKit
 import DNSPeekKit
 import NetPeekKit
 import SoundPeekKit
-import StartupPeekKit
 import UpdatePeekKit
 
 @MainActor
@@ -62,13 +61,12 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
 
         let soundStore = SoundStore(service: SoundPeekService(provider: CoreAudioDeviceProvider()),
                                     observer: CoreAudioChangeObserver())
-        let startupStore = StartupStore(service: StartupInventoryService(
-            providers: [OwnLoginItemProvider(reader: ServiceManagementOwnLoginItem()), LaunchdPlistProvider()],
-            signatures: SecurityCodeSignatureReader()))
         let updateLocator = StandardHomebrewLocator()
+        let npmLocator = StandardNpmLocator()
         let updateStore = UpdateStore(service: UpdateStatusService(
             os: SystemOperatingSystem(), locator: updateLocator,
-            homebrew: BrewOutdatedChecker(locator: updateLocator)))
+            homebrew: BrewOutdatedChecker(locator: updateLocator),
+            npmLocator: npmLocator, npm: NpmOutdatedChecker(locator: npmLocator)))
 
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
@@ -82,9 +80,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             NetPeekModule(store: netStore),
             DNSPeekModule(store: dnsStore),
             SoundPeekModule(store: soundStore),
-            StartupPeekModule(store: startupStore),
             UpdatePeekModule(store: updateStore),
-            PrivacyPeekModule(),
         ])
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings)

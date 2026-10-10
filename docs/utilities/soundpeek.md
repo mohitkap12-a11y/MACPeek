@@ -6,6 +6,7 @@
 ## What it shows
 - The current **default output** and **default input** device, and every device that can do each direction (default first).
 - Per device: connection type (built-in, USB, Bluetooth, HDMI, …), sample rate, channel count, volume and mute state.
+- A **volume slider** on devices that report a writable volume; read-only devices show the percentage instead.
 - Anything a device does not expose reads **Not reported** / **Not exposed by this device**. Nothing is estimated.
 - Duplicate device names are told apart (`USB Audio (1)`, `Headset (Bluetooth)`).
 - Copy audio report: names, connection, formats, defaults. No device IDs, UIDs or serial numbers.
@@ -14,12 +15,15 @@
 - **Set as default input/output** for a device that has that direction. **Undo** appears right after a switch and restores
   the previous device if it is still connected. SoundPeek never switches devices on its own, including when a new one appears.
 - **Mute / Unmute** only where Core Audio reports the mute property as writable.
-- Volume is **read-only** in this release.
+- **Volume slider** (0–100%) only where Core Audio reports the volume property as writable (the device's main volume, or both
+  channel 1 and 2 on devices that only have per-channel volume). Changes are sent shortly after you stop moving, the last
+  value wins, and the slider shows your value until the device confirms it. Moving the slider does not change mute and keeps
+  the default-device Undo.
 
 ## Data sources and APIs
 Core Audio (Audio Hardware) property API via `CoreAudioDeviceProvider`: `kAudioHardwarePropertyDevices`,
 `…DefaultInputDevice`/`…DefaultOutputDevice`, `kAudioObjectPropertyName`, `kAudioDevicePropertyTransportType`,
-`…StreamConfiguration`, `…NominalSampleRate`, `…VolumeScalar`, `…Mute`, `…IsHidden`. Property listeners
+`…StreamConfiguration`, `…NominalSampleRate`, `…VolumeScalar` (read and write), `…Mute` (read and write), `…IsHidden`. Property listeners
 (`CoreAudioChangeObserver`) are registered only while the screen is visible and removed when it is left. Reads run off the
 main thread. Hidden devices are not listed. Device IDs are runtime identifiers only and are never stored.
 
@@ -30,6 +34,8 @@ None. No audio stream is ever opened, so macOS never asks for Microphone access.
 13 (uses `kAudioObjectPropertyElementMain`).
 
 ## Known limitations
+- Many HDMI/DisplayPort and some USB devices do not expose volume or mute to macOS; they show "Not exposed by this device"
+  and get no slider.
 - Volume/mute changed outside SoundPeek (menu bar, keyboard) appears on the next device-change event or Refresh; there are
   no per-device property listeners.
 - Per-app volume/mute and "which app is using audio" were investigated and **not shipped**: see
@@ -38,5 +44,5 @@ None. No audio stream is ever opened, so macOS never asks for Microphone access.
 
 ## Testing
 `swift test --filter SoundPeekKitTests` (fake provider: mapping, unavailable properties, duplicate names, removal, errors,
-undo). Manual: built-in devices, USB headset, Bluetooth, HDMI/monitor audio, unplug/replug while open, sleep/wake, a device
+undo, volume clamping and refusal for read-only or removed devices). Manual: built-in devices, USB headset, Bluetooth, HDMI/monitor audio, unplug/replug while open, sleep/wake, a device
 without volume/mute.

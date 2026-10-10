@@ -65,11 +65,14 @@ public struct AudioControls: Equatable, Sendable {
     public let isMuted: Bool?
     /// Whether the mute property can be written. Never true when `isMuted` is nil.
     public let canSetMute: Bool
+    /// Whether the volume can be written. Never true when `volume` is nil.
+    public let canSetVolume: Bool
 
-    public init(volume: Double? = nil, isMuted: Bool? = nil, canSetMute: Bool = false) {
+    public init(volume: Double? = nil, isMuted: Bool? = nil, canSetMute: Bool = false, canSetVolume: Bool = false) {
         self.volume = volume.map { min(max($0, 0), 1) }
         self.isMuted = isMuted
         self.canSetMute = isMuted != nil && canSetMute
+        self.canSetVolume = volume != nil && canSetVolume
     }
 
     public static let none = AudioControls()

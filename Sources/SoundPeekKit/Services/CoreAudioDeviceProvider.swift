@@ -81,7 +81,34 @@ enum CoreAudioProperty {
             muted = raw != 0
             canSetMute = isSettable(device, muteAddress)
         }
-        return AudioControls(volume: volume(device, scope: scope), isMuted: muted, canSetMute: canSetMute)
+        return AudioControls(volume: volume(device, scope: scope), isMuted: muted, canSetMute: canSetMute,
+                             canSetVolume: canSetVolume(device, scope: scope))
+    }
+
+    /// The volume properties a device exposes: its main one, or channels 1 and 2 for devices that only have per-channel
+    /// volume. Same rule `volume` reads with, so what is shown is what is written.
+    static func volumeAddresses(_ device: AudioObjectID, scope: AudioObjectPropertyScope) -> [AudioObjectPropertyAddress] {
+        let main = address(kAudioDevicePropertyVolumeScalar, scope: scope)
+        if has(device, main) { return [main] }
+        return [1, 2].map { address(kAudioDevicePropertyVolumeScalar, scope: scope, element: AudioObjectPropertyElement($0)) }
+            .filter { has(device, $0) }
+    }
+
+    static func canSetVolume(_ device: AudioObjectID, scope: AudioObjectPropertyScope) -> Bool {
+        let addresses = volumeAddresses(device, scope: scope)
+        return !addresses.isEmpty && addresses.allSatisfy { isSettable(device, $0) }
+    }
+
+    /// Writes `volume` (0...1) to every volume property from `volumeAddresses`; returns the first failing status, or noErr.
+    static func setVolume(_ volume: Float32, device: AudioObjectID, scope: AudioObjectPropertyScope) -> OSStatus {
+        let addresses = volumeAddresses(device, scope: scope)
+        guard !addresses.isEmpty else { return OSStatus(kAudioHardwareUnknownPropertyError) }
+        for var address in addresses {
+            var value = volume
+            let status = AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
+            if status != noErr { return status }
+        }
+        return noErr
     }
 
     /// The device's main volume, or the average of channels 1 and 2 for devices that only expose per-channel volume.
@@ -132,6 +159,12 @@ public struct CoreAudioDeviceProvider: AudioDeviceProviding {
         let status = AudioObjectSetPropertyData(AudioObjectID(deviceID), &address, 0, nil,
                                                 UInt32(MemoryLayout<UInt32>.size), &value)
         guard status == noErr else { throw SoundPeekError.operationFailed("macOS refused to change mute (error \(status)).") }
+    }
+
+    public func setVolume(_ volume: Double, deviceID: UInt32, direction: AudioDirection) async throws {
+        let status = CoreAudioProperty.setVolume(Float32(min(max(volume, 0), 1)), device: AudioObjectID(deviceID),
+                                                 scope: CoreAudioProperty.scope(direction))
+        guard status == noErr else { throw SoundPeekError.operationFailed("macOS refused to change the volume (error \(status)).") }
     }
 
     private static func defaultDevice(_ selector: AudioObjectPropertySelector) -> UInt32? {

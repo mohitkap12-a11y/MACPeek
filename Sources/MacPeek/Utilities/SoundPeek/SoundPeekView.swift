@@ -135,6 +135,7 @@ private struct DeviceCard: View {
                 if isDefault { StatusBadge(text: "Default", tone: .good) }
             }
             KeyValueRows(rows: rows)
+            if controls.canSetVolume { volumeSlider }
             HStack(spacing: 8) {
                 if !isDefault {
                     Button("Set as default \(direction.label.lowercased())") { store.setDefault(device.id, direction: direction) }
@@ -152,6 +153,25 @@ private struct DeviceCard: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// A volume slider, shown only when the device reports a writable volume. Dragging writes (debounced); it never
+    /// changes mute, and a muted device says so next to the slider.
+    private var volumeSlider: some View {
+        let value = Binding<Double>(
+            get: { store.displayedVolume(device, direction: direction) },
+            set: { store.setVolume($0, device: device, direction: direction) })
+        return HStack(spacing: 8) {
+            Image(systemName: "speaker.fill").font(.caption2).foregroundStyle(.secondary).accessibilityHidden(true)
+            Slider(value: value, in: 0...1)
+                .controlSize(.small)
+                .accessibilityLabel("Volume for \(name)")
+                .accessibilityValue("\(Int((store.displayedVolume(device, direction: direction) * 100).rounded())) percent")
+            Image(systemName: "speaker.wave.3.fill").font(.caption2).foregroundStyle(.secondary).accessibilityHidden(true)
+            Text("\(Int((store.displayedVolume(device, direction: direction) * 100).rounded()))%")
+                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                .frame(width: 36, alignment: .trailing)
+        }
+    }
+
     private var symbol: String {
         switch device.transport {
         case .bluetooth, .bluetoothLE: return "headphones"
@@ -163,11 +183,11 @@ private struct DeviceCard: View {
     }
 
     private var rows: [(label: String, value: String)] {
-        [
-            ("Format", device.formatLabel(direction) ?? "Not reported"),
-            ("Volume", controls.volumeLabel ?? "Not exposed by this device"),
-            ("Muted", controls.isMuted.map { $0 ? "Yes" : "No" } ?? "Not exposed by this device"),
-        ]
+        var rows: [(label: String, value: String)] = [("Format", device.formatLabel(direction) ?? "Not reported")]
+        // With a slider the volume is shown there; otherwise it is a read-only value or "not exposed".
+        if !controls.canSetVolume { rows.append(("Volume", controls.volumeLabel ?? "Not exposed by this device")) }
+        rows.append(("Muted", controls.isMuted.map { $0 ? "Yes" : "No" } ?? "Not exposed by this device"))
+        return rows
     }
 }
 #endif

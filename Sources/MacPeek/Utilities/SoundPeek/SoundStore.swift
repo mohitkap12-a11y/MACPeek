@@ -12,6 +12,9 @@ final class SoundStore: ObservableObject {
     @Published private(set) var banner: Banner?
     /// The last default-device change this session, for the Undo button.
     @Published private(set) var lastChange: DefaultDeviceChange?
+    /// Volumes the user has dragged to but that Core Audio has not confirmed yet, so a slider doesn't jump back while a
+    /// write or a refresh is in flight. Keyed by `volumeKey`.
+    @Published private(set) var pendingVolumes: [String: Double] = [:]
 
     private let service: SoundPeekService
     private let observer: AudioChangeObserving
@@ -24,6 +27,7 @@ final class SoundStore: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
     private var actionTask: Task<Void, Never>?
+    private var volumeTasks: [String: Task<Void, Never>] = [:]
 
     init(service: SoundPeekService, observer: AudioChangeObserving) {
         self.service = service
@@ -59,6 +63,9 @@ final class SoundStore: ObservableObject {
         refreshTask?.cancel(); refreshTask = nil
         debounceTask?.cancel(); debounceTask = nil
         actionTask?.cancel(); actionTask = nil
+        volumeTasks.values.forEach { $0.cancel() }
+        volumeTasks.removeAll()
+        pendingVolumes.removeAll()
         isLoading = false
     }
 
@@ -102,6 +109,42 @@ final class SoundStore: ObservableObject {
         run { service in
             let snapshot = try await service.setMuted(muted, deviceID: device.id, direction: direction)
             return (snapshot, .clear, muted ? "Muted." : "Unmuted.")
+        }
+    }
+
+    static func volumeKey(_ device: AudioDevice, _ direction: AudioDirection) -> String {
+        "\(device.id)-\(direction.rawValue)"
+    }
+
+    /// The volume to show: what the user just dragged to, else what the device reports.
+    func displayedVolume(_ device: AudioDevice, direction: AudioDirection) -> Double {
+        pendingVolumes[Self.volumeKey(device, direction)] ?? device.controls(direction).volume ?? 0
+    }
+
+    /// Called as the slider moves. Writes are debounced so a drag sends a handful of changes, not hundreds, and the last
+    /// value always wins. Changing volume leaves the default-device Undo alone and shows no banner on success.
+    func setVolume(_ value: Double, device: AudioDevice, direction: AudioDirection) {
+        let value = min(max(value, 0), 1)
+        let key = Self.volumeKey(device, direction)
+        pendingVolumes[key] = value
+        volumeTasks[key]?.cancel()
+        let service = self.service
+        volumeTasks[key] = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            guard !Task.isCancelled else { return }
+            do {
+                let snapshot = try await service.setVolume(value, deviceID: device.id, direction: direction)
+                guard let self, !Task.isCancelled else { return }
+                self.snapshot = snapshot
+                self.error = nil
+                if self.pendingVolumes[key] == value { self.pendingVolumes[key] = nil }
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                self.pendingVolumes[key] = nil
+                self.banner = Banner(kind: .error, text: error.localizedDescription)
+                Log.soundPeek.error("volume change failed")
+                self.refresh()
+            }
         }
     }
 

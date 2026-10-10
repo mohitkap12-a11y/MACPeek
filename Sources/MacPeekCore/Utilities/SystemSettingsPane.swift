@@ -24,22 +24,8 @@ public struct SystemSettingsPane: Equatable, Sendable {
     public static let sound = SystemSettingsPane(
         id: "sound", title: "Sound",
         urlStrings: ["x-apple.systempreferences:com.apple.Sound-Settings.extension", rootURLString])
-    public static let loginItems = SystemSettingsPane(
-        id: "loginItems", title: "Login Items & Extensions",
-        urlStrings: ["x-apple.systempreferences:com.apple.LoginItems-Settings.extension", rootURLString])
     public static let softwareUpdate = SystemSettingsPane(
         id: "softwareUpdate", title: "Software Update",
         urlStrings: ["x-apple.systempreferences:com.apple.Software-Update-Settings.extension",
                      "x-apple.systempreferences:com.apple.preferences.softwareupdate", rootURLString])
-    public static let privacyAndSecurity = SystemSettingsPane(
-        id: "privacy", title: "Privacy & Security",
-        urlStrings: ["x-apple.systempreferences:com.apple.preference.security?Privacy", rootURLString])
-
-    /// A pane under Privacy & Security (`anchor` is e.g. "Privacy_Camera"); falls back to the Privacy & Security pane.
-    public static func privacy(id: String, title: String, anchor: String) -> SystemSettingsPane {
-        SystemSettingsPane(
-            id: id, title: title,
-            urlStrings: ["x-apple.systempreferences:com.apple.preference.security?\(anchor)"]
-                + privacyAndSecurity.urlStrings)
-    }
 }

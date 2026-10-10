@@ -10,6 +10,7 @@ final class FakeAudioProvider: AudioDeviceProviding, @unchecked Sendable {
     var failSnapshot: Error?
     private(set) var setDefaultCalls: [(UInt32, AudioDirection)] = []
     private(set) var muteCalls: [(Bool, UInt32)] = []
+    private(set) var volumeCalls: [(Double, UInt32)] = []
 
     init(devices: [AudioDevice], defaultInput: UInt32? = nil, defaultOutput: UInt32? = nil) {
         self.devices = devices
@@ -35,11 +36,25 @@ final class FakeAudioProvider: AudioDeviceProviding, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         muteCalls.append((muted, deviceID))
     }
+
+    func setVolume(_ volume: Double, deviceID: UInt32, direction: AudioDirection) async throws {
+        lock.lock(); defer { lock.unlock() }
+        volumeCalls.append((volume, deviceID))
+        guard let index = devices.firstIndex(where: { $0.id == deviceID }) else { return }
+        let device = devices[index]
+        let old = device.controls(direction)
+        let updated = AudioControls(volume: volume, isMuted: old.isMuted, canSetMute: old.canSetMute, canSetVolume: old.canSetVolume)
+        devices[index] = AudioDevice(
+            id: device.id, name: device.name, transport: device.transport,
+            inputChannels: device.inputChannels, outputChannels: device.outputChannels, sampleRate: device.sampleRate,
+            inputControls: direction == .input ? updated : device.inputControls,
+            outputControls: direction == .output ? updated : device.outputControls)
+    }
 }
 
 private let speakers = AudioDevice(id: 1, name: "MacBook Pro Speakers", transport: .builtIn, inputChannels: 0, outputChannels: 2,
                                    sampleRate: 48_000,
-                                   outputControls: AudioControls(volume: 0.45, isMuted: false, canSetMute: true))
+                                   outputControls: AudioControls(volume: 0.45, isMuted: false, canSetMute: true, canSetVolume: true))
 private let microphone = AudioDevice(id: 2, name: "MacBook Pro Microphone", transport: .builtIn, inputChannels: 1, outputChannels: 0,
                                      sampleRate: 48_000)
 private let airpods = AudioDevice(id: 3, name: "AirPods Pro", transport: .bluetooth, inputChannels: 1, outputChannels: 2,
@@ -76,6 +91,12 @@ final class AudioModelTests: XCTestCase {
         XCTAssertNil(hdmi.outputControls.volumeLabel)
         XCTAssertEqual(speakers.outputControls.volumeLabel, "45%")
         XCTAssertEqual(AudioControls(volume: 7).volume, 1)
+    }
+
+    func testControlsNeverClaimWritableVolumeWithoutAVolumeValue() {
+        XCTAssertTrue(speakers.outputControls.canSetVolume)
+        XCTAssertFalse(AudioControls(volume: nil, isMuted: false, canSetMute: true, canSetVolume: true).canSetVolume)
+        XCTAssertFalse(AudioControls(volume: 0.5).canSetVolume)
     }
 
     func testEmptyNameBecomesUnnamed() {
@@ -181,6 +202,43 @@ final class SoundPeekServiceTests: XCTestCase {
             guard case SoundPeekError.notSupported = error else { return XCTFail("wrong error \(error)") }
         }
         XCTAssertEqual(provider.muteCalls.count, 1)
+    }
+
+    func testVolumeIsSetClampedAndReadBack() async throws {
+        let provider = FakeAudioProvider(devices: [speakers], defaultOutput: 1)
+        let snapshot = try await service(provider).setVolume(0.8, deviceID: 1, direction: .output)
+        XCTAssertEqual(snapshot.device(1)?.outputControls.volume ?? -1, 0.8, accuracy: 0.0001)
+        _ = try await service(provider).setVolume(3, deviceID: 1, direction: .output)
+        _ = try await service(provider).setVolume(-1, deviceID: 1, direction: .output)
+        XCTAssertEqual(provider.volumeCalls.map { $0.0 }, [0.8, 1, 0])
+        XCTAssertTrue(provider.muteCalls.isEmpty, "changing volume must not touch mute")
+    }
+
+    func testVolumeOnlyWhenTheDeviceAllowsIt() async {
+        let readOnly = AudioDevice(id: 6, name: "Locked", transport: .usb, outputChannels: 2,
+                                   outputControls: AudioControls(volume: 0.5, isMuted: nil, canSetMute: false, canSetVolume: false))
+        let provider = FakeAudioProvider(devices: [readOnly, hdmi], defaultOutput: 6)
+        for id in [UInt32(6), 4] {
+            do {
+                _ = try await service(provider).setVolume(0.5, deviceID: id, direction: .output)
+                XCTFail("expected notSupported for \(id)")
+            } catch {
+                guard case SoundPeekError.notSupported = error else { return XCTFail("wrong error \(error)") }
+            }
+        }
+        XCTAssertTrue(provider.volumeCalls.isEmpty)
+    }
+
+    func testVolumeForARemovedDeviceIsRefused() async {
+        let provider = FakeAudioProvider(devices: [speakers], defaultOutput: 1)
+        provider.remove(1)
+        do {
+            _ = try await service(provider).setVolume(0.5, deviceID: 1, direction: .output)
+            XCTFail("expected deviceUnavailable")
+        } catch {
+            XCTAssertEqual(error as? SoundPeekError, .deviceUnavailable)
+        }
+        XCTAssertTrue(provider.volumeCalls.isEmpty)
     }
 
     func testProviderErrorsPropagate() async {

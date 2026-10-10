@@ -6,6 +6,8 @@ public protocol AudioDeviceProviding: Sendable {
     func snapshot() async throws -> AudioSnapshot
     func setDefaultDevice(_ id: UInt32, direction: AudioDirection) async throws
     func setMuted(_ muted: Bool, deviceID: UInt32, direction: AudioDirection) async throws
+    /// `volume` is 0...1 and has already been clamped by the service.
+    func setVolume(_ volume: Double, deviceID: UInt32, direction: AudioDirection) async throws
 }
 
 /// Reports when the device list or a default device changes. Listeners are only registered between `start` and `stop`.
@@ -51,6 +53,17 @@ public struct SoundPeekService: Sendable {
             throw SoundPeekError.notSupported("\(device.name) does not allow mute to be changed.")
         }
         try await provider.setMuted(muted, deviceID: deviceID, direction: direction)
+        return try await provider.snapshot()
+    }
+
+    /// Sets the device's volume (clamped to 0...1) only when it reports a writable one. Does not change mute.
+    public func setVolume(_ volume: Double, deviceID: UInt32, direction: AudioDirection) async throws -> AudioSnapshot {
+        let before = try await provider.snapshot()
+        guard let device = before.device(deviceID) else { throw SoundPeekError.deviceUnavailable }
+        guard device.controls(direction).canSetVolume else {
+            throw SoundPeekError.notSupported("\(device.name) does not allow its volume to be changed.")
+        }
+        try await provider.setVolume(min(max(volume, 0), 1), deviceID: deviceID, direction: direction)
         return try await provider.snapshot()
     }
 }

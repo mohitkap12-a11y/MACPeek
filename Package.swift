@@ -25,9 +25,7 @@ let package = Package(
         .library(name: "DNSPeekKit", targets: ["DNSPeekKit"]),
         .library(name: "NetPeekKit", targets: ["NetPeekKit"]),
         .library(name: "SoundPeekKit", targets: ["SoundPeekKit"]),
-        .library(name: "StartupPeekKit", targets: ["StartupPeekKit"]),
         .library(name: "UpdatePeekKit", targets: ["UpdatePeekKit"]),
-        .library(name: "PrivacyPeekKit", targets: ["PrivacyPeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
@@ -42,15 +40,13 @@ let package = Package(
         .target(name: "DNSPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DNSPeekKit"),
         .target(name: "NetPeekKit", dependencies: ["MacPeekCore", "DNSPeekKit"], path: "Sources/NetPeekKit"),
         .target(name: "SoundPeekKit", dependencies: ["MacPeekCore"], path: "Sources/SoundPeekKit"),
-        .target(name: "StartupPeekKit", dependencies: ["MacPeekCore"], path: "Sources/StartupPeekKit"),
         .target(name: "UpdatePeekKit", dependencies: ["MacPeekCore"], path: "Sources/UpdatePeekKit"),
-        .target(name: "PrivacyPeekKit", dependencies: ["MacPeekCore"], path: "Sources/PrivacyPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
                            "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
-                           "SoundPeekKit", "StartupPeekKit", "UpdatePeekKit", "PrivacyPeekKit"],
+                           "SoundPeekKit", "UpdatePeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -105,8 +101,6 @@ let package = Package(
             resources: [.copy("Fixtures")]
         ),
         .testTarget(name: "SoundPeekKitTests", dependencies: ["SoundPeekKit", "MacPeekCore"], path: "Tests/SoundPeekKitTests"),
-        .testTarget(name: "StartupPeekKitTests", dependencies: ["StartupPeekKit", "MacPeekCore"], path: "Tests/StartupPeekKitTests"),
         .testTarget(name: "UpdatePeekKitTests", dependencies: ["UpdatePeekKit", "MacPeekCore"], path: "Tests/UpdatePeekKitTests"),
-        .testTarget(name: "PrivacyPeekKitTests", dependencies: ["PrivacyPeekKit", "MacPeekCore"], path: "Tests/PrivacyPeekKitTests"),
     ]
 )

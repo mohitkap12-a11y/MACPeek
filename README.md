@@ -26,9 +26,7 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **EnvPeek** | What environment variables does this environment see? | ✅ Available |
 | **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | ✅ Available |
 | **SoundPeek** | Why is my audio going to the wrong place? | ✅ Available |
-| **StartupPeek** | What starts automatically on this Mac? | ✅ Available |
 | **UpdatePeek** | What updates can MacPeek verify? | ✅ Available |
-| **PrivacyPeek** | What does this macOS privacy permission mean? | ✅ Available |
 
 Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
 every utility with a description, what it reads, what access it needs, and an on/off switch. A utility that
@@ -84,12 +82,12 @@ Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 
 ## Privacy
 No account, no telemetry, no cloud. MacPeek reads local system information to show it to you and never
-transmits it. The only network traffic is what you ask for: NetPeek's pings and DNSPeek's lookups, each run
-only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
+transmits it. The only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's npm
+check (npm asks its registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-Fourteen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
-DNSPeek, SoundPeek, StartupPeek, UpdatePeek, PrivacyPeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+Twelve utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
+DNSPeek, SoundPeek, UpdatePeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
 ## Contributing / License

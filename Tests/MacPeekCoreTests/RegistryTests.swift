@@ -24,7 +24,7 @@ final class RegistryTests: XCTestCase {
 
     func testShippedUtilities() {
         let available = UtilityCatalog.all.filter(\.isAvailable).map(\.id)
-        XCTAssertEqual(available, ["portpeek", "displaypeek", "usbpeek", "netpeek", "sleeppeek", "filelockpeek", "processpeek", "diskpeek", "envpeek", "dnspeek", "soundpeek", "startuppeek", "updatepeek", "privacypeek"])
+        XCTAssertEqual(available, ["portpeek", "displaypeek", "usbpeek", "netpeek", "sleeppeek", "filelockpeek", "processpeek", "diskpeek", "envpeek", "dnspeek", "soundpeek", "updatepeek"])
     }
 
     func testPortPeekIsAvailable() {
