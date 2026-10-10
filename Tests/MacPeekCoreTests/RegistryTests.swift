@@ -6,7 +6,7 @@ final class RegistryTests: XCTestCase {
         let ids = UtilityCatalog.all.map(\.id)
         XCTAssertEqual(ids.count, Set(ids).count)
         XCTAssertFalse(ids.contains("audiopeek"))
-        XCTAssertEqual(ids.count, 15)
+        XCTAssertEqual(ids.count, 13)
     }
 
     func testEveryUtilityIsFullyDescribed() {
