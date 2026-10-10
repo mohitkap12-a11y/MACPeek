@@ -24,6 +24,8 @@ let package = Package(
         .library(name: "EnvPeekKit", targets: ["EnvPeekKit"]),
         .library(name: "DNSPeekKit", targets: ["DNSPeekKit"]),
         .library(name: "NetPeekKit", targets: ["NetPeekKit"]),
+        .library(name: "SoundPeekKit", targets: ["SoundPeekKit"]),
+        .library(name: "UpdatePeekKit", targets: ["UpdatePeekKit"]),
     ],
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
@@ -37,11 +39,14 @@ let package = Package(
         .target(name: "EnvPeekKit", dependencies: ["MacPeekCore"], path: "Sources/EnvPeekKit"),
         .target(name: "DNSPeekKit", dependencies: ["MacPeekCore"], path: "Sources/DNSPeekKit"),
         .target(name: "NetPeekKit", dependencies: ["MacPeekCore", "DNSPeekKit"], path: "Sources/NetPeekKit"),
+        .target(name: "SoundPeekKit", dependencies: ["MacPeekCore"], path: "Sources/SoundPeekKit"),
+        .target(name: "UpdatePeekKit", dependencies: ["MacPeekCore"], path: "Sources/UpdatePeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
-                           "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit"],
+                           "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
+                           "SoundPeekKit", "UpdatePeekKit"],
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -95,5 +100,7 @@ let package = Package(
             path: "Tests/NetPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "SoundPeekKitTests", dependencies: ["SoundPeekKit", "MacPeekCore"], path: "Tests/SoundPeekKitTests"),
+        .testTarget(name: "UpdatePeekKitTests", dependencies: ["UpdatePeekKit", "MacPeekCore"], path: "Tests/UpdatePeekKitTests"),
     ]
 )

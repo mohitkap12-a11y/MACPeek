@@ -25,6 +25,8 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **DiskPeek** | Which app is using my disk right now? | ✅ Available |
 | **EnvPeek** | What environment variables does this environment see? | ✅ Available |
 | **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | ✅ Available |
+| **SoundPeek** | Why is my audio going to the wrong place? | ✅ Available |
+| **UpdatePeek** | What updates are available? | ✅ Available |
 
 Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
 every utility with a description, what it reads, what access it needs, and an on/off switch. A utility that
@@ -80,12 +82,12 @@ Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 
 ## Privacy
 No account, no telemetry, no cloud. MacPeek reads local system information to show it to you and never
-transmits it. The only network traffic is what you ask for: NetPeek's pings and DNSPeek's lookups, each run
-only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
+transmits it. The only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's macOS and npm
+checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-Ten utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
-DNSPeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+Twelve utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
+DNSPeek, SoundPeek, UpdatePeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
 ## Contributing / License
