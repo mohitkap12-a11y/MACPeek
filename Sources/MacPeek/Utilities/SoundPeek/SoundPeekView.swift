@@ -123,6 +123,10 @@ private struct DeviceCard: View {
 
     private var controls: AudioControls { device.controls(direction) }
 
+    /// The volume slider and mute button belong to the device macOS is playing through: the default output. Every other
+    /// device (non-default outputs and all inputs) shows its values read-only, plus "Set as default".
+    private var showsLevelControls: Bool { isDefault && direction == .output }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -135,14 +139,14 @@ private struct DeviceCard: View {
                 if isDefault { StatusBadge(text: "Default", tone: .good) }
             }
             KeyValueRows(rows: rows)
-            if controls.canSetVolume { volumeSlider }
+            if showsLevelControls && controls.canSetVolume { volumeSlider }
             HStack(spacing: 8) {
                 if !isDefault {
                     Button("Set as default \(direction.label.lowercased())") { store.setDefault(device.id, direction: direction) }
                         .controlSize(.small)
                         .accessibilityLabel("Make \(name) the default \(direction.label.lowercased()) device")
                 }
-                if controls.canSetMute {
+                if showsLevelControls && controls.canSetMute {
                     Button((controls.isMuted ?? false) ? "Unmute" : "Mute") { store.toggleMute(device, direction: direction) }
                         .controlSize(.small)
                         .accessibilityLabel("\((controls.isMuted ?? false) ? "Unmute" : "Mute") \(name)")
@@ -153,8 +157,8 @@ private struct DeviceCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    /// A volume slider, shown only when the device reports a writable volume. Dragging writes (debounced); it never
-    /// changes mute, and a muted device says so next to the slider.
+    /// A volume slider, shown only on the default output device and only when it reports a writable volume. Dragging
+    /// writes (debounced); it never changes mute.
     private var volumeSlider: some View {
         let value = Binding<Double>(
             get: { store.displayedVolume(device, direction: direction) },
@@ -185,7 +189,7 @@ private struct DeviceCard: View {
     private var rows: [(label: String, value: String)] {
         var rows: [(label: String, value: String)] = [("Format", device.formatLabel(direction) ?? "Not reported")]
         // With a slider the volume is shown there; otherwise it is a read-only value or "not exposed".
-        if !controls.canSetVolume { rows.append(("Volume", controls.volumeLabel ?? "Not exposed by this device")) }
+        if !(showsLevelControls && controls.canSetVolume) { rows.append(("Volume", controls.volumeLabel ?? "Not exposed by this device")) }
         rows.append(("Muted", controls.isMuted.map { $0 ? "Yes" : "No" } ?? "Not exposed by this device"))
         return rows
     }

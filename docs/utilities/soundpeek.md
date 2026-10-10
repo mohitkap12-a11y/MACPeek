@@ -6,7 +6,7 @@
 ## What it shows
 - The current **default output** and **default input** device, and every device that can do each direction (default first).
 - Per device: connection type (built-in, USB, Bluetooth, HDMI, …), sample rate, channel count, volume and mute state.
-- A **volume slider** on devices that report a writable volume; read-only devices show the percentage instead.
+- On the **default output** device only: a **volume slider** (where the device reports a writable volume) and a **Mute** button (where mute is writable). Other devices show their volume and mute state read-only.
 - Anything a device does not expose reads **Not reported** / **Not exposed by this device**. Nothing is estimated.
 - Duplicate device names are told apart (`USB Audio (1)`, `Headset (Bluetooth)`).
 - Copy audio report: names, connection, formats, defaults. No device IDs, UIDs or serial numbers.
@@ -14,8 +14,8 @@
 ## What it can change (only when you press a button)
 - **Set as default input/output** for a device that has that direction. **Undo** appears right after a switch and restores
   the previous device if it is still connected. SoundPeek never switches devices on its own, including when a new one appears.
-- **Mute / Unmute** only where Core Audio reports the mute property as writable.
-- **Volume slider** (0–100%) only where Core Audio reports the volume property as writable (the device's main volume, or both
+- **Mute / Unmute** only on the default output device, and only where Core Audio reports the mute property as writable. Make a device the default first to mute it.
+- **Volume slider** (0–100%) only on the default output device, and only where Core Audio reports the volume property as writable (the device's main volume, or both
   channel 1 and 2 on devices that only have per-channel volume). Changes are sent shortly after you stop moving, the last
   value wins, and the slider shows your value until the device confirms it. Moving the slider does not change mute and keeps
   the default-device Undo.

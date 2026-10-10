@@ -6,7 +6,7 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 ### Added
 - **SoundPeek**: audio input/output devices with the current defaults, connection type, sample rate, channels and the volume
   and mute state each device exposes (anything else reads "Not reported"). Updates when devices are plugged in or out while
-  open. Set a default device (with Undo), move a volume slider and mute a device on request, where the device allows it. Never
+  open. Set a default device (with Undo); on the default output device, move a volume slider and mute it where the device allows it. Never
   opens an audio stream, so no Microphone prompt.
 - **UpdatePeek**: macOS version and build, a button to Software Update, and, on request, the packages Homebrew reports as
   outdated (read-only, no `brew update`) and the global npm packages `npm outdated -g` reports (npm asks its registry, so this

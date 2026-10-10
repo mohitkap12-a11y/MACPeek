@@ -94,8 +94,8 @@ public enum UtilityCatalog {
 
     public static let soundPeek = UtilityInfo(
         id: "soundpeek", name: "SoundPeek", question: "Why is my audio going to the wrong place?",
-        tagline: "See your audio devices, and control their volume.",
-        summary: "Lists your audio input and output devices with the current defaults, connection type, sample rate and channels. You can pick a default device, move a volume slider and mute a device when the device allows it, and undo a default-device change. It never records or listens to audio, and values a device doesn't report are shown as unavailable.",
+        tagline: "See your audio devices and control the default output.",
+        summary: "Lists your audio input and output devices with the current defaults, connection type, sample rate and channels. You can pick a default device and undo that change, and on the default output device move a volume slider and mute it when the device allows it. It never records or listens to audio, and values a device doesn't report are shown as unavailable.",
         icon: "speaker.wave.2", category: .everyday, availability: .available,
         reads: ["Audio device properties from Core Audio (names, connection, formats, volume and mute); device changes while SoundPeek is open"],
         permissions: ["None. SoundPeek never opens an audio stream, so macOS never asks for Microphone access."]
