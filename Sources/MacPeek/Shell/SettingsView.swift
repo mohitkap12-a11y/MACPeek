@@ -37,7 +37,7 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                 }
                 Section("Privacy") {
-                    Text("No account, no telemetry. Data from your Mac never leaves it. Network checks run only when you press a button.")
+                    Text("No account, no telemetry, nothing sent to MacPeek. Checks that use the network (NetPeek, DNSPeek, UpdatePeek) run only when you press a button.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

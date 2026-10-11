@@ -11,6 +11,8 @@ import DiskPeekKit
 import EnvPeekKit
 import DNSPeekKit
 import NetPeekKit
+import SoundPeekKit
+import UpdatePeekKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
@@ -57,6 +59,17 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let dnsStore = DNSStore(reader: dnsReader)
         let netStore = NetStore(reader: SystemNetworkReader(dns: dnsReader), settings: settings)
 
+        let soundStore = SoundStore(service: SoundPeekService(provider: CoreAudioDeviceProvider()),
+                                    observer: CoreAudioChangeObserver())
+        let updateLocator = StandardHomebrewLocator()
+        let npmLocator = StandardNpmLocator()
+        let updateStore = UpdateStore(service: UpdateStatusService(
+            os: SystemOperatingSystem(), locator: updateLocator,
+            homebrew: BrewOutdatedChecker(locator: updateLocator),
+            npmLocator: npmLocator, npm: NpmOutdatedChecker(locator: npmLocator),
+            npmInstaller: NpmGlobalInstaller(locator: npmLocator),
+            macOSRecord: PreferencesSoftwareUpdateRecord(), macOSChecker: SoftwareUpdateChecker()))
+
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
             DisplayPeekModule(store: displayStore),
@@ -68,6 +81,8 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             EnvPeekModule(store: envStore),
             NetPeekModule(store: netStore),
             DNSPeekModule(store: dnsStore),
+            SoundPeekModule(store: soundStore),
+            UpdatePeekModule(store: updateStore),
         ])
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings)
