@@ -10,9 +10,11 @@
 4. Each release also publishes a versionless `MacPeek.dmg`. The website's Download button links to
    `https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg`, which GitHub always points at the
    newest non-pre-release, so the button needs no edit per release. The version label on the site is read from the GitHub
-   API at build time; the final workflow step calls the Vercel Deploy Hook (secret `VERCEL_DEPLOY_HOOK_URL`, create it in
-   Vercel → Project → Settings → Git → Deploy Hooks) so the site rebuilds and shows the new version. Without the secret the
-   button still downloads the latest build; only the label waits for the next site deploy.
+   API at build time; the final workflow step calls the Vercel Deploy Hook so the site rebuilds and shows the new version. The secret
+   `VERCEL_DEPLOY_HOOK_URL` (Vercel → Project → Settings → Git → Deploy Hooks) is **required for stable tags**: the
+   workflow fails before building anything if it is missing. If the hook call itself fails after publishing, the job warns
+   and you redeploy the site from the Vercel dashboard. A GitHub error other than "no release yet" (rate limit, outage)
+   fails the site build instead of deploying a false "no release" page; set `GITHUB_TOKEN` in Vercel to avoid rate limits.
 5. Dry run: tag `v0.1.0-rc1`. A tag containing a hyphen is published as a pre-release (never "latest") and does not
    rebuild the website. Delete the release and tag afterwards.
 

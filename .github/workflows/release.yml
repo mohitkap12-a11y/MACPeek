@@ -6,7 +6,8 @@ on:
 # Required repository secrets (never commit these):
 #   DEVELOPER_ID_CERT_P12_BASE64, DEVELOPER_ID_CERT_PASSWORD, DEVELOPER_ID_IDENTITY
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
-# Optional: VERCEL_DEPLOY_HOOK_URL rebuilds the website so it shows the new version (see docs/release.md).
+# Also required for stable (non-hyphenated) tags: VERCEL_DEPLOY_HOOK_URL, which rebuilds the website so it shows the new
+# version (see docs/release.md). Missing it fails the release before anything is built or published.
 # Tags containing a hyphen (v0.1.0-rc1) are published as pre-releases: never "latest", no website rebuild.
 permissions:
   contents: write
@@ -18,6 +19,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Require website deploy hook for stable releases
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$HOOK" || { echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. Without it the website cannot learn about this release. Create a Deploy Hook in Vercel (Project > Settings > Git) and save it as that secret."; exit 1; }
 
       - name: Test
         run: swift test
@@ -88,10 +96,14 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Rebuild website (shows the new version)
-        # Releases created with GITHUB_TOKEN do not trigger other workflows, so the hook is called here.
+        # Releases created with GITHUB_TOKEN do not trigger other workflows, so the hook is called here. The release is
+        # already public at this point, so a failed call warns (with the manual fix) instead of failing the job.
         if: ${{ !contains(github.ref_name, '-') }}
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
-          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" >/dev/null && echo "Website rebuild triggered"
-          else echo "VERCEL_DEPLOY_HOOK_URL not set; the website keeps showing the previous version label"; fi
+          if curl -fsS --connect-timeout 10 --max-time 60 -X POST "$HOOK" >/dev/null; then
+            echo "Website rebuild triggered"
+          else
+            echo "::warning::Release published, but the website rebuild call failed. Redeploy the site from the Vercel dashboard so it shows v${VERSION}."
+          fi

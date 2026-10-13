@@ -21,7 +21,7 @@ const jsonLd = {
     <p class="lede">Free and open source. Works on Apple silicon and Intel Macs.</p>
 
     {SITE.hasRelease ? (
-      <p><a class="btn primary" href={SITE.dmg}>Download MacPeek v{SITE.version} for Mac</a> <a class="btn" href={SITE.releases}>All releases and checksums</a> <a class="btn" href={SITE.github}>View source on GitHub</a></p>
+      <p><a class="btn primary" href={SITE.dmg}>Download MacPeek v{SITE.version} for Mac</a> <a class="btn" href={SITE.allReleases}>All releases and checksums</a> <a class="btn" href={SITE.github}>View source on GitHub</a></p>
       <p class="muted">Latest version: <strong>v{SITE.version}</strong>. The button always downloads the newest release (a universal DMG for Apple silicon and Intel).</p>
     ) : (
       <div class="notice">

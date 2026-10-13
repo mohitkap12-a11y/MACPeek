@@ -8,6 +8,7 @@ export const SITE = {
     'MacPeek is an open-source collection of lightweight native macOS utilities for finding, inspecting and understanding the things macOS makes unnecessarily difficult to see.',
   github: 'https://github.com/mohitkap12-a11y/MACPeek',
   releases: 'https://github.com/mohitkap12-a11y/MACPeek/releases/latest',
+  allReleases: 'https://github.com/mohitkap12-a11y/MACPeek/releases',
   // GitHub serves the newest non-pre-release's asset at this fixed URL; release.yml publishes a versionless MacPeek.dmg.
   dmg: 'https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg',
   // Filled in below from the latest GitHub release at build time. Until the first release exists every "Download"
@@ -16,21 +17,31 @@ export const SITE = {
   version: null as string | null,
 };
 
-/** Latest published (non-pre-release) version, e.g. "0.1.0", or null when there is none or GitHub is unreachable.
- *  SITE_VERSION overrides it (offline builds, tests). The download link itself never depends on this value. */
+/** Latest published (non-pre-release) version, e.g. "0.1.0", or null when GitHub confirms there is none (404).
+ *  Rate limits, timeouts and other errors are retried and then FAIL the build, so a transient problem can never be
+ *  deployed as a false "no release yet" page (the previous deployment stays live). SITE_VERSION overrides the lookup
+ *  (offline builds, tests; empty means no release). The download link itself never depends on this value. */
 async function latestVersion(): Promise<string | null> {
   const override = process.env.SITE_VERSION;
   if (override !== undefined) return override.replace(/^v/, '') || null;
-  try {
-    const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
-    if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-    const res = await fetch('https://api.github.com/repos/mohitkap12-a11y/MACPeek/releases/latest', { headers, signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return null;
-    const tag = ((await res.json()) as { tag_name?: string }).tag_name;
-    return tag ? tag.replace(/^v/, '') : null;
-  } catch {
-    return null;
+  const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  let lastError = '';
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch('https://api.github.com/repos/mohitkap12-a11y/MACPeek/releases/latest', { headers, signal: AbortSignal.timeout(10_000) });
+      if (res.status === 404) return null;
+      if (res.ok) {
+        const tag = ((await res.json()) as { tag_name?: string }).tag_name;
+        if (tag) return tag.replace(/^v/, '');
+        lastError = 'response had no tag_name';
+      } else lastError = `HTTP ${res.status}`;
+    } catch (e) {
+      lastError = String(e);
+    }
+    if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 2000));
   }
+  throw new Error(`Could not read the latest MacPeek release from GitHub (${lastError}). Retry the build, set GITHUB_TOKEN to avoid rate limits, or set SITE_VERSION for an offline build.`);
 }
 SITE.version = await latestVersion();
 SITE.hasRelease = SITE.version !== null;
