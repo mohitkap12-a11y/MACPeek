@@ -8,10 +8,32 @@ export const SITE = {
     'MacPeek is an open-source collection of lightweight native macOS utilities for finding, inspecting and understanding the things macOS makes unnecessarily difficult to see.',
   github: 'https://github.com/mohitkap12-a11y/MACPeek',
   releases: 'https://github.com/mohitkap12-a11y/MACPeek/releases/latest',
-  // Flip to true when the first signed release is published. Until then every "Download" button goes to
-  // /download/, which says so plainly and shows how to build from source, instead of a GitHub 404.
+  // GitHub serves the newest non-pre-release's asset at this fixed URL; release.yml publishes a versionless MacPeek.dmg.
+  dmg: 'https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg',
+  // Filled in below from the latest GitHub release at build time. Until the first release exists every "Download"
+  // button goes to /download/, which says so plainly and shows how to build from source, instead of a GitHub 404.
   hasRelease: false,
+  version: null as string | null,
 };
+
+/** Latest published (non-pre-release) version, e.g. "0.1.0", or null when there is none or GitHub is unreachable.
+ *  SITE_VERSION overrides it (offline builds, tests). The download link itself never depends on this value. */
+async function latestVersion(): Promise<string | null> {
+  const override = process.env.SITE_VERSION;
+  if (override !== undefined) return override.replace(/^v/, '') || null;
+  try {
+    const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
+    if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    const res = await fetch('https://api.github.com/repos/mohitkap12-a11y/MACPeek/releases/latest', { headers, signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const tag = ((await res.json()) as { tag_name?: string }).tag_name;
+    return tag ? tag.replace(/^v/, '') : null;
+  } catch {
+    return null;
+  }
+}
+SITE.version = await latestVersion();
+SITE.hasRelease = SITE.version !== null;
 
 /** Wording for a utility that is built into the app: honest about there being no download yet. */
 export const liveTag = SITE.hasRelease ? 'Available' : 'Ready';
@@ -27,7 +49,7 @@ export const comingSoonSample = list(comingSoon.slice(0, 3));
 export const liveSentence = SITE.hasRelease ? `${availableNames} ${be} available now.` : `${availableNames} ${be} ready; the first release is on the way.`;
 
 /** Where "Download" buttons point. */
-export const downloadHref = SITE.hasRelease ? SITE.releases : '/download/';
+export const downloadHref = SITE.hasRelease ? SITE.dmg : '/download/';
 
 /** Documentation sidebar, grouped like a docs site. `docsNav` below is the same list flattened (prev/next, related). */
 export const docsGroups = [

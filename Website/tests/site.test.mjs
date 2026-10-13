@@ -77,8 +77,8 @@ test('404 page is on-brand', () => {
 });
 
 test('no page links to the GitHub latest-release URL while no release exists', () => {
-  const site = readFileSync(new URL('../src/site.ts', import.meta.url), 'utf8');
-  const hasRelease = /hasRelease: true/.test(site);
+  // The release state is resolved at build time from GitHub (or SITE_VERSION); read it from the built download page.
+  const hasRelease = !/first signed release has not been published/.test(html(join(dist, 'download', 'index.html')));
   if (hasRelease) return;
   for (const p of content()) assert.doesNotMatch(html(p), /releases\/latest/, `${p}: links to a release that does not exist yet`);
 });

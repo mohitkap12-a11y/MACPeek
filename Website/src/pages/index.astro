@@ -43,7 +43,7 @@ const jsonLd = [
     codeRepository: SITE.github,
     license: 'https://opensource.org/licenses/MIT',
     publisher: { '@id': `${origin}#org` },
-    ...(SITE.hasRelease ? { downloadUrl: SITE.releases } : {}),
+    ...(SITE.hasRelease ? { downloadUrl: SITE.dmg, softwareVersion: SITE.version } : {}),
   },
   {
     '@context': 'https://schema.org',

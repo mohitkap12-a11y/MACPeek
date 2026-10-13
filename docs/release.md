@@ -7,6 +7,15 @@
 3. Required repository secrets (never commit these): `DEVELOPER_ID_CERT_P12_BASE64`, `DEVELOPER_ID_CERT_PASSWORD`,
    `DEVELOPER_ID_IDENTITY`, `NOTARY_API_KEY_P8_BASE64`, `NOTARY_API_KEY_ID`, `NOTARY_API_ISSUER_ID`.
 
+4. Each release also publishes a versionless `MacPeek.dmg`. The website's Download button links to
+   `https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg`, which GitHub always points at the
+   newest non-pre-release, so the button needs no edit per release. The version label on the site is read from the GitHub
+   API at build time; the final workflow step calls the Vercel Deploy Hook (secret `VERCEL_DEPLOY_HOOK_URL`, create it in
+   Vercel → Project → Settings → Git → Deploy Hooks) so the site rebuilds and shows the new version. Without the secret the
+   button still downloads the latest build; only the label waits for the next site deploy.
+5. Dry run: tag `v0.1.0-rc1`. A tag containing a hyphen is published as a pre-release (never "latest") and does not
+   rebuild the website. Delete the release and tag afterwards.
+
 Local, unsigned build for testing: `scripts/build-app.sh 0.1.0 && scripts/make-dmg.sh 0.1.0`.
 
 Distribution is direct DMG (Developer ID). Mac App Store distribution needs separate investigation because the App

@@ -21,7 +21,8 @@ const jsonLd = {
     <p class="lede">Free and open source. Works on Apple silicon and Intel Macs.</p>
 
     {SITE.hasRelease ? (
-      <p><a class="btn primary" href={SITE.releases}>Download the latest release</a> <a class="btn" href={SITE.github}>View source on GitHub</a></p>
+      <p><a class="btn primary" href={SITE.dmg}>Download MacPeek v{SITE.version} for Mac</a> <a class="btn" href={SITE.releases}>All releases and checksums</a> <a class="btn" href={SITE.github}>View source on GitHub</a></p>
+      <p class="muted">Latest version: <strong>v{SITE.version}</strong>. The button always downloads the newest release (a universal DMG for Apple silicon and Intel).</p>
     ) : (
       <div class="notice">
         <strong>The first signed release has not been published yet.</strong> Until it is, you can build MacPeek from source (below). When the release is out, this page will link straight to the DMG and its <code>SHA256SUMS</code>. Follow the <a href={SITE.github}>GitHub repository</a> to know when.
@@ -39,7 +40,7 @@ const jsonLd = {
     {SITE.hasRelease ? (
       <Fragment>
         <ol>
-          <li>Download <code>MacPeek-x.y.z.dmg</code> from the <a href={SITE.releases}>latest release</a>.</li>
+          <li>Download the DMG above (or <code>MacPeek-{SITE.version}.dmg</code> from the <a href={SITE.releases}>latest release</a>).</li>
           <li>Open the DMG and drag <strong>MacPeek</strong> to <strong>Applications</strong>.</li>
           <li>Launch MacPeek. The icon appears in your menu bar.</li>
           <li>Open <strong>Manage utilities</strong> to choose what you want.</li>

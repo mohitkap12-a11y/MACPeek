@@ -3,6 +3,6 @@ import { SITE, downloadHref } from '../site';
 interface Props { secondary?: boolean }
 ---
 <div class="cta">
-  <a class="btn primary" href={downloadHref}>Download MacPeek</a>
+  <a class="btn primary" href={downloadHref}>{SITE.version ? `Download MacPeek v${SITE.version}` : 'Download MacPeek'}</a>
   <a class="btn" href={SITE.github}>View on GitHub</a>
 </div>

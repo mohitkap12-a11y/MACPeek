@@ -6,6 +6,8 @@ on:
 # Required repository secrets (never commit these):
 #   DEVELOPER_ID_CERT_P12_BASE64, DEVELOPER_ID_CERT_PASSWORD, DEVELOPER_ID_IDENTITY
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
+# Optional: VERCEL_DEPLOY_HOOK_URL rebuilds the website so it shows the new version (see docs/release.md).
+# Tags containing a hyphen (v0.1.0-rc1) are published as pre-releases: never "latest", no website rebuild.
 permissions:
   contents: write
 
@@ -64,12 +66,32 @@ jobs:
           xcrun stapler validate "dist/MacPeek-${VERSION}.dmg"
           spctl --assess --type open --context context:primary-signature -v "dist/MacPeek-${VERSION}.dmg"
           rm "$RUNNER_TEMP/notary.p8"
-          (cd dist && shasum -a 256 "MacPeek-${VERSION}.dmg" > SHA256SUMS)
+
+      - name: Add versionless DMG and checksums
+        # The website's Download button links to releases/latest/download/MacPeek.dmg, a name that never changes,
+        # so it always serves the newest release without editing the site.
+        run: |
+          set -euo pipefail
+          cd dist
+          cp "MacPeek-${VERSION}.dmg" MacPeek.dmg
+          shasum -a 256 "MacPeek-${VERSION}.dmg" MacPeek.dmg > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/MacPeek-${{ env.VERSION }}.dmg
+            dist/MacPeek.dmg
             dist/SHA256SUMS
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Rebuild website (shows the new version)
+        # Releases created with GITHUB_TOKEN do not trigger other workflows, so the hook is called here.
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" >/dev/null && echo "Website rebuild triggered"
+          else echo "VERCEL_DEPLOY_HOOK_URL not set; the website keeps showing the previous version label"; fi
