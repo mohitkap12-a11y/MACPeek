@@ -56,6 +56,10 @@ final class FileLockResource: TerminationResource, @unchecked Sendable {
     static func label(for path: String) -> String { "“\(URL(fileURLWithPath: path).lastPathComponent)”" }
     var label: String { Self.label(for: path) }
 
+    // Synchronous so NSLock is usable (it is unavailable directly in async contexts).
+    private func setHoldersBefore(_ ids: Set<Int>) { lock.lock(); holdersBefore = ids; lock.unlock() }
+    private func getHoldersBefore() -> Set<Int> { lock.lock(); defer { lock.unlock() }; return holdersBefore }
+
     func check(pid: Int) async -> ResourceCheck {
         let holders: [FileLockHolder]
         do { holders = try await discovery.holders(of: path) } catch FileLockError.notFound {
@@ -63,7 +67,8 @@ final class FileLockResource: TerminationResource, @unchecked Sendable {
         } catch {
             return .unavailable(error.localizedDescription)
         }
-        lock.lock(); holdersBefore = Set(holders.map(\.pid)); lock.unlock()
+        let ids = Set(holders.map(\.pid))
+        setHoldersBefore(ids)
         guard !holders.isEmpty else { return .gone }
         guard let holder = holders.first(where: { $0.pid == pid }) else { return .changed }
         return .owned(processName: holder.processName)
@@ -77,7 +82,7 @@ final class FileLockResource: TerminationResource, @unchecked Sendable {
             return .stillHeld // could not tell; keep polling, never claim success
         }
         if holders.contains(where: { $0.pid == pid }) { return .stillHeld }
-        lock.lock(); let before = holdersBefore; lock.unlock()
+        let before = getHoldersBefore()
         // Only a process that was NOT holding the path before counts as a replacement. Other processes that
         // already held it keep holding it; that is not a failure to release by the terminated one.
         if let newcomer = holders.first(where: { !before.contains($0.pid) }) { return .takenOver(pid: newcomer.pid) }

@@ -52,7 +52,7 @@ private struct UtilityCard: View {
                     Text(info.summary).font(.caption)
                     bullets("What it reads", info.reads)
                     bullets("Access it needs", info.permissions)
-                    Text("Everything stays on your Mac: no account, no telemetry. Network checks run only when you press a button.")
+                    Text("No account, no telemetry, nothing sent to MacPeek. Checks that use the network (NetPeek, DNSPeek, UpdatePeek) run only when you press a button.")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.top, 6)

@@ -14,6 +14,21 @@ BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/MacPee
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/MacPeek"
+# App icon: drop a 1024x1024 PNG at Resources/AppIcon.png and it is converted to AppIcon.icns here.
+if [[ -f Resources/AppIcon.png ]]; then
+  ICON_TMP="$(mktemp -d)"; trap 'rm -rf "$ICON_TMP"' EXIT
+  ICONSET="$ICON_TMP/AppIcon.iconset"; mkdir -p "$ICONSET"
+  for s in 16 32 128 256 512; do
+    sips -z $s $s Resources/AppIcon.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+    sips -z $((s*2)) $((s*2)) Resources/AppIcon.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+elif [[ -n "${SIGN_IDENTITY:-}" ]]; then
+  echo "error: Resources/AppIcon.png (1024x1024) is required for a signed/release build" >&2
+  exit 1
+else
+  echo "warning: Resources/AppIcon.png missing — app will have the generic icon" >&2
+fi
 sed "s/__VERSION__/${VERSION}/g" Resources/Info.plist > "$APP/Contents/Info.plist"
 
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then

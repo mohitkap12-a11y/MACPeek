@@ -3,11 +3,10 @@
 ## Why?
 
 ## Utility affected
-<!-- PortPeek / DisplayPeek / … / shell / core / website / docs -->
+<!-- PortPeek / DisplayPeek / … / shell / core / docs -->
 
 ## Tests
 - [ ] `swift test`
-- [ ] Website: `npm run check && npm run build && npm test` (if touched)
 
 ## Screenshots
 

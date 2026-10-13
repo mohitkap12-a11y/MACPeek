@@ -7,14 +7,13 @@
 3. Required repository secrets (never commit these): `DEVELOPER_ID_CERT_P12_BASE64`, `DEVELOPER_ID_CERT_PASSWORD`,
    `DEVELOPER_ID_IDENTITY`, `NOTARY_API_KEY_P8_BASE64`, `NOTARY_API_KEY_ID`, `NOTARY_API_ISSUER_ID`.
 
-4. Each release also publishes a versionless `MacPeek.dmg`. The website's Download button links to
+4. Each release also publishes a versionless `MacPeek.dmg`, so the website's Download button can link to
    `https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg`, which GitHub always points at the
-   newest non-pre-release, so the button needs no edit per release. The version label on the site is read from the GitHub
-   API at build time; the final workflow step calls the Vercel Deploy Hook so the site rebuilds and shows the new version. The secret
-   `VERCEL_DEPLOY_HOOK_URL` (Vercel → Project → Settings → Git → Deploy Hooks) is **required for stable tags**: the
-   workflow fails before building anything if it is missing. If the hook call itself fails after publishing, the job warns
-   and you redeploy the site from the Vercel dashboard. A GitHub error other than "no release yet" (rate limit, outage)
-   fails the site build instead of deploying a false "no release" page; set `GITHUB_TOKEN` in Vercel to avoid rate limits.
+   newest non-pre-release. The website lives in the separate `MACPeek-Web` repo and reads the latest version from the
+   GitHub API when it builds. The final workflow step calls the Vercel Deploy Hook so the site rebuilds and shows the new
+   version. The secret `VERCEL_DEPLOY_HOOK_URL` (Vercel → Project → Settings → Git → Deploy Hooks) is **required for
+   stable tags**: the workflow fails before building anything if it is missing. If the hook call itself fails after
+   publishing, the job warns and you redeploy the site from the Vercel dashboard.
 5. Dry run: tag `v0.1.0-rc1`. A tag containing a hyphen is published as a pre-release (never "latest") and does not
    rebuild the website. Delete the release and tag afterwards.
 

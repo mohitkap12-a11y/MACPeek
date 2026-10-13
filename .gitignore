@@ -6,5 +6,3 @@ dist/
 DerivedData/
 .DS_Store
 node_modules/
-Website/dist/
-Website/.astro/
