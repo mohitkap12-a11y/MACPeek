@@ -2,6 +2,26 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.2.0] - Unreleased
+### Added
+- **In-app updates.** MacPeek can now update itself (using [Sparkle](https://sparkle-project.org)). About once a day it asks
+  GitHub whether a newer release exists, and **Settings → Updates → Check for Updates…** checks on demand. Automatic
+  checks are on by default and can be switched off in Settings. Updates are verified with an EdDSA signature and Apple's
+  code signature before they are installed; nothing about you or your Mac is sent beyond an ordinary web request.
+  Sparkle is MacPeek's only third-party dependency. Builds without an update key (`swift run`, local builds) run with
+  updates switched off.
+- The release workflow signs each DMG with the update key and publishes an `appcast.xml` feed next to the DMG.
+### Changed
+- README, SECURITY, About and Settings now describe the daily update check alongside the checks you start yourself.
+- `docs/release.md` is now a full release runbook: one-time signing and notarization setup, Sparkle keys, every-release
+  steps and troubleshooting.
+### Upgrading
+- 0.1.0 has no updater, so install 0.2.0 by downloading it once; from then on MacPeek can offer later releases itself.
+
+## [0.1.0] - 2026-10-13
+First public release: a signed, notarized menu-bar app with PortPeek, FileLockPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
+DNSPeek, DisplayPeek, USBPeek, SleepPeek, SoundPeek and UpdatePeek. The detailed entries below were collected before release.
+
 ### Added
 - **SoundPeek**: audio input/output devices with the current defaults, connection type, sample rate, channels and the volume
   and mute state each device exposes (anything else reads "Not reported"). Updates when devices are plugged in or out while
