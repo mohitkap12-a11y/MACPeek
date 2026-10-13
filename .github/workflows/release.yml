@@ -14,9 +14,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # Must match the Sparkle version pinned in Package.swift.
-  SPARKLE_VERSION: "2.9.6"
 
 jobs:
   release:
@@ -97,12 +94,10 @@ jobs:
           SPARKLE_PRIVATE: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          TOOLS="$RUNNER_TEMP/sparkle"
-          mkdir -p "$TOOLS"
-          curl -fsSL "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz" \
-            | tar -xJ -C "$TOOLS"
-          SIGN_UPDATE="$(find "$TOOLS" -type f -name sign_update | head -1)"
-          test -x "$SIGN_UPDATE" || { echo "::error::sign_update not found in Sparkle ${SPARKLE_VERSION} download"; exit 1; }
+          # sign_update ships inside the Sparkle package SwiftPM already downloaded and checksum-verified for the build
+          # (the version pinned in Package.swift), so no separate, unverified download runs with the private key.
+          SIGN_UPDATE="$(find .build/artifacts -type f -name sign_update | head -1)"
+          test -x "$SIGN_UPDATE" || { echo "::error::sign_update not found in the SwiftPM Sparkle artifact"; exit 1; }
           DMG="dist/MacPeek-${VERSION}.dmg"
           SIG="$(printf '%s' "$SPARKLE_PRIVATE" | "$SIGN_UPDATE" --ed-key-file - -p "$DMG")"
           test -n "$SIG" || { echo "::error::sign_update produced no signature"; exit 1; }

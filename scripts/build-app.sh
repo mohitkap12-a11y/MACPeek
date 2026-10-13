@@ -27,7 +27,11 @@ fi
 ditto "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
 # MacPeek is not sandboxed, so Sparkle's sandbox-only XPC helpers are not needed.
 rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
-install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/MacPeek" 2>/dev/null || true
+EXE="$APP/Contents/MacOS/MacPeek"
+if ! otool -l "$EXE" | grep -q '@executable_path/../Frameworks'; then
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$EXE"
+fi
+otool -l "$EXE" | grep -q '@executable_path/../Frameworks' || { echo "error: rpath to Contents/Frameworks is missing; the app would not find Sparkle" >&2; exit 1; }
 # App icon: drop a 1024x1024 PNG at Resources/AppIcon.png and it is converted to AppIcon.icns here.
 if [[ -f Resources/AppIcon.png ]]; then
   ICON_TMP="$(mktemp -d)"; trap 'rm -rf "$ICON_TMP"' EXIT
@@ -53,9 +57,12 @@ sed -e "s/__VERSION__/${VERSION}/g" -e "s#__SPARKLE_PUBLIC_ED_KEY__#${SPARKLE_PU
 FW="$APP/Contents/Frameworks/Sparkle.framework"
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
   # Sign inside-out (helpers, then the framework, then the app) so notarization accepts every nested binary.
-  for nested in "$FW/Versions/B/Autoupdate" "$FW/Versions/B/Updater.app"; do
-    [[ -e "$nested" ]] && codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$nested"
-  done
+  # Locate the helpers wherever this Sparkle version keeps them, and refuse to continue if either is missing.
+  AUTOUPDATE="$(find "$FW" -type f -name Autoupdate | head -1)"
+  UPDATER_APP="$(find "$FW" -type d -name Updater.app | head -1)"
+  [[ -n "$AUTOUPDATE" && -n "$UPDATER_APP" ]] || { echo "error: Sparkle's Autoupdate/Updater.app not found in $FW" >&2; exit 1; }
+  codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$AUTOUPDATE"
+  codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$UPDATER_APP"
   codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY" "$FW"
   codesign --force --timestamp --options runtime \
     --entitlements Resources/MacPeek.entitlements \

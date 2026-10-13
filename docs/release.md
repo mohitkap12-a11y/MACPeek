@@ -127,7 +127,9 @@ mkdir sparkle && tar -xJf Sparkle.tar.xz -C sparkle
 4. Releases fail early with a clear message if either is missing. Local builds without the key run with updates off.
 
 ### Notes
-- The Sparkle version is pinned in `Package.swift` and `SPARKLE_VERSION` in `release.yml`; change both together.
+- The Sparkle version is pinned in `Package.swift`. The release workflow signs updates with the `sign_update` tool from that same
+  checksum-verified SwiftPM package, so there is nothing else to keep in sync. (The key-generation commands above use a
+  separate download; run them on your own Mac and use the same version.)
 - Do not rename the DMG asset: the appcast points at `MacPeek-X.Y.Z.dmg` in the release.
 - The version number must keep increasing (the app compares it with the installed one).
 - Never re-sign or modify a published DMG: the signature in `appcast.xml` would no longer match.

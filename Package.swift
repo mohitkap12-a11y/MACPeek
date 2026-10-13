@@ -9,8 +9,8 @@ import PackageDescription
 //   <Name>Kit    one UI-free library per utility (models, parsers, services) — unit-testable anywhere
 //   MacPeek      the menu-bar app: shell (launcher/router/settings), SharedUI and per-utility views
 // Sparkle (the only third-party dependency) powers in-app updates and exists only in the macOS app. It is declared
-// only when the manifest is evaluated on macOS so the Linux core-logic CI job never resolves it. Keep the version in
-// sync with SPARKLE_VERSION in .github/workflows/release.yml (the release tooling that signs update archives).
+// only when the manifest is evaluated on macOS so the Linux core-logic CI job never resolves it. The release workflow
+// signs updates with the sign_update tool from this same package, so the version here is the only one to maintain.
 #if os(macOS)
 let sparkleDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6"),
