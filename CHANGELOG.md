@@ -2,7 +2,6 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
 ### Added
 - **SoundPeek**: audio input/output devices with the current defaults, connection type, sample rate, channels and the volume
   and mute state each device exposes (anything else reads "Not reported"). Updates when devices are plugged in or out while
