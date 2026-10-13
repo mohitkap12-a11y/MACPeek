@@ -2,7 +2,7 @@
 import SwiftUI
 import MacPeekCore
 
-/// ProcessPeek as a MacPeek utility. Reads only while its screen is open: no launcher summary, no polling.
+/// ProcessPeek as a MacPeek utility. Reads only while its screen is open, refreshing at the Settings interval: no launcher summary, nothing in the background.
 @MainActor
 final class ProcessPeekModule: UtilityModule {
     let info = UtilityCatalog.processPeek
