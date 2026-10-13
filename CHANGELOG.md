@@ -15,6 +15,10 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - README, SECURITY, About and Settings now describe the daily update check alongside the checks you start yourself.
 - `docs/release.md` is now a full release runbook: one-time signing and notarization setup, Sparkle keys, every-release
   steps and troubleshooting.
+### Fixed
+- **ProcessPeek now updates live.** The process list, search results and the opened process (including its listening ports)
+  were read only when the screen opened or on manual refresh, so they went stale. They now refresh every
+  **Settings → Refresh every** seconds while ProcessPeek is on screen, without a loading flash, and stop when you leave it.
 ### Upgrading
 - 0.1.0 has no updater, so install 0.2.0 by downloading it once; from then on MacPeek can offer later releases itself.
 
