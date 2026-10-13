@@ -3,8 +3,8 @@ import Foundation
 import MacPeekCore
 import ProcessPeekKit
 
-/// Observable state for ProcessPeek. Reads the process table when the screen opens or the user asks (no polling),
-/// and loads the command line and listening ports only for the process the user opens.
+/// Observable state for ProcessPeek. Reads the process table while the screen is open, every `refreshInterval`
+/// seconds from Settings (nothing is read in the background), and loads the command line and listening ports only for the process the user opens.
 @MainActor
 final class ProcessStore: ObservableObject {
     @Published private(set) var snapshot: ProcessSnapshot?
@@ -58,9 +58,21 @@ final class ProcessStore: ObservableObject {
 
     // MARK: Loading
 
+    /// Reads now, then again every `refreshInterval` seconds while the screen is open. Also the manual refresh: it
+    /// restarts the cycle so a tick never overlaps the read the user asked for.
     func refresh() {
         task?.cancel()
-        task = Task { [weak self] in await self?.load() }
+        task = Task { [weak self] in
+            var first = true
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.load(background: !first)
+                first = false
+                guard self.isActive else { return }
+                let nanos = UInt64(max(self.settings.refreshInterval, 0.5) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanos)
+            }
+        }
     }
 
     /// Called when the screen is left: stop any read and forget the opened process, so a command line (which can
@@ -78,8 +90,9 @@ final class ProcessStore: ObservableObject {
         killingPID = nil
     }
 
-    private func load() async {
-        isLoading = true
+    /// `background` ticks update the list quietly, without the loading spinner.
+    private func load(background: Bool = false) async {
+        if !background { isLoading = true }
         defer { if !Task.isCancelled { isLoading = false } }
         do {
             let result = try await lister.snapshot()
@@ -92,6 +105,9 @@ final class ProcessStore: ObservableObject {
                 let current = result.entry(pid: pid)
                 if current == nil || (previous != nil && !PSProcessLister.sameProcess(previous?.startTime, current?.startTime)) {
                     select(nil)
+                } else if background, let current {
+                    // Keep the opened process live too (its listening ports change), without a loading flash.
+                    loadDetails(for: current, showLoading: false)
                 }
             }
             // A force-kill offer is only valid for the exact process that ignored SIGTERM.
@@ -115,7 +131,13 @@ final class ProcessStore: ObservableObject {
         details = nil
         detailsLoading = false
         guard let pid, let entry = snapshot?.entry(pid: pid) else { return }
-        detailsLoading = true
+        loadDetails(for: entry, showLoading: true)
+    }
+
+    private func loadDetails(for entry: ProcessEntry, showLoading: Bool) {
+        detailsTask?.cancel()
+        let pid = entry.pid
+        if showLoading { detailsLoading = true }
         detailsTask = Task { [weak self] in
             guard let self else { return }
             do {
