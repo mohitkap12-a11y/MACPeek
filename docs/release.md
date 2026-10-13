@@ -6,6 +6,7 @@ MacPeek is distributed directly (Developer ID signed, notarized DMG) from GitHub
 
 - [Quick reference](#quick-reference)
 - [One-time setup](#one-time-setup)
+- [Sparkle (in-app updates)](#sparkle-in-app-updates)
 - [Every release](#every-release)
 - [What the workflow does](#what-the-workflow-does)
 - [Troubleshooting](#troubleshooting)
@@ -94,9 +95,42 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `NOTARY_API_KEY_ID` | Key ID from App Store Connect |
 | `NOTARY_API_ISSUER_ID` | Issuer ID from App Store Connect |
 | `VERCEL_DEPLOY_HOOK_URL` | the Deploy Hook URL from step 4 |
+| `SPARKLE_ED_PRIVATE_KEY` | the Sparkle private key (see [Sparkle](#sparkle-in-app-updates)) |
+
+And one repository **variable** (not a secret; Settings → Secrets and variables → Actions → **Variables** tab):
+`SPARKLE_PUBLIC_ED_KEY`, the matching public key.
 
 Then delete the loose files: `rm ~/Desktop/macpeek.p12 ~/Downloads/AuthKey_*.p8` (keep a copy in a password manager if
 you want a backup).
+
+## Sparkle (in-app updates)
+
+MacPeek checks for updates with [Sparkle](https://sparkle-project.org) (about once a day, switch in Settings; **Check for
+Updates…** in Settings checks on demand). The release workflow signs each DMG with an EdDSA key and publishes
+`appcast.xml` as a release asset; the app reads `releases/latest/download/appcast.xml`, which always points at the newest
+**stable** release (pre-releases are never offered). The first release with Sparkle is the first one users can update
+*from*: people on an older build must download it manually once.
+
+### One-time key setup (do this on your Mac)
+
+```bash
+curl -fsSL -o Sparkle.tar.xz https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-2.9.6.tar.xz
+mkdir sparkle && tar -xJf Sparkle.tar.xz -C sparkle
+./sparkle/bin/generate_keys                      # creates the key pair in your login keychain, prints the PUBLIC key
+./sparkle/bin/generate_keys -x ~/Desktop/sparkle_private_key   # exports the PRIVATE key to a file
+```
+
+1. Copy the printed public key into the repository **variable** `SPARKLE_PUBLIC_ED_KEY`.
+2. Copy the *contents* of `sparkle_private_key` into the repository **secret** `SPARKLE_ED_PRIVATE_KEY`.
+3. **Back the private key up** (password manager). If it is lost, installed copies can no longer verify updates, and
+   every user has to download a new build by hand. Then delete the file from the Desktop.
+4. Releases fail early with a clear message if either is missing. Local builds without the key run with updates off.
+
+### Notes
+- The Sparkle version is pinned in `Package.swift` and `SPARKLE_VERSION` in `release.yml`; change both together.
+- Do not rename the DMG asset: the appcast points at `MacPeek-X.Y.Z.dmg` in the release.
+- The version number must keep increasing (the app compares it with the installed one).
+- Never re-sign or modify a published DMG: the signature in `appcast.xml` would no longer match.
 
 ## Every release
 
@@ -115,13 +149,13 @@ Local, unsigned build for testing: `scripts/build-app.sh 0.1.0 && scripts/make-d
 
 ## What the workflow does
 
-On a `v*` tag: (stable tags only) require `VERCEL_DEPLOY_HOOK_URL` → test → import certificate into a temporary keychain →
+On a `v*` tag: (stable tags only) require `VERCEL_DEPLOY_HOOK_URL` → require the Sparkle keys → test → import certificate into a temporary keychain →
 build a universal app and sign it (Developer ID, hardened runtime) → DMG → notarize with `notarytool --wait --timeout 30m`
-→ staple + validate + `spctl` check → add a versionless `MacPeek.dmg` and write `SHA256SUMS` for both → publish the GitHub
+→ staple + validate + `spctl` check → sign the DMG with the Sparkle key and write `appcast.xml` → add a versionless `MacPeek.dmg` and write `SHA256SUMS` for both → publish the GitHub
 release (hyphenated tags as a pre-release) → (stable tags only) call the Vercel deploy hook. Any failed step aborts the
 release; an unsigned or un-notarized build is never published.
 
-Assets: `MacPeek-X.Y.Z.dmg`, `MacPeek.dmg` (a never-changing link,
+Assets: `MacPeek-X.Y.Z.dmg`, `appcast.xml`, `MacPeek.dmg` (a never-changing link,
 `https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/MacPeek.dmg`) and `SHA256SUMS`.
 
 **Website.** At build time the site (`MACPeek-Web`) reads the latest release from the GitHub API and links its Download

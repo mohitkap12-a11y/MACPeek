@@ -39,7 +39,7 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
 - Utilities refresh only while their screen is open
-- No account, no telemetry, no cloud, no third-party dependencies. The only network traffic is a check you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks)
+- No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks)
 
 ## Install
 Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
@@ -82,7 +82,7 @@ Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 
 ## Privacy
 No account, no telemetry, no cloud. MacPeek reads local system information to show it to you and never
-transmits it. The only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's macOS and npm
+transmits it. MacPeek asks GitHub about once a day whether a newer release exists (Settings → Check for updates automatically; update downloads are verified with an EdDSA signature). Otherwise the only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's macOS and npm
 checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap

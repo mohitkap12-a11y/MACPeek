@@ -8,6 +8,19 @@ import PackageDescription
 //                permissions, command execution, utility catalog + enable/disable selection)
 //   <Name>Kit    one UI-free library per utility (models, parsers, services) — unit-testable anywhere
 //   MacPeek      the menu-bar app: shell (launcher/router/settings), SharedUI and per-utility views
+// Sparkle (the only third-party dependency) powers in-app updates and exists only in the macOS app. It is declared
+// only when the manifest is evaluated on macOS so the Linux core-logic CI job never resolves it. Keep the version in
+// sync with SPARKLE_VERSION in .github/workflows/release.yml (the release tooling that signs update archives).
+#if os(macOS)
+let sparkleDependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6"),
+]
+let sparkleTargetDependencies: [Target.Dependency] = [.product(name: "Sparkle", package: "Sparkle")]
+#else
+let sparkleDependencies: [Package.Dependency] = []
+let sparkleTargetDependencies: [Target.Dependency] = []
+#endif
+
 let package = Package(
     name: "MacPeek",
     platforms: [.macOS(.v13)],
@@ -27,6 +40,7 @@ let package = Package(
         .library(name: "SoundPeekKit", targets: ["SoundPeekKit"]),
         .library(name: "UpdatePeekKit", targets: ["UpdatePeekKit"]),
     ],
+    dependencies: sparkleDependencies,
     targets: [
         .target(name: "MacPeekCore", path: "Sources/MacPeekCore"),
         .target(name: "PortPeekKit", dependencies: ["MacPeekCore"], path: "Sources/PortPeekKit"),
@@ -46,7 +60,7 @@ let package = Package(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
                            "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
-                           "SoundPeekKit", "UpdatePeekKit"],
+                           "SoundPeekKit", "UpdatePeekKit"] + sparkleTargetDependencies,
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
