@@ -12,6 +12,12 @@
     <key>CFBundleVersion</key><string>__VERSION__</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
+    <!-- Sparkle in-app updates. The public key is substituted by scripts/build-app.sh (SPARKLE_PUBLIC_ED_KEY);
+         without a real key the app runs with updates switched off. -->
+    <key>SUFeedURL</key><string>https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>__SPARKLE_PUBLIC_ED_KEY__</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUScheduledCheckInterval</key><integer>86400</integer>
     <key>NSHumanReadableCopyright</key><string>MIT License. Open source.</string>
 </dict>
 </plist>

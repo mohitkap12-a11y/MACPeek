@@ -10,8 +10,9 @@ version, macOS version and reproduction steps. We aim to acknowledge reports wit
 credit reporters who want it once a fix ships (responsible disclosure).
 
 ## Security model
-- **No telemetry, no accounts, no cloud.** Nothing is sent to MacPeek or any analytics service. The only network
-  traffic is what you ask for, each only when you press the button: NetPeek pings your router and DNS servers,
+- **No telemetry, no accounts, no cloud.** Nothing is sent to MacPeek or any analytics service. MacPeek checks GitHub
+  for a new release about once a day (Sparkle; switch it off in Settings; downloads are verified with an EdDSA signature
+  and Apple's code signature). Otherwise the only network traffic is what you ask for, each only when you press the button: NetPeek pings your router and DNS servers,
   DNSPeek looks up a name you type, UpdatePeek's **Check now** asks Apple's update servers (`softwareupdate --list`),
   and UpdatePeek's npm check and npm **Update** use the npm registry, which sees the names of your global packages
   (and serves the package you update), as it does whenever you run npm yourself.

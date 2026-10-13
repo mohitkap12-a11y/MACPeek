@@ -19,7 +19,7 @@ struct AboutView: View {
                     Text("Version \(version)").font(.caption).foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Private by design").font(.headline)
-                        Text("No account. No telemetry. No cloud. MacPeek reads information from your Mac to show it to you and sends nothing to MacPeek. A few checks you start yourself, such as UpdatePeek asking Apple or the npm registry, use the network.")
+                        Text("No account. No telemetry. No cloud. MacPeek reads information from your Mac to show it to you and sends nothing to MacPeek. MacPeek checks GitHub for new releases about once a day (you can turn this off in Settings), and a few checks you start yourself, such as UpdatePeek asking Apple or the npm registry, use the network.")
                             .font(.callout)
                     }
                     .peekCard()

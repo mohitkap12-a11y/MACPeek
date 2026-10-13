@@ -8,9 +8,12 @@ on:
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
 # Also required for stable (non-hyphenated) tags: VERCEL_DEPLOY_HOOK_URL, which rebuilds the website so it shows the new
 # version (see docs/release.md). Missing it fails the release before anything is built or published.
+# Sparkle in-app updates: repository secret SPARKLE_ED_PRIVATE_KEY (signs the update) and repository VARIABLE
+# SPARKLE_PUBLIC_ED_KEY (the matching public key baked into the app). See docs/release.md, "Sparkle setup".
 # Tags containing a hyphen (v0.1.0-rc1) are published as pre-releases: never "latest", no website rebuild.
 permissions:
   contents: write
+
 
 jobs:
   release:
@@ -26,6 +29,14 @@ jobs:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           test -n "$HOOK" || { echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. Without it the website cannot learn about this release. Create a Deploy Hook in Vercel (Project > Settings > Git) and save it as that secret."; exit 1; }
+
+      - name: Require Sparkle keys
+        env:
+          SPARKLE_PRIVATE: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          SPARKLE_PUBLIC: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          test -n "$SPARKLE_PRIVATE" || { echo "::error::Secret SPARKLE_ED_PRIVATE_KEY is not set (see docs/release.md, Sparkle setup)."; exit 1; }
+          test -n "$SPARKLE_PUBLIC" || { echo "::error::Repository variable SPARKLE_PUBLIC_ED_KEY is not set (see docs/release.md, Sparkle setup)."; exit 1; }
 
       - name: Test
         run: swift test
@@ -50,6 +61,7 @@ jobs:
       - name: Build and sign app (Developer ID, hardened runtime)
         env:
           SIGN_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
         run: |
           test -n "$SIGN_IDENTITY" || { echo "DEVELOPER_ID_IDENTITY missing — refusing to publish unsigned build"; exit 1; }
           scripts/build-app.sh "$VERSION"
@@ -75,6 +87,43 @@ jobs:
           spctl --assess --type open --context context:primary-signature -v "dist/MacPeek-${VERSION}.dmg"
           rm "$RUNNER_TEMP/notary.p8"
 
+      - name: Sign update and write appcast.xml (Sparkle)
+        # Sign the final, stapled DMG, then describe it in the update feed the app reads
+        # (releases/latest/download/appcast.xml always resolves to the newest stable release's feed).
+        env:
+          SPARKLE_PRIVATE: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          # sign_update ships inside the Sparkle package SwiftPM already downloaded and checksum-verified for the build
+          # (the version pinned in Package.swift), so no separate, unverified download runs with the private key.
+          SIGN_UPDATE="$(find .build/artifacts -type f -name sign_update | head -1)"
+          test -x "$SIGN_UPDATE" || { echo "::error::sign_update not found in the SwiftPM Sparkle artifact"; exit 1; }
+          DMG="dist/MacPeek-${VERSION}.dmg"
+          SIG="$(printf '%s' "$SPARKLE_PRIVATE" | "$SIGN_UPDATE" --ed-key-file - -p "$DMG")"
+          test -n "$SIG" || { echo "::error::sign_update produced no signature"; exit 1; }
+          LENGTH="$(stat -f%z "$DMG")"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/MacPeek-${VERSION}.dmg"
+          NOTES="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          cat > dist/appcast.xml <<XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+            <channel>
+              <title>MacPeek</title>
+              <item>
+                <title>MacPeek ${VERSION}</title>
+                <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                <sparkle:releaseNotesLink>${NOTES}</sparkle:releaseNotesLink>
+                <enclosure url="${URL}" length="${LENGTH}" type="application/octet-stream" sparkle:edSignature="${SIG}"/>
+              </item>
+            </channel>
+          </rss>
+          XML
+          xmllint --noout dist/appcast.xml
+          cat dist/appcast.xml
+
       - name: Add versionless DMG and checksums
         # The website's Download button links to releases/latest/download/MacPeek.dmg, a name that never changes,
         # so it always serves the newest release without editing the site.
@@ -92,6 +141,7 @@ jobs:
             dist/MacPeek-${{ env.VERSION }}.dmg
             dist/MacPeek.dmg
             dist/SHA256SUMS
+            dist/appcast.xml
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
 

@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var router: UtilityRouter
+    @EnvironmentObject private var updater: UpdaterService
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,8 +37,20 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                Section("Updates") {
+                    if updater.isAvailable {
+                        Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
+                        Button("Check for Updates…") { updater.checkForUpdates() }
+                            .disabled(!updater.canCheckForUpdates)
+                        Text("About once a day MacPeek asks GitHub whether a newer release exists. Nothing about you or your Mac is sent beyond what any web request includes. Updates are verified with a signature before they are installed.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Updates are available in the downloaded release. This build was not packaged with an update key.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Section("Privacy") {
-                    Text("No account, no telemetry, nothing sent to MacPeek. Checks that use the network (NetPeek, DNSPeek, UpdatePeek) run only when you press a button.")
+                    Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off) and checks you start yourself (NetPeek, DNSPeek, UpdatePeek).")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

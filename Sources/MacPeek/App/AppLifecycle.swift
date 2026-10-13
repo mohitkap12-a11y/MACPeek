@@ -20,6 +20,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = AppSettings()
+        let updater = UpdaterService()
 
         // Each utility builds its own services; the shell only sees `UtilityModule`s.
         let discovery = LsofPortDiscovery()
@@ -85,7 +86,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             UpdatePeekModule(store: updateStore),
         ])
         let router = UtilityRouter(registry: registry)
-        menuBar = MenuBarController(router: router, registry: registry, settings: settings)
+        menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater)
         Self.installEditMenu()
         Log.app.info("MacPeek launched")
     }

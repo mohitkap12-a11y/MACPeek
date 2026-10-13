@@ -13,7 +13,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let registry: UtilityRegistry
     private var appearanceObserver: AnyCancellable?
 
-    init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings) {
+    init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService) {
         self.router = router
         self.registry = registry
         super.init()
@@ -27,6 +27,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(router)
                 .environmentObject(registry)
                 .environmentObject(settings)
+                .environmentObject(updater)
         )
 
         // The popover window does not reliably follow NSApp.appearance, so apply the chosen theme to it directly.
