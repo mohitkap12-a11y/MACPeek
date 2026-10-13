@@ -31,6 +31,7 @@ final class ProcessStore: ObservableObject {
     private let currentUID = Int(getuid())
     private var task: Task<Void, Never>?
     private var detailsTask: Task<Void, Never>?
+    private var detailsBusy = false
     private var bannerTask: Task<Void, Never>?
     private var terminationTask: Task<Void, Never>?
     /// True only while the ProcessPeek screen is on screen: nothing reads the process table in the background.
@@ -69,7 +70,8 @@ final class ProcessStore: ObservableObject {
                 await self.load(background: !first)
                 first = false
                 guard self.isActive else { return }
-                let nanos = UInt64(max(self.settings.refreshInterval, 0.5) * 1_000_000_000)
+                let seconds = min(max(self.settings.refreshInterval, 0.5), 3600)
+                let nanos = UInt64(seconds * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: nanos)
             }
         }
@@ -105,8 +107,9 @@ final class ProcessStore: ObservableObject {
                 let current = result.entry(pid: pid)
                 if current == nil || (previous != nil && !PSProcessLister.sameProcess(previous?.startTime, current?.startTime)) {
                     select(nil)
-                } else if background, let current {
+                } else if background, !detailsBusy, let current {
                     // Keep the opened process live too (its listening ports change), without a loading flash.
+                    // Skipped while a read is still running, so a slow read is never cancelled by the next tick.
                     loadDetails(for: current, showLoading: false)
                 }
             }
@@ -127,6 +130,7 @@ final class ProcessStore: ObservableObject {
 
     func select(_ pid: Int?) {
         detailsTask?.cancel()
+        detailsBusy = false
         selectedPID = pid
         details = nil
         detailsLoading = false
@@ -138,6 +142,7 @@ final class ProcessStore: ObservableObject {
         detailsTask?.cancel()
         let pid = entry.pid
         if showLoading { detailsLoading = true }
+        detailsBusy = true
         detailsTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -150,6 +155,7 @@ final class ProcessStore: ObservableObject {
                 self.details = ProcessDetails(pid: pid, commandLine: nil, listeningPorts: [], portsNote: error.localizedDescription)
             }
             self.detailsLoading = false
+            self.detailsBusy = false
         }
     }
 
