@@ -6,7 +6,8 @@ on:
 # Required repository secrets (never commit these):
 #   DEVELOPER_ID_CERT_P12_BASE64, DEVELOPER_ID_CERT_PASSWORD, DEVELOPER_ID_IDENTITY
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
-# Also required for stable (non-hyphenated) tags: VERCEL_DEPLOY_HOOK_URL, which rebuilds the website so it shows the new
+# Also required for stable (non-hyphenated) tags: VERCEL_DEPLOY_HOOK_URL (a historical name: it now holds the Cloudflare
+# Workers Builds Deploy Hook URL), which rebuilds the website so it shows the new
 # version (see docs/release.md). Missing it fails the release before anything is built or published.
 # Sparkle in-app updates: repository secret SPARKLE_ED_PRIVATE_KEY (signs the update) and repository VARIABLE
 # SPARKLE_PUBLIC_ED_KEY (the matching public key baked into the app). See docs/release.md, "Sparkle setup".
@@ -28,7 +29,7 @@ jobs:
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
-          test -n "$HOOK" || { echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. Without it the website cannot learn about this release. Create a Deploy Hook in Vercel (Project > Settings > Git) and save it as that secret."; exit 1; }
+          test -n "$HOOK" || { echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. Without it the website cannot learn about this release. Create a Deploy Hook on the macpeek-web Worker in Cloudflare (Settings > Builds > Deploy Hooks, branch main) and save its URL as that secret."; exit 1; }
 
       - name: Require Sparkle keys
         env:
@@ -155,5 +156,5 @@ jobs:
           if curl -fsS --connect-timeout 10 --max-time 60 -X POST "$HOOK" >/dev/null; then
             echo "Website rebuild triggered"
           else
-            echo "::warning::Release published, but the website rebuild call failed. Redeploy the site from the Vercel dashboard so it shows v${VERSION}."
+            echo "::warning::Release published, but the website rebuild call failed. Trigger a rebuild of the macpeek-web Worker in Cloudflare (Settings > Builds, or POST the deploy hook) so the site shows v${VERSION}."
           fi
