@@ -1,7 +1,7 @@
 # Release process
 
 MacPeek is distributed directly (Developer ID signed, notarized DMG) from GitHub Releases, and the website
-(`MACPeek-Web` repo, hosted on Vercel) links to the newest release automatically. Everything after tagging is automated by
+(`MACPeek-Web` repo, hosted on Cloudflare as a Worker with static assets) links to the newest release automatically. Everything after tagging is automated by
 `.github/workflows/release.yml`.
 
 - [Quick reference](#quick-reference)
@@ -77,10 +77,12 @@ security export -k ~/Library/Keychains/login.keychain-db -t identities -f pkcs12
 2. Download the `.p8` immediately (Apple lets you download it **once**). Note the **Key ID** and the **Issuer ID**
    shown at the top of the page.
 
-### 4. Vercel deploy hook
+### 4. Website deploy hook (Cloudflare)
 
-Vercel → the website project → **Settings → Git → Deploy Hooks** → create one on `main`. Its URL becomes
-`VERCEL_DEPLOY_HOOK_URL`. Required for stable tags (see below).
+Cloudflare dashboard → Workers & Pages → the `macpeek-web` Worker → **Settings → Builds → Deploy Hooks** → add one for
+the `main` branch. Its URL becomes the secret `VERCEL_DEPLOY_HOOK_URL` (the name is historical; it now holds the Cloudflare
+hook, and renaming it means changing the secret and `release.yml` together). Required for stable tags (see below).
+Test it: `curl -X POST "<hook URL>"` should start a build in the Worker's build history.
 
 ### 5. GitHub repository secrets
 
@@ -94,7 +96,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `NOTARY_API_KEY_P8_BASE64` | `base64 -i ~/Downloads/AuthKey_XXXXXXXX.p8 \| pbcopy`, paste |
 | `NOTARY_API_KEY_ID` | Key ID from App Store Connect |
 | `NOTARY_API_ISSUER_ID` | Issuer ID from App Store Connect |
-| `VERCEL_DEPLOY_HOOK_URL` | the Deploy Hook URL from step 4 |
+| `VERCEL_DEPLOY_HOOK_URL` | the Cloudflare Deploy Hook URL from step 4 |
 | `SPARKLE_ED_PRIVATE_KEY` | the Sparkle private key (see [Sparkle](#sparkle-in-app-updates)) |
 
 And one repository **variable** (not a secret; Settings → Secrets and variables → Actions → **Variables** tab):
@@ -154,7 +156,7 @@ Local, unsigned build for testing: `scripts/build-app.sh 0.1.0 && scripts/make-d
 On a `v*` tag: (stable tags only) require `VERCEL_DEPLOY_HOOK_URL` → require the Sparkle keys → test → import certificate into a temporary keychain →
 build a universal app and sign it (Developer ID, hardened runtime) → DMG → notarize with `notarytool --wait --timeout 30m`
 → staple + validate + `spctl` check → sign the DMG with the Sparkle key and write `appcast.xml` → add a versionless `MacPeek.dmg` and write `SHA256SUMS` for both → publish the GitHub
-release (hyphenated tags as a pre-release) → (stable tags only) call the Vercel deploy hook. Any failed step aborts the
+release (hyphenated tags as a pre-release) → (stable tags only) call the website's deploy hook (Cloudflare). Any failed step aborts the
 release; an unsigned or un-notarized build is never published.
 
 Assets: `MacPeek-X.Y.Z.dmg`, `appcast.xml`, `MacPeek.dmg` (a never-changing link,
@@ -162,8 +164,8 @@ Assets: `MacPeek-X.Y.Z.dmg`, `appcast.xml`, `MacPeek.dmg` (a never-changing link
 
 **Website.** At build time the site (`MACPeek-Web`) reads the latest release from the GitHub API and links its Download
 buttons to the `MacPeek-X.Y.Z.dmg` asset, so do not rename the assets. A GitHub error other than "no release yet" fails
-the site build on Vercel instead of deploying a false "no release" page, so the previous deployment stays live. If the
-deploy-hook call fails after publishing, the job only warns: redeploy the site from the Vercel dashboard.
+the site build on Cloudflare instead of deploying a false "no release" page, so the previous deployment stays live. If the
+deploy-hook call fails after publishing, the job only warns: trigger a rebuild of the `macpeek-web` Worker in Cloudflare (Settings → Builds, or POST the hook).
 
 ## Troubleshooting
 
@@ -193,7 +195,8 @@ Developer Support with the submission ID.
   steps 1 to 2) and update `DEVELOPER_ID_CERT_P12_BASE64`, `DEVELOPER_ID_CERT_PASSWORD` and, if the name changed,
   `DEVELOPER_ID_IDENTITY`. Already-published, notarized releases keep working.
 - **API key**: revoke it in App Store Connect if leaked, create a new one, update the three `NOTARY_*` secrets.
-- **Deploy hook**: delete and recreate it in Vercel if the URL leaks, then update `VERCEL_DEPLOY_HOOK_URL`.
+- **Deploy hook**: if the URL leaks, delete it and create a new one on the Worker in Cloudflare, then update the
+  `VERCEL_DEPLOY_HOOK_URL` secret.
 
 ## Mac App Store
 
