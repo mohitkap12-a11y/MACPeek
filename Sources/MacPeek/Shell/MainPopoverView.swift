@@ -14,6 +14,7 @@ struct MainPopoverView: View {
             case .manage: UtilityManagerView()
             case .settings: SettingsView()
             case .about: AboutView()
+            case .support: SupportView()
             }
         }
         .frame(width: 380, height: 520)

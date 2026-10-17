@@ -7,6 +7,7 @@ enum Route: Equatable {
     case manage
     case settings
     case about
+    case support
 }
 
 /// Navigation inside the single compact popover. It also drives utility lifecycle, so a utility
