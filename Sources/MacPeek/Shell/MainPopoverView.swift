@@ -14,10 +14,11 @@ struct MainPopoverView: View {
             case .manage: UtilityManagerView()
             case .settings: SettingsView()
             case .about: AboutView()
+            case .support: SupportView()
             }
         }
         .frame(width: 380, height: 520)
-        .background(.background)
+        .background(Color.peekBackground)
         .preferredColorScheme(settings.appearance.colorScheme)
         .animation(.easeOut(duration: 0.12), value: router.route)
     }

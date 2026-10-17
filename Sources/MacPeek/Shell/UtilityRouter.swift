@@ -7,6 +7,7 @@ enum Route: Equatable {
     case manage
     case settings
     case about
+    case support
 }
 
 /// Navigation inside the single compact popover. It also drives utility lifecycle, so a utility
@@ -15,6 +16,8 @@ enum Route: Equatable {
 final class UtilityRouter: ObservableObject {
     @Published private(set) var route: Route = .launcher
     private let registry: UtilityRegistry
+    /// Where Support was opened from, so its Back button returns there (launcher or About).
+    private var supportOrigin: Route = .launcher
 
     init(registry: UtilityRegistry) {
         self.registry = registry
@@ -22,12 +25,16 @@ final class UtilityRouter: ObservableObject {
 
     func go(_ new: Route) {
         guard new != route else { return }
+        if new == .support { supportOrigin = route }
         leave(route)
         route = new
         enter(new)
     }
 
     func back() { go(.launcher) }
+
+    /// Back from Support: return to the screen that opened it.
+    func backFromSupport() { go(supportOrigin) }
 
     func popoverWillShow() {
         registry.refreshSummaries()
@@ -38,6 +45,7 @@ final class UtilityRouter: ObservableObject {
         registry.cancelSummaries()
         leave(route)
         route = .launcher
+        supportOrigin = .launcher
     }
 
     private func enter(_ route: Route) {

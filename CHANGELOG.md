@@ -10,6 +10,8 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   code signature before they are installed; nothing about you or your Mac is sent beyond an ordinary web request.
   Sparkle is MacPeek's only third-party dependency. Builds without an update key (`swift run`, local builds) run with
   updates switched off.
+- **Support MacPeek.** A new Support screen (heart button in the launcher footer, and a link in About) with the GitHub Sponsors
+  and PayPal links from the website. Optional; links only open in your browser when you click them.
 - The release workflow signs each DMG with the update key and publishes an `appcast.xml` feed next to the DMG.
 ### Changed
 - README, SECURITY, About and Settings now describe the daily update check alongside the checks you start yourself.

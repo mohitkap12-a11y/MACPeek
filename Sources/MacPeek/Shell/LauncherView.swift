@@ -73,6 +73,8 @@ struct LauncherView: View {
             Text("\(registry.selection.enabledCount) of \(registry.selection.availableCount) on")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
+            Button { router.go(.support) } label: { Label("Support", systemImage: "heart") }
+                .help("Support MacPeek")
             Button("About") { router.go(.about) }
         }
         .buttonStyle(.borderless)

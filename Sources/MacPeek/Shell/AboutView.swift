@@ -23,7 +23,9 @@ struct AboutView: View {
                             .font(.callout)
                     }
                     .peekCard()
-                    Link("MacPeek on GitHub", destination: URL(string: "https://github.com/mohitkap12-a11y/MACPeek")!)
+                    Link("MacPeek on GitHub", destination: SupportLinks.github)
+                    Button { router.go(.support) } label: { Label("Support MacPeek", systemImage: "heart") }
+                        .buttonStyle(.link)
                     Text("Open source under the MIT License. macOS is a trademark of Apple Inc.; MacPeek is not affiliated with Apple.")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
