@@ -14,7 +14,7 @@ struct SupportView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PeekHeader(title: "Support MacPeek", onBack: { router.back() })
+            PeekHeader(title: "Support MacPeek", onBack: { router.backFromSupport() })
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
