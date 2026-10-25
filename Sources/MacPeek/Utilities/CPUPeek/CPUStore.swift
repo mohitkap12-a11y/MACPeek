@@ -11,7 +11,6 @@ final class CPUStore: ObservableObject {
     @Published private(set) var usage: CPUUsage?
     @Published private(set) var snapshot: CPUSnapshot?
     @Published private(set) var processes: [ProcessCPURow] = []
-    @Published private(set) var unreadableProcesses = 0
     @Published private(set) var topology: CPUTopology?
     @Published private(set) var isWaitingForSecondSample = true
     /// The process list needs its own second sample (after opening, or after a failed scan) and says so on its card.
@@ -136,14 +135,12 @@ final class CPUStore: ObservableObject {
             }
             guard !Task.isCancelled else { return }
             processes = Array(sampler.ingest(result.usages, at: Date()).prefix(20))
-            unreadableProcesses = result.unreadable
             processError = nil
             isMeasuringProcesses = sampler.isBaselineOnly
         } catch {
             if Task.isCancelled { return }
             sampler = ProcessCPUSampler()
             processes = []
-            unreadableProcesses = 0
             processError = error.localizedDescription
             isMeasuringProcesses = true
             Log.cpuPeek.error("reading processes failed: \(error.localizedDescription, privacy: .public)")

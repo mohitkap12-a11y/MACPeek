@@ -38,7 +38,7 @@ screen opens and every 30 seconds after, on its own task off the main thread, so
 main thread. The launcher ring shows how full the startup disk is (one read of the mount table, repeated at the refresh interval while the launcher is on screen).
 
 ## Limits
-- Other users' and protected processes cannot be read by `libproc`; DiskPeek shows how many it skipped.
+- Other users' and protected processes cannot be read by `libproc`, so they are not shown.
 - The counters are what macOS keeps per process; they are an indication of who is busy, not a byte-exact audit of the device.
 - It is not a disk-space cleaner and never looks inside your folders: there is no "what is using my space" scan, because
   reading many folders (Mail, Messages, other apps' data) would need Full Disk Access.

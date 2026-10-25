@@ -10,7 +10,6 @@ import DiskPeekKit
 @MainActor
 final class DiskStore: ObservableObject {
     @Published private(set) var activity: [DiskActivity] = []
-    @Published private(set) var unreadableProcesses = 0
     @Published private(set) var isWaitingForSecondSample = true
     @Published private(set) var error: String?
     @Published var sort: DiskSort = .rate
@@ -117,7 +116,6 @@ final class DiskStore: ObservableObject {
             guard !Task.isCancelled else { return }
             let rows = sampler.ingest(result.counters, at: Date())
             activity = rows
-            unreadableProcesses = result.unreadable
             isWaitingForSecondSample = sampler.isBaselineOnly
             if !sampler.isBaselineOnly {
                 readHistory.append(totalReadRate)
@@ -128,7 +126,6 @@ final class DiskStore: ObservableObject {
             if Task.isCancelled { return }
             // Do not leave the last good rates on screen as if they were current, and a gap invalidates the baseline.
             activity = []
-            unreadableProcesses = 0
             sampler = DiskIOSampler()
             isWaitingForSecondSample = true
             self.error = error.localizedDescription

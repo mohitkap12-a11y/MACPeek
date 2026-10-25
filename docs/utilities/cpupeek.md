@@ -36,7 +36,7 @@ last 15 seconds is the baseline when CPUPeek opens, so overall use shows immedia
 
 ## Permissions
 None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they
-are counted but not listed; the footer says how many. Overall and per-core use always include them.
+are not listed. Overall and per-core use always include them.
 
 ## Limits
 - No GPU figures yet (planned separately: overall GPU use only, because a per-app breakdown needs administrator rights).

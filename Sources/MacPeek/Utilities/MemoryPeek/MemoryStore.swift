@@ -9,7 +9,6 @@ import MemoryPeekKit
 final class MemoryStore: ObservableObject {
     @Published private(set) var stats: MemoryStats?
     @Published private(set) var topProcesses: [ProcessMemoryRow] = []
-    @Published private(set) var unreadableProcesses = 0
     @Published private(set) var error: String?
     @Published private(set) var processError: String?
     /// False until the first process scan of this visit finishes.
@@ -46,7 +45,6 @@ final class MemoryStore: ObservableObject {
         // Never show the last visit's figures (or error) as current while the first read runs.
         stats = nil
         topProcesses = []
-        unreadableProcesses = 0
         error = nil
         processError = nil
         hasReadProcesses = false
@@ -92,13 +90,11 @@ final class MemoryStore: ObservableObject {
             }
             guard !Task.isCancelled else { return }
             topProcesses = MemoryAssessment.topProcesses(snapshot.usages)
-            unreadableProcesses = snapshot.unreadable
             processError = nil
             hasReadProcesses = true
         } catch {
             if Task.isCancelled { return }
             topProcesses = []
-            unreadableProcesses = 0
             processError = error.localizedDescription
             hasReadProcesses = true
             Log.memoryPeek.error("reading processes failed: \(error.localizedDescription, privacy: .public)")

@@ -41,7 +41,7 @@ refresh interval while the launcher is on screen, without a process scan.
 
 ## Permissions
 None. Every value above is readable by a normal user. libproc refuses other users' processes, which include some macOS services
-(such as WindowServer), so they are counted but not listed; the footer says how many.
+(such as WindowServer), so they are not listed.
 
 ## Limits
 - It explains memory; it never "frees" or "cleans" it. There is no purge button, by design.
