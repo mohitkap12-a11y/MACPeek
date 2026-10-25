@@ -1,8 +1,10 @@
 #if os(macOS)
 import SwiftUI
+import MacPeekCore
 import DiskPeekKit
 
-/// DiskPeek's screen: which processes are reading and writing the disk, sampled while this screen is open.
+/// DiskPeek's screen: how full each drive is, and which processes are reading and writing the disk, sampled while
+/// this screen is open.
 struct DiskPeekView: View {
     @EnvironmentObject private var store: DiskStore
 
@@ -19,6 +21,8 @@ struct DiskPeekView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            Divider()
+            StorageSection()
             Divider()
             content
             Divider()
@@ -65,6 +69,72 @@ struct DiskPeekView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+}
+
+/// Capacity of each local drive: used, available, and how much of "available" is space macOS frees by itself.
+private struct StorageSection: View {
+    @EnvironmentObject private var store: DiskStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Storage").font(.caption.weight(.semibold))
+            if let error = store.volumesError {
+                Text("Drive capacity is not available: \(error)").font(.caption).foregroundStyle(.orange)
+            } else if store.volumes.isEmpty {
+                Text("Reading drives…").font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(store.volumes.prefix(4)) { volume in VolumeRow(volume: volume) }
+                if store.volumes.count > 4 {
+                    Text("\(store.volumes.count - 4) more drives are not shown.").font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct VolumeRow: View {
+    let volume: VolumeCapacity
+
+    private var detail: String {
+        var text = "\(ByteCountText.storage(volume.availableBytes)) available of \(ByteCountText.storage(volume.totalBytes))"
+        if volume.purgeableBytes > 0 {
+            text += " · \(ByteCountText.storage(volume.purgeableBytes)) of it macOS frees when needed"
+        }
+        return text
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(volume.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                if let kind = volume.kindLabel { Text(kind).font(.caption2).foregroundStyle(.secondary) }
+                Spacer(minLength: 4)
+                if volume.isLowOnSpace { StatusBadge(text: "Low space", tone: .warning) }
+            }
+            CapacityBar(fraction: volume.usedFraction, tint: volume.isLowOnSpace ? .orange : .accentColor)
+            Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct CapacityBar: View {
+    let fraction: Double
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.primary.opacity(0.08))
+                Capsule().fill(tint).frame(width: proxy.size.width * min(max(fraction, 0), 1))
+            }
+        }
+        .frame(height: 5)
+        .accessibilityHidden(true)
     }
 }
 

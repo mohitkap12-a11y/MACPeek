@@ -4,7 +4,7 @@ import DiskPeekKit
 
 /// Observable state for DiskPeek. It samples per-process disk counters on a timer, but only while its screen is
 /// on screen. Leaving the screen stops the timer and discards the baseline, so returning never shows a huge
-/// "rate" computed over the time it was closed.
+/// "rate" computed over the time it was closed. Drive capacity is read when the screen opens and every 30 s after.
 @MainActor
 final class DiskStore: ObservableObject {
     @Published private(set) var activity: [DiskActivity] = []
@@ -13,14 +13,20 @@ final class DiskStore: ObservableObject {
     @Published private(set) var error: String?
     @Published var sort: DiskSort = .rate
     @Published private(set) var interval: TimeInterval = 2
+    @Published private(set) var volumes: [VolumeCapacity] = []
+    @Published private(set) var volumesError: String?
 
     private let reader: DiskIOReading
+    private let volumeReader: VolumeCapacityReading
     private let settings: AppSettings
     private var sampler = DiskIOSampler()
     private var pollTask: Task<Void, Never>?
+    private var volumesReadAt: Date?
+    private static let volumeRefresh: TimeInterval = 30
 
-    init(reader: DiskIOReading, settings: AppSettings) {
+    init(reader: DiskIOReading, volumeReader: VolumeCapacityReading, settings: AppSettings) {
         self.reader = reader
+        self.volumeReader = volumeReader
         self.settings = settings
     }
 
@@ -32,9 +38,11 @@ final class DiskStore: ObservableObject {
         sampler = DiskIOSampler()
         activity = []
         isWaitingForSecondSample = true
+        volumesReadAt = nil
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
+                await self.readVolumesIfDue()
                 await self.tick()
                 // Sampling faster than every 2 s only adds noise and cost.
                 let seconds = max(self.settings.refreshInterval, 2)
@@ -47,6 +55,23 @@ final class DiskStore: ObservableObject {
     func stopSampling() {
         pollTask?.cancel()
         pollTask = nil
+    }
+
+    private func readVolumesIfDue() async {
+        if let volumesReadAt, Date().timeIntervalSince(volumesReadAt) < Self.volumeRefresh { return }
+        volumesReadAt = Date()
+        let volumeReader = self.volumeReader
+        do {
+            let read = try await Task.detached(priority: .utility) { try volumeReader.read() }.value
+            guard !Task.isCancelled else { return }
+            volumes = read
+            volumesError = nil
+        } catch {
+            if Task.isCancelled { return }
+            volumes = []
+            volumesError = error.localizedDescription
+            Log.diskPeek.error("reading drive capacity failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func tick() async {

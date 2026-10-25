@@ -4,6 +4,18 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [0.2.0] - Unreleased
 ### Added
+- **MemoryPeek**: answers "Is my Mac actually running out of memory?" It leads with memory pressure (Normal, Warning,
+  Critical) and a plain-language reading, then shows how memory is split (app memory, wired, compressed, cached files, free),
+  how much has been moved to disk (swap), and the 15 processes with the largest memory footprint (the figure Activity Monitor
+  shows). Reads only while its screen is open; the launcher shows the current pressure. It never "frees" memory.
+- **CPUPeek**: answers "What is making my Mac slow or hot right now?" Overall and per-core CPU use, the chip and its
+  performance/efficiency cores, load average, macOS's thermal state, and the 20 busiest processes over the last interval
+  (100 % = one core, as in Activity Monitor). Sampled only while its screen is open, and labelled as sampled; the launcher
+  shows the load average, or "Running hot".
+- **DiskPeek: Storage.** DiskPeek now also shows each local drive's capacity and available space, including how much of it is
+  space macOS frees by itself, with a "Low space" badge under 10 %. Network drives are skipped. It never scans your folders.
+- Shared `SystemProcessUsageReader` (MacPeekCore): per-process CPU time and memory footprint from `proc_pid_rusage`, used by
+  MemoryPeek and CPUPeek. No new permissions or entitlements.
 - **In-app updates.** MacPeek can now update itself (using [Sparkle](https://sparkle-project.org)). About once a day it asks
   GitHub whether a newer release exists, and **Settings → Updates → Check for Updates…** checks on demand. Automatic
   checks are on by default and can be switched off in Settings. Updates are verified with an EdDSA signature and Apple's

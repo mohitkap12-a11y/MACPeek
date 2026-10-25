@@ -7,6 +7,8 @@ which statements are verified OS facts versus inference.
 - [DisplayPeek](displaypeek.md)
 - [USBPeek](usbpeek.md)
 - [SleepPeek](sleeppeek.md)
+- [MemoryPeek](memorypeek.md)
+- [CPUPeek](cpupeek.md)
 - [FileLockPeek](filelockpeek.md)
 - [ProcessPeek](processpeek.md)
 - [DiskPeek](diskpeek.md)

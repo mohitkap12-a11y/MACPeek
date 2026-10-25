@@ -1,0 +1,43 @@
+# CPUPeek
+
+**Question:** What is making my Mac slow or hot right now?
+
+## What it shows
+- A headline ("CPU is mostly idle", "CPU is busy. Busiest: …", "Your Mac is running hot") and one bar per logical core.
+- **In use**: share of all cores busy over the last interval, split into apps (user + nice) and macOS (system).
+- **Chip** and **Cores**: the chip name and, on Apple silicon, how many performance and efficiency cores macOS reports. The
+  per-core bars are not labelled by core type, because macOS does not document which core number is which type.
+- **Load average** (1, 5, 15 minutes).
+- **Temperature**: macOS's thermal state (`ProcessInfo.thermalState`). "High" and "Critical" mean macOS may be slowing the CPU
+  to cool down. It is a state macOS reports, not a temperature reading.
+- **Using the most CPU**: the 20 busiest processes over the last interval. 100 % is one core fully busy, as in Activity
+  Monitor, so a busy multi-threaded app can show more than 100 %.
+
+## How it works
+- Per-core use comes from the difference between two `host_processor_info(PROCESSOR_CPU_LOAD_INFO)` readings. The tick
+  counters are 32-bit and wrap; differences use wrapping arithmetic.
+- Per-process use comes from `proc_pid_rusage(RUSAGE_INFO_V4)` (`ri_user_time + ri_system_time`), converted from Mach time
+  units with `mach_timebase_info` (they are not nanoseconds on Apple silicon). `ProcessCPUSampler` subtracts consecutive samples
+  the same way DiskPeek does: the first sample is a baseline, a PID with a different start time is a different process, a
+  process that appears between samples started inside the interval, and a counter that goes down reports nothing.
+- This is more current than ProcessPeek's CPU column, which is `ps`'s decaying average.
+
+## Sampling
+Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer and discards
+the baseline, so coming back never shows use computed over the time the screen was closed. Reads run off the main thread. The
+launcher line ("Load 2.3", or "Running hot" when macOS reports a high thermal state) is one read when the popover opens, with no
+sampling.
+
+## Permissions
+None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they
+are counted but not listed; the footer says how many. Overall and per-core use always include them.
+
+## Limits
+- No GPU figures yet (planned separately: overall GPU use only, because a per-app breakdown needs administrator rights).
+- No history graph and no menu-bar readout: CPUPeek does no work unless its screen is open.
+
+## Verified against
+Per-core and per-process arithmetic (wrapping counters, reused PIDs, new processes) is unit-tested with synthetic counters. The
+live reader tests run in CI on macOS and, through `/proc/stat`, on Linux. **Not yet verified on hardware:** the
+`hw.perflevel*` core counts and names on each Apple silicon generation, and the Mach time conversion against Activity Monitor
+on an Apple silicon Mac.

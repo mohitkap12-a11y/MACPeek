@@ -69,11 +69,30 @@ public enum UtilityCatalog {
     )
     public static let diskPeek = UtilityInfo(
         id: "diskpeek", name: "DiskPeek", question: "Which app is using my disk right now?",
-        tagline: "See which processes are hitting your disk.",
-        summary: "Samples per-process disk reads and writes while it is open and clearly labels values as sampled. It stops sampling as soon as you leave it.",
+        tagline: "See which processes are hitting your disk, and how full each drive is.",
+        summary: "Shows how full each local drive is, including the space macOS can free by itself, and samples per-process disk reads and writes while it is open, clearly labelled as sampled. It stops as soon as you leave it.",
         icon: "internaldrive", category: .developer, availability: .available,
-        reads: ["Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open"],
-        permissions: ["None. Other users' processes are not shown."]
+        reads: ["Capacity and free space of local drives (Foundation volume information), only while DiskPeek is open",
+                "Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open"],
+        permissions: ["None. Other users' processes are not shown, and DiskPeek never looks inside your folders."]
+    )
+    public static let memoryPeek = UtilityInfo(
+        id: "memorypeek", name: "MemoryPeek", question: "Is my Mac actually running out of memory?",
+        tagline: "See whether your Mac is short of memory.",
+        summary: "Leads with memory pressure, the number that says whether your Mac is short of RAM, then shows how memory is split (app memory, wired, compressed, cached files, free), how much has been moved to disk, and which processes use the most. It explains the numbers instead of offering to \"free\" memory.",
+        icon: "memorychip", category: .everyday, availability: .available,
+        reads: ["System memory statistics and memory pressure (host_statistics64 and sysctl), only while MemoryPeek is open; memory pressure once when the launcher opens",
+                "The memory footprint of processes your user can inspect (libproc), only while MemoryPeek is open"],
+        permissions: ["None. Other users' processes, including some macOS services, are not listed."]
+    )
+    public static let cpuPeek = UtilityInfo(
+        id: "cpupeek", name: "CPUPeek", question: "What is making my Mac slow or hot right now?",
+        tagline: "See how busy your CPU is, and what's keeping it busy.",
+        summary: "Samples overall and per-core CPU use and the processes using the most CPU while it is open, and shows the load average and whether macOS reports it is slowing the CPU to cool down. Values are labelled as sampled, and sampling stops as soon as you leave it.",
+        icon: "speedometer", category: .everyday, availability: .available,
+        reads: ["Per-core CPU load (host_processor_info), the load average and macOS's thermal state, only while CPUPeek is open; the load average and thermal state once when the launcher opens",
+                "CPU time of processes your user can inspect (libproc), only while CPUPeek is open"],
+        permissions: ["None. Other users' processes, including some macOS services, are not listed."]
     )
     public static let envPeek = UtilityInfo(
         id: "envpeek", name: "EnvPeek", question: "What environment variables does this environment see?",
@@ -110,7 +129,7 @@ public enum UtilityCatalog {
     )
 
     public static let all: [UtilityInfo] = [
-        portPeek, displayPeek, usbPeek, netPeek, batteryPeek, sleepPeek,
+        portPeek, displayPeek, usbPeek, netPeek, batteryPeek, sleepPeek, memoryPeek, cpuPeek,
         fileLockPeek, processPeek, diskPeek, envPeek, dnsPeek,
         soundPeek, updatePeek,
     ]

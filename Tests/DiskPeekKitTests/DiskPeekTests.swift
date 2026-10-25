@@ -139,3 +139,52 @@ final class LiveDiskReaderTests: XCTestCase {
         XCTAssertFalse(own.name.isEmpty)
     }
 }
+
+final class VolumeCapacityTests: XCTestCase {
+    private func v(_ name: String, total: Int64 = 1_000, free: Int64, important: Int64?, root: Bool = false,
+                   internal: Bool? = true, removable: Bool? = false) -> VolumeCapacity {
+        VolumeCapacity(name: name, path: "/Volumes/\(name)", totalBytes: total, strictlyFreeBytes: free,
+                       availableForImportantUsageBytes: important, isRoot: root, isInternal: internal, isRemovable: removable)
+    }
+
+    func testAvailableIncludesWhatMacOSCanFree() {
+        let volume = v("A", free: 200, important: 350)
+        XCTAssertEqual(volume.availableBytes, 350)
+        XCTAssertEqual(volume.purgeableBytes, 150)
+        XCTAssertEqual(volume.usedBytes, 650)
+        XCTAssertEqual(volume.usedFraction, 0.65, accuracy: 0.0001)
+        XCTAssertFalse(volume.isLowOnSpace)
+    }
+
+    func testWithoutImportantUsageFallsBackToFreeSpace() {
+        let volume = v("A", free: 50, important: nil)
+        XCTAssertEqual(volume.availableBytes, 50)
+        XCTAssertEqual(volume.purgeableBytes, 0)
+        XCTAssertTrue(volume.isLowOnSpace, "under 10 % available")
+    }
+
+    func testImplausibleValuesAreClamped() {
+        let volume = v("A", free: 300, important: 100)
+        XCTAssertEqual(volume.availableBytes, 300, "never less than what is strictly free")
+        XCTAssertEqual(v("B", free: 5_000, important: 9_000).availableBytes, 1_000, "never more than the drive")
+    }
+
+    func testStartupDiskFirstThenInternalThenByName() {
+        let ordered = VolumeCapacity.ordered([
+            v("Zeta", free: 1, important: nil, internal: false),
+            v("Backup", free: 1, important: nil, internal: false, removable: true),
+            v("Data", free: 1, important: nil),
+            v("Macintosh HD", free: 1, important: nil, root: true),
+        ])
+        XCTAssertEqual(ordered.map(\.name), ["Macintosh HD", "Data", "Backup", "Zeta"])
+        XCTAssertEqual(ordered.map(\.kindLabel), ["Startup disk", nil, "Removable", "External"])
+    }
+
+    func testLiveReaderListsTheStartupDisk() throws {
+        let volumes: [VolumeCapacity]
+        do { volumes = try SystemVolumeCapacityReader().read() } catch { throw XCTSkip("drive capacity unavailable here: \(error)") }
+        let root = try XCTUnwrap(volumes.first)
+        XCTAssertTrue(root.isRoot, "the startup disk is listed first")
+        XCTAssertGreaterThan(root.totalBytes, 0)
+    }
+}
