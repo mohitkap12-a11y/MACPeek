@@ -1,6 +1,6 @@
 import Foundation
 
-public enum OpenAccess: String, Hashable, Sendable {
+public enum OpenAccess: String, Hashable, Codable, Sendable {
     case read, write, readWrite
     /// lsof could not tell (access mode field blank or "-").
     case unknown
@@ -16,7 +16,7 @@ public enum OpenAccess: String, Hashable, Sendable {
 }
 
 /// How a process holds a path, derived from lsof's file-descriptor column.
-public enum HoldKind: Hashable, Sendable {
+public enum HoldKind: Hashable, Codable, Sendable {
     /// An ordinary open file descriptor.
     case open(OpenAccess)
     /// The process's current working directory (blocks ejecting a volume or deleting a folder).
@@ -51,7 +51,7 @@ public enum HoldKind: Hashable, Sendable {
 }
 
 /// One open file (or directory) belonging to a holder.
-public struct OpenFile: Hashable, Sendable {
+public struct OpenFile: Hashable, Codable, Sendable {
     public let path: String
     /// The raw lsof descriptor, e.g. `3r`, `cwd`, `txt`, `5uW`.
     public let descriptor: String
@@ -71,7 +71,7 @@ public struct OpenFile: Hashable, Sendable {
 }
 
 /// A process that holds the queried path, with every file it holds under that path.
-public struct FileLockHolder: Identifiable, Hashable, Sendable {
+public struct FileLockHolder: Identifiable, Hashable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let processName: String
@@ -101,7 +101,7 @@ public struct FileLockHolder: Identifiable, Hashable, Sendable {
 }
 
 /// The outcome of one scan: the holders found, and — when the scan could not see everything — why.
-public struct FileLockScan: Equatable, Sendable {
+public struct FileLockScan: Equatable, Codable, Sendable {
     public let holders: [FileLockHolder]
     /// Set for folder scans when lsof warned it could not inspect part of the tree, so the list may be incomplete.
     public let incompleteReason: String?

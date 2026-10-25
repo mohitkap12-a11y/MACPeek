@@ -1,6 +1,6 @@
 import Foundation
 
-public struct EnvVariable: Identifiable, Equatable, Sendable {
+public struct EnvVariable: Identifiable, Equatable, Codable, Sendable {
     /// Unique within one environment even when a process lists the same name twice: the first keeps the bare
     /// name, later copies are `NAME#1`, `NAME#2`… Reveal state and row identity are keyed on this, never on the name.
     public var id: String { occurrence == 0 ? name : "\(name)#\(occurrence)" }
@@ -32,7 +32,7 @@ public struct EnvVariable: Identifiable, Equatable, Sendable {
 
 /// Where a set of variables came from. The label is always shown next to the values, so a per-process value is
 /// never presented as global.
-public enum EnvSource: Equatable, Sendable {
+public enum EnvSource: Equatable, Codable, Sendable {
     case macPeek
     case process(pid: Int, name: String?)
 
@@ -55,7 +55,7 @@ public enum EnvSource: Equatable, Sendable {
     }
 }
 
-public struct ProcessArguments: Equatable, Sendable {
+public struct ProcessArguments: Equatable, Codable, Sendable {
     public let executable: String?
     public let arguments: [String]
     public let environment: [EnvVariable]

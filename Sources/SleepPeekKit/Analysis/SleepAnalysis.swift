@@ -1,8 +1,8 @@
 import Foundation
 
 /// A statement SleepPeek makes, labelled by where it comes from, so facts are never blurred with guesses.
-public struct Finding: Equatable, Sendable {
-    public enum Basis: Sendable {
+public struct Finding: Equatable, Codable, Sendable {
+    public enum Basis: Codable, Sendable {
         /// Read directly from macOS output.
         case verified
         /// A common explanation for what macOS reported. Plausible, not proven.
@@ -18,7 +18,7 @@ public struct Finding: Equatable, Sendable {
 }
 
 /// An assertion that keeps the Mac (or its display) awake, with what is known and what is merely likely.
-public struct SleepBlocker: Identifiable, Equatable, Sendable {
+public struct SleepBlocker: Identifiable, Equatable, Codable, Sendable {
     public var id: String { assertion.id }
     public let assertion: SleepAssertion
     public let findings: [Finding]
@@ -29,7 +29,7 @@ public struct SleepBlocker: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct SleepDiagnosis: Equatable, Sendable {
+public struct SleepDiagnosis: Equatable, Codable, Sendable {
     /// From macOS's own system-wide counters.
     public let systemSleepBlocked: Bool
     public let displaySleepBlocked: Bool

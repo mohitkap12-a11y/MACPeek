@@ -1,6 +1,6 @@
 import Foundation
 
-public struct NetInterface: Identifiable, Equatable, Sendable {
+public struct NetInterface: Identifiable, Equatable, Codable, Sendable {
     public var id: String { name }
     /// BSD name, e.g. "en1".
     public let name: String
@@ -24,7 +24,7 @@ public struct NetInterface: Identifiable, Equatable, Sendable {
     public var isReachable: Bool? { reachability.map { !$0.lowercased().contains("not") } }
 }
 
-public struct NetSnapshot: Equatable, Sendable {
+public struct NetSnapshot: Equatable, Codable, Sendable {
     /// The interface the default route uses (or, with no default route, the first one with an IPv4 address).
     public let primary: NetInterface?
     public let otherInterfaces: [NetInterface]
@@ -53,7 +53,7 @@ public struct NetSnapshot: Equatable, Sendable {
     }
 }
 
-public struct WiFiInfo: Equatable, Sendable {
+public struct WiFiInfo: Equatable, Codable, Sendable {
     /// Nil when macOS hides the name (it does unless the app has Location access, which MacPeek does not ask for).
     public let networkName: String?
     public let channel: String?
@@ -97,7 +97,7 @@ public struct WiFiInfo: Equatable, Sendable {
     }
 }
 
-public struct PingResult: Identifiable, Equatable, Sendable {
+public struct PingResult: Identifiable, Equatable, Codable, Sendable {
     public var id: String { host }
     public let host: String
     public let transmitted: Int
@@ -122,7 +122,7 @@ public struct PingResult: Identifiable, Equatable, Sendable {
 }
 
 /// What a ping check could say about one target.
-public enum PingOutcome: Equatable, Sendable {
+public enum PingOutcome: Equatable, Codable, Sendable {
     case result(PingResult)
     /// The target was not pinged, with the reason (for example an IPv6 server: only IPv4 is checked).
     case skipped(host: String, reason: String)
@@ -136,7 +136,7 @@ public enum PingOutcome: Equatable, Sendable {
     }
 }
 
-public struct NetworkChecks: Equatable, Sendable {
+public struct NetworkChecks: Equatable, Codable, Sendable {
     public let gateway: PingOutcome?
     public let dnsServers: [PingOutcome]
 

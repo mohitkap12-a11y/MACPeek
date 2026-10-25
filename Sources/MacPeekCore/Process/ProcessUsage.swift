@@ -4,7 +4,7 @@ import Darwin
 #endif
 
 /// What macOS has counted for one process since it started.
-public struct ProcessUsage: Equatable, Sendable {
+public struct ProcessUsage: Equatable, Codable, Sendable {
     public let pid: Int
     public let name: String
     /// Identifies *which* process holds the PID (its start time as the OS reports it). Zero means unknown.
@@ -32,7 +32,7 @@ public struct ProcessUsage: Equatable, Sendable {
     }
 }
 
-public struct ProcessUsageSnapshot: Equatable, Sendable {
+public struct ProcessUsageSnapshot: Equatable, Codable, Sendable {
     public let usages: [ProcessUsage]
     /// Processes macOS would not report on (other users' and protected processes).
     public let unreadable: Int

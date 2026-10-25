@@ -2,7 +2,7 @@ import Foundation
 
 /// The process a user asked to terminate, as it was when they saw it.
 /// `startTime` is what distinguishes it from a later process that reuses the same PID.
-public struct ProcessTarget: Hashable, Sendable {
+public struct ProcessTarget: Hashable, Codable, Sendable {
     public let pid: Int
     public let processName: String
     public let startTime: TimeInterval?
@@ -14,7 +14,7 @@ public struct ProcessTarget: Hashable, Sendable {
     }
 }
 
-public enum TerminationResult: Equatable, Sendable {
+public enum TerminationResult: Equatable, Codable, Sendable {
     case terminated
     case alreadyExited
     /// The process is alive but no longer holds the resource (port, file, …); nothing was signalled.

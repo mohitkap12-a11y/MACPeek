@@ -2,7 +2,7 @@ import Foundation
 import MacPeekCore
 
 /// How full one mounted drive is, as macOS reports it.
-public struct VolumeCapacity: Identifiable, Equatable, Sendable {
+public struct VolumeCapacity: Identifiable, Equatable, Codable, Sendable {
     public var id: String { path }
     public let name: String
     public let path: String

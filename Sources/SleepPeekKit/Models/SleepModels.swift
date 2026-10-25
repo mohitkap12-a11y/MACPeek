@@ -1,7 +1,7 @@
 import Foundation
 
 /// One entry of `pmset -g assertions` → "Listed by owning process".
-public struct SleepAssertion: Identifiable, Equatable, Sendable {
+public struct SleepAssertion: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let pid: Int
     public let processName: String
@@ -34,7 +34,7 @@ public enum SleepAssertionTypes {
 }
 
 /// An entry under "Kernel Assertions" (USB devices, magic-wake network interfaces…).
-public struct KernelAssertion: Identifiable, Equatable, Sendable {
+public struct KernelAssertion: Identifiable, Equatable, Codable, Sendable {
     public let id: Int
     public let description: String
     public let owner: String
@@ -67,8 +67,33 @@ public struct AssertionReport: Equatable, Sendable {
     public func count(_ name: String) -> Int { systemStatus.first { $0.name == name }?.count ?? 0 }
 }
 
+// Written by hand because `systemStatus` holds tuples. Each counter is encoded as `{"name", "count"}`, in order.
+extension AssertionReport: Codable {
+    private enum CodingKeys: String, CodingKey { case systemStatus, assertions, kernelAssertions }
+
+    private struct StatusEntry: Codable {
+        let name: String
+        let count: Int
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let status = try container.decode([StatusEntry].self, forKey: .systemStatus)
+        self.init(systemStatus: status.map { (name: $0.name, count: $0.count) },
+                  assertions: try container.decode([SleepAssertion].self, forKey: .assertions),
+                  kernelAssertions: try container.decode([KernelAssertion].self, forKey: .kernelAssertions))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(systemStatus.map { StatusEntry(name: $0.name, count: $0.count) }, forKey: .systemStatus)
+        try container.encode(assertions, forKey: .assertions)
+        try container.encode(kernelAssertions, forKey: .kernelAssertions)
+    }
+}
+
 /// `pmset -g`: current settings plus macOS's own statement of what is preventing sleep.
-public struct PowerSettings: Equatable, Sendable {
+public struct PowerSettings: Equatable, Codable, Sendable {
     public let values: [String: Int]
     /// Setting name → the processes macOS says are preventing it ("sleep" → ["bluetoothd", "powerd"]).
     public let preventedBy: [String: [String]]
@@ -82,8 +107,8 @@ public struct PowerSettings: Equatable, Sendable {
     public var displaySleepMinutes: Int? { values["displaysleep"] }
 }
 
-public struct SleepEvent: Identifiable, Equatable, Sendable {
-    public enum Kind: String, Sendable {
+public struct SleepEvent: Identifiable, Equatable, Codable, Sendable {
+    public enum Kind: String, Codable, Sendable {
         case sleep = "Sleep"
         case wake = "Wake"
         /// A wake that does not light the display (maintenance, network, Power Nap).
@@ -110,7 +135,7 @@ public struct SleepEvent: Identifiable, Equatable, Sendable {
 }
 
 /// A process's request that macOS wake the Mac at a given time.
-public struct WakeRequest: Identifiable, Equatable, Sendable {
+public struct WakeRequest: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let process: String
     public let request: String
@@ -126,7 +151,7 @@ public struct WakeRequest: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct SleepHistory: Equatable, Sendable {
+public struct SleepHistory: Equatable, Codable, Sendable {
     /// Newest first.
     public let events: [SleepEvent]
     /// The most recent "Wake Requests" entry in the log, and when it was recorded.

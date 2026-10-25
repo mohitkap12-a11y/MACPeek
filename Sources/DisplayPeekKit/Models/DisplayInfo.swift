@@ -1,7 +1,7 @@
 import Foundation
 
 /// One label/value pair macOS reported that DisplayPeek has no dedicated field for (rotation support, connection…).
-public struct DisplayDetail: Equatable, Sendable {
+public struct DisplayDetail: Equatable, Codable, Sendable {
     public let label: String
     public let value: String
     public init(label: String, value: String) {
@@ -10,7 +10,7 @@ public struct DisplayDetail: Equatable, Sendable {
     }
 }
 
-public struct GPUInfo: Equatable, Sendable {
+public struct GPUInfo: Equatable, Codable, Sendable {
     public let name: String
     public let cores: Int?
     public init(name: String, cores: Int?) {
@@ -20,7 +20,7 @@ public struct GPUInfo: Equatable, Sendable {
 }
 
 /// How the desktop resolution relates to the panel's native pixels.
-public enum DisplayScaling: Equatable, Sendable {
+public enum DisplayScaling: Equatable, Codable, Sendable {
     case native
     case scaled(factor: Double)
     /// The desktop and panel resolutions have different shapes, so no single scale factor describes them.
@@ -39,7 +39,7 @@ public enum DisplayScaling: Equatable, Sendable {
     }
 }
 
-public struct DisplayInfo: Identifiable, Equatable, Sendable {
+public struct DisplayInfo: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let name: String
     public let gpuName: String?
@@ -127,7 +127,7 @@ public struct DisplayInfo: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct DisplayReport: Equatable, Sendable {
+public struct DisplayReport: Equatable, Codable, Sendable {
     public let gpus: [GPUInfo]
     public let displays: [DisplayInfo]
     public init(gpus: [GPUInfo], displays: [DisplayInfo]) {

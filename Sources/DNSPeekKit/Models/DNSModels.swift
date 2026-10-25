@@ -1,8 +1,8 @@
 import Foundation
 
 /// One resolver block of `scutil --dns`.
-public struct DNSResolver: Identifiable, Equatable, Sendable {
-    public enum Kind: Equatable, Sendable {
+public struct DNSResolver: Identifiable, Equatable, Codable, Sendable {
+    public enum Kind: Equatable, Codable, Sendable {
         /// The resolver used for ordinary names: no domain of its own, with name servers.
         case standard
         /// Only for names under `domain`.
@@ -50,7 +50,7 @@ public struct DNSResolver: Identifiable, Equatable, Sendable {
     public var isReachable: Bool? { reachability.map { !$0.lowercased().contains("not") } }
 }
 
-public struct DNSConfiguration: Equatable, Sendable {
+public struct DNSConfiguration: Equatable, Codable, Sendable {
     public let resolvers: [DNSResolver]
     public let scopedResolvers: [DNSResolver]
 
@@ -80,8 +80,8 @@ public struct DNSConfiguration: Equatable, Sendable {
 }
 
 /// The outcome of asking one DNS server directly.
-public struct ServerProbe: Identifiable, Equatable, Sendable {
-    public enum Outcome: Equatable, Sendable {
+public struct ServerProbe: Identifiable, Equatable, Codable, Sendable {
+    public enum Outcome: Equatable, Codable, Sendable {
         /// The server answered; `status` is the DNS response code (NOERROR, NXDOMAIN…).
         case answered(queryMilliseconds: Int?, status: String, answers: Int)
         case timedOut
@@ -99,7 +99,7 @@ public struct ServerProbe: Identifiable, Equatable, Sendable {
 }
 
 /// The outcome of a lookup through the Mac's own resolver (what apps actually use).
-public struct SystemLookup: Equatable, Sendable {
+public struct SystemLookup: Equatable, Codable, Sendable {
     public let name: String
     public let addresses: [String]
     /// Wall-clock time of the whole `dscacheutil` run. It includes starting the tool, and the answer may come

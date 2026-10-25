@@ -1,7 +1,7 @@
 import Foundation
 
 /// One entry of a PATH-style variable, with what can be said about it without running anything.
-public struct PathEntry: Identifiable, Equatable, Sendable {
+public struct PathEntry: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { index }
     public let index: Int
     public let path: String

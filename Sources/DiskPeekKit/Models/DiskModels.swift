@@ -2,7 +2,7 @@ import Foundation
 import MacPeekCore
 
 /// Cumulative disk I/O counters macOS keeps for one process since it started.
-public struct DiskCounters: Equatable, Sendable {
+public struct DiskCounters: Equatable, Codable, Sendable {
     public let pid: Int
     public let name: String
     public let bytesRead: UInt64
@@ -25,7 +25,7 @@ public struct DiskCounters: Equatable, Sendable {
     }
 }
 
-public struct DiskReadResult: Equatable, Sendable {
+public struct DiskReadResult: Equatable, Codable, Sendable {
     public let counters: [DiskCounters]
     /// Processes whose counters macOS would not give us (other users' processes).
     public let unreadable: Int
@@ -37,7 +37,7 @@ public struct DiskReadResult: Equatable, Sendable {
 }
 
 /// What one process did between two samples. Every value is *sampled*: an estimate over the sampling interval.
-public struct DiskActivity: Identifiable, Equatable, Sendable {
+public struct DiskActivity: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let name: String

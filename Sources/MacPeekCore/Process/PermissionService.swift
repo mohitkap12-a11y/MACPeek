@@ -5,7 +5,7 @@ import Darwin
 import Glibc
 #endif
 
-public enum TerminationCapability: Equatable, Sendable {
+public enum TerminationCapability: Equatable, Codable, Sendable {
     case canTerminate
     case permissionRequired
     case protected

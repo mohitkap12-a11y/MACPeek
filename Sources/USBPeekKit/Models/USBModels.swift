@@ -2,7 +2,7 @@ import Foundation
 
 /// One USB device as the I/O registry describes it. Serial numbers are deliberately not modelled at all:
 /// the parser never reads them, so they cannot be displayed, copied or logged by accident.
-public struct USBDevice: Identifiable, Equatable, Sendable {
+public struct USBDevice: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let name: String
     public let vendorName: String?
@@ -59,7 +59,7 @@ public struct USBDevice: Identifiable, Equatable, Sendable {
 }
 
 /// A USB host controller and the devices attached below it.
-public struct USBBus: Identifiable, Equatable, Sendable {
+public struct USBBus: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let busNumber: Int?
     /// The registry class of the controller (for example `AppleT8112USBXHCI`), shown as secondary text.
@@ -78,7 +78,7 @@ public struct USBBus: Identifiable, Equatable, Sendable {
 }
 
 /// A Thunderbolt / USB4 receptacle as macOS reports it.
-public struct ThunderboltPort: Identifiable, Equatable, Sendable {
+public struct ThunderboltPort: Identifiable, Equatable, Codable, Sendable {
     public let id: String
     public let busName: String
     public let receptacle: String?
@@ -99,7 +99,7 @@ public struct ThunderboltPort: Identifiable, Equatable, Sendable {
     }
 }
 
-public struct USBSnapshot: Equatable, Sendable {
+public struct USBSnapshot: Equatable, Codable, Sendable {
     public let buses: [USBBus]
     public let thunderboltPorts: [ThunderboltPort]
     /// Set when the Thunderbolt query failed or was unreadable; USB results are still valid.

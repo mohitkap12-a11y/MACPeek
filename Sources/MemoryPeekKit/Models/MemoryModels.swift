@@ -2,7 +2,7 @@ import Foundation
 
 /// How hard macOS is working to find memory, as the kernel reports it. This, not "free memory", says whether a Mac is
 /// short of RAM: macOS fills spare memory with cached files on purpose.
-public enum MemoryPressure: String, Equatable, Sendable {
+public enum MemoryPressure: String, Equatable, Codable, Sendable {
     case normal = "Normal"
     case warning = "Warning"
     case critical = "Critical"
@@ -19,7 +19,7 @@ public enum MemoryPressure: String, Equatable, Sendable {
 }
 
 /// The page counts from `host_statistics64(HOST_VM_INFO64)` that the breakdown uses, plus swap and pressure.
-public struct MemoryStats: Equatable, Sendable {
+public struct MemoryStats: Equatable, Codable, Sendable {
     public let physicalBytes: UInt64
     public let pageSize: UInt64
     public let wiredPages: UInt64
@@ -49,7 +49,7 @@ public struct MemoryStats: Equatable, Sendable {
 }
 
 /// Memory split the way Activity Monitor's Memory tab splits it.
-public struct MemoryBreakdown: Equatable, Sendable {
+public struct MemoryBreakdown: Equatable, Codable, Sendable {
     public let physical: UInt64
     /// App memory: anonymous pages that cannot simply be dropped (internal − purgeable).
     public let app: UInt64
@@ -78,7 +78,7 @@ public struct MemoryBreakdown: Equatable, Sendable {
 }
 
 /// One process's memory footprint, for the "using the most memory" list.
-public struct ProcessMemoryRow: Identifiable, Equatable, Sendable {
+public struct ProcessMemoryRow: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let name: String

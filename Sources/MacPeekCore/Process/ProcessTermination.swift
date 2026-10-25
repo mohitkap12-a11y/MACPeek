@@ -6,7 +6,7 @@ import Glibc
 #endif
 
 /// Whether a PID still owns the specific resource (a socket, an open file, …) the user acted on.
-public enum ResourceCheck: Equatable, Sendable {
+public enum ResourceCheck: Equatable, Codable, Sendable {
     /// The PID still owns the exact resource; carries the owner's current process name.
     case owned(processName: String)
     /// The resource no longer exists.
@@ -17,7 +17,7 @@ public enum ResourceCheck: Equatable, Sendable {
     case unavailable(String)
 }
 
-public enum ReleaseState: Equatable, Sendable {
+public enum ReleaseState: Equatable, Codable, Sendable {
     case released
     /// The terminated process let go, but a different process now holds the resource.
     case takenOver(pid: Int)

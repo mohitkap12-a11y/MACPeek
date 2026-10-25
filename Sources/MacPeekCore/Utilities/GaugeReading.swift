@@ -2,7 +2,7 @@ import Foundation
 
 /// What a launcher ring shows for a utility: "38%" in the ring and "load 4.12" under its name. `isAlert` turns the ring
 /// red (critical memory pressure, a hot CPU, a nearly full startup disk).
-public struct GaugeReading: Equatable, Sendable {
+public struct GaugeReading: Equatable, Codable, Sendable {
     public let fraction: Double
     public let value: String
     public let caption: String
