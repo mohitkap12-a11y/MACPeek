@@ -112,10 +112,14 @@ final class CPUTextTests: XCTestCase {
         XCTAssertEqual(CPUAssessment.headline(usage: idle, top: top, thermal: .serious), "Your Mac is running hot. Busiest: Xcode")
     }
 
-    func testLauncherSummary() {
-        XCTAssertEqual(CPUAssessment.launcherSummary(CPUSnapshot(cores: [], loadAverage: [2.345, 1, 1], thermal: .fair)), "Load 2.3")
-        XCTAssertEqual(CPUAssessment.launcherSummary(CPUSnapshot(cores: [], loadAverage: [2, 1, 1], thermal: .critical)), "Running hot")
-        XCTAssertNil(CPUAssessment.launcherSummary(CPUSnapshot(cores: [], loadAverage: [], thermal: nil)))
+    func testGaugeReading() {
+        let usage = CPUUsage(total: 0.383, user: 0.2, system: 0.183, perCore: [])
+        let calm = CPUAssessment.gaugeReading(usage: usage, snapshot: CPUSnapshot(cores: [], loadAverage: [4.123, 1, 1], thermal: .fair))
+        XCTAssertEqual(calm, GaugeReading(fraction: 0.383, caption: "load 4.12"))
+        XCTAssertEqual(calm.value, "38%")
+        let hot = CPUAssessment.gaugeReading(usage: usage, snapshot: CPUSnapshot(cores: [], loadAverage: [4, 1, 1], thermal: .critical))
+        XCTAssertEqual(hot.caption, "running hot")
+        XCTAssertTrue(hot.isAlert)
     }
 }
 

@@ -28,8 +28,8 @@
 ## Sampling
 Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer and discards
 the baseline, so coming back never shows use computed over the time the screen was closed. Reads run off the main thread. The
-launcher line ("Load 2.3", or "Running hot" when macOS reports a high thermal state) is one read when the popover opens, with no
-sampling.
+launcher ring (overall use, with the load average under it, or "running hot" and red when macOS reports a high thermal
+state) is two readings half a second apart when the popover opens; nothing keeps running.
 
 ## Permissions
 None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they

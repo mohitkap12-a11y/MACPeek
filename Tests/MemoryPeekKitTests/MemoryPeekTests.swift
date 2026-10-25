@@ -64,7 +64,6 @@ final class MemoryAssessmentTests: XCTestCase {
         let a = MemoryAssessment(stats: stats(pressure: nil))
         XCTAssertEqual(a.tone, .unknown)
         XCTAssertFalse(a.headline.contains("fine"))
-        XCTAssertNil(MemoryAssessment.launcherSummary(stats(pressure: nil)))
     }
 
     func testNoSwapLineWithoutSwap() {
@@ -72,8 +71,14 @@ final class MemoryAssessmentTests: XCTestCase {
         XCTAssertFalse(a.detail.contains { $0.contains("swap") })
     }
 
-    func testLauncherSummary() {
-        XCTAssertEqual(MemoryAssessment.launcherSummary(stats(pressure: .warning)), "Pressure: Warning")
+    func testGaugeReading() throws {
+        let r = try XCTUnwrap(MemoryAssessment.gaugeReading(stats(pressure: .warning)))
+        XCTAssertEqual(r.fraction, 7.0 / 16, accuracy: 0.0001, "app + wired + compressed out of installed")
+        XCTAssertEqual(r.value, "44%")
+        XCTAssertEqual(r.caption, "7 / 16 GB")
+        XCTAssertFalse(r.isAlert)
+        XCTAssertTrue(try XCTUnwrap(MemoryAssessment.gaugeReading(stats(pressure: .critical))).isAlert)
+        XCTAssertNil(MemoryAssessment.gaugeReading(stats(physical: 0)))
     }
 
     func testTopProcessesLargestFirstWithStableTies() {

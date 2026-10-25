@@ -35,8 +35,8 @@ every utility with a description, what it reads, what access it needs, and an on
 is switched off does no work at all: no polling, no scanning, nothing in the launcher.
 
 ## Features
-- Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance
-- One launcher, one search, one consistent compact UI for every utility
+- Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance (switch from the launcher's sun/moon button)
+- One launcher: CPU, Memory and Disk rings at the top, a tile for every other utility, one consistent compact UI
 - **Safe process termination** shared by every utility that can kill something: re-check the target →
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check

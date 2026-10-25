@@ -15,6 +15,8 @@ final class MemoryStore: ObservableObject {
     /// False until the first process scan of this visit finishes.
     @Published private(set) var hasReadProcesses = false
     @Published private(set) var interval: TimeInterval = 2
+    /// Memory in use (fraction of installed) for each read since the screen opened.
+    @Published private(set) var history = RecentValues()
 
     private let reader: MemoryReading
     private let processReader: ProcessUsageReading
@@ -30,11 +32,13 @@ final class MemoryStore: ObservableObject {
     var breakdown: MemoryBreakdown? { stats.map(MemoryBreakdown.init) }
     var assessment: MemoryAssessment? { stats.map(MemoryAssessment.init(stats:)) }
 
-    /// One read for the launcher line. Cheap: a few sysctl and Mach calls, no process scan.
-    func launcherSummary() async -> String? {
+    /// One read for the launcher ring: memory in use, tinted red when pressure is critical. A few sysctl and Mach
+    /// calls, no process scan.
+    func launcherGauge() async -> LauncherGauge? {
         let reader = self.reader
-        guard let stats = try? await Task.detached(priority: .utility, operation: { try reader.read() }).value else { return nil }
-        return MemoryAssessment.launcherSummary(stats)
+        guard let stats = try? await Task.detached(priority: .utility, operation: { try reader.read() }).value,
+              let reading = MemoryAssessment.gaugeReading(stats) else { return nil }
+        return LauncherGauge(reading, tint: .amber)
     }
 
     func startPolling() {
@@ -46,6 +50,7 @@ final class MemoryStore: ObservableObject {
         error = nil
         processError = nil
         hasReadProcesses = false
+        history.removeAll()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
@@ -69,6 +74,7 @@ final class MemoryStore: ObservableObject {
             guard !Task.isCancelled else { return }
             stats = read
             error = nil
+            if read.physicalBytes > 0 { history.append(Double(MemoryBreakdown(read).used) / Double(read.physicalBytes)) }
         } catch {
             if Task.isCancelled { return }
             stats = nil

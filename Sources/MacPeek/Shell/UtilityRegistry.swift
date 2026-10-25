@@ -10,6 +10,7 @@ final class UtilityRegistry: ObservableObject {
 
     @Published private(set) var selection: UtilitySelection
     @Published private(set) var summaries: [String: String] = [:]
+    @Published private(set) var gauges: [String: LauncherGauge] = [:]
 
     private let modules: [String: UtilityModule]
     private let defaults: UserDefaults
@@ -33,6 +34,15 @@ final class UtilityRegistry: ObservableObject {
     /// Enabled utilities that have a module, in catalog order.
     var enabledUtilities: [UtilityInfo] { selection.enabledUtilities.filter { modules[$0.id] != nil } }
 
+    /// Enabled utilities shown as ring tiles at the top of the launcher, in their gauge order.
+    var gaugeUtilities: [UtilityInfo] {
+        enabledUtilities.filter { modules[$0.id]?.gaugeOrder != nil }
+            .sorted { (modules[$0.id]?.gaugeOrder ?? 0) < (modules[$1.id]?.gaugeOrder ?? 0) }
+    }
+
+    /// Enabled utilities shown as plain tiles, in catalog order.
+    var tileUtilities: [UtilityInfo] { enabledUtilities.filter { modules[$0.id]?.gaugeOrder == nil } }
+
     func setEnabled(_ id: String, _ enabled: Bool) {
         var updated = selection
         guard updated.setEnabled(id, enabled) else { return }
@@ -41,6 +51,7 @@ final class UtilityRegistry: ObservableObject {
             summaryTasks[id] = nil
             modules[id]?.didDisappear()
             summaries[id] = nil
+            gauges[id] = nil
         }
         selection = updated
         defaults.set(updated.storageValue, forKey: Self.defaultsKey)
@@ -63,9 +74,11 @@ final class UtilityRegistry: ObservableObject {
         guard let module = module(for: id) else { return }
         summaryTasks[id] = Task { [weak self] in
             let summary = await module.launcherSummary()
+            let gauge = await module.launcherGauge()
             // Drop the result if we were cancelled or the utility was disabled while it ran.
             guard let self, !Task.isCancelled, self.isEnabled(id) else { return }
             self.summaries[id] = summary
+            self.gauges[id] = gauge
         }
     }
 }

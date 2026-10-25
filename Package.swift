@@ -104,7 +104,7 @@ let package = Package(
             path: "Tests/ProcessPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
-        .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit"], path: "Tests/DiskPeekKitTests"),
+        .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit", "MacPeekCore"], path: "Tests/DiskPeekKitTests"),
         .testTarget(name: "MemoryPeekKitTests", dependencies: ["MemoryPeekKit", "MacPeekCore"], path: "Tests/MemoryPeekKitTests"),
         .testTarget(name: "CPUPeekKitTests", dependencies: ["CPUPeekKit", "MacPeekCore"], path: "Tests/CPUPeekKitTests"),
         .testTarget(name: "EnvPeekKitTests", dependencies: ["EnvPeekKit"], path: "Tests/EnvPeekKitTests"),

@@ -2,8 +2,8 @@
 import SwiftUI
 import MacPeekCore
 
-/// CPUPeek as a MacPeek utility: read-only. Samples only while its screen is visible; the launcher line is one cheap
-/// read of the load average and thermal state.
+/// CPUPeek as a MacPeek utility: read-only. Samples only while its screen is visible; the launcher ring is two CPU
+/// readings half a second apart, plus the load average and thermal state.
 @MainActor
 final class CPUPeekModule: UtilityModule {
     let info = UtilityCatalog.cpuPeek
@@ -13,7 +13,8 @@ final class CPUPeekModule: UtilityModule {
         self.store = store
     }
 
-    func launcherSummary() async -> String? { await store.launcherSummary() }
+    var gaugeOrder: Int? { 0 }
+    func launcherGauge() async -> LauncherGauge? { await store.launcherGauge() }
     func didAppear() { store.startSampling() }
     func didDisappear() { store.stopSampling() }
 

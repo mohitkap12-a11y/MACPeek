@@ -1,4 +1,5 @@
 import Foundation
+import MacPeekCore
 
 /// How full one mounted drive is, as macOS reports it.
 public struct VolumeCapacity: Identifiable, Equatable, Sendable {
@@ -35,6 +36,11 @@ public struct VolumeCapacity: Identifiable, Equatable, Sendable {
     public var usedFraction: Double { totalBytes > 0 ? Double(usedBytes) / Double(totalBytes) : 0 }
     /// Under 10 % available. An indication, not a rule macOS applies.
     public var isLowOnSpace: Bool { totalBytes > 0 && Double(availableBytes) < Double(totalBytes) * 0.1 }
+
+    /// The launcher ring: how full the drive is, with what is available under it.
+    public var gaugeReading: GaugeReading {
+        GaugeReading(fraction: usedFraction, caption: "\(ByteCountText.storage(availableBytes)) free", isAlert: isLowOnSpace)
+    }
 
     public var kindLabel: String? {
         if isRoot { return "Startup disk" }

@@ -19,6 +19,9 @@ final class DiskStore: ObservableObject {
     @Published private(set) var volumesError: String?
     /// False until the first drive read finishes, so "no drives" is not confused with "still reading".
     @Published private(set) var hasReadVolumes = false
+    /// Read and write rates of all listed processes together, per interval since the screen opened.
+    @Published private(set) var readHistory = RecentValues()
+    @Published private(set) var writeHistory = RecentValues()
 
     private let reader: DiskIOReading
     private let volumeReader: VolumeCapacityReading
@@ -34,6 +37,18 @@ final class DiskStore: ObservableObject {
         self.settings = settings
     }
 
+    /// Read and write rates of all listed processes together over the last interval.
+    var totalReadRate: Double { activity.reduce(0) { $0 + $1.readBytesPerSecond } }
+    var totalWriteRate: Double { activity.reduce(0) { $0 + $1.writeBytesPerSecond } }
+
+    /// The launcher ring: how full the startup disk is. One read of the mount table, no I/O sampling.
+    func launcherGauge() async -> LauncherGauge? {
+        let volumeReader = self.volumeReader
+        guard let volumes = try? await Task.detached(priority: .utility, operation: { try volumeReader.read() }).value,
+              let disk = volumes.first(where: \.isRoot) ?? volumes.first else { return nil }
+        return LauncherGauge(disk.gaugeReading, tint: .accent)
+    }
+
     /// The rows to show, in the chosen order.
     var rows: [DiskActivity] { Array(DiskIOSampler.sorted(activity, by: sort).prefix(30)) }
 
@@ -42,6 +57,8 @@ final class DiskStore: ObservableObject {
         sampler = DiskIOSampler()
         activity = []
         isWaitingForSecondSample = true
+        readHistory.removeAll()
+        writeHistory.removeAll()
         volumeTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
@@ -101,6 +118,10 @@ final class DiskStore: ObservableObject {
             activity = rows
             unreadableProcesses = result.unreadable
             isWaitingForSecondSample = sampler.isBaselineOnly
+            if !sampler.isBaselineOnly {
+                readHistory.append(totalReadRate)
+                writeHistory.append(totalWriteRate)
+            }
             error = nil
         } catch {
             if Task.isCancelled { return }

@@ -10,9 +10,9 @@ struct MemoryPeekView: View {
     var body: some View {
         VStack(spacing: 0) {
             content
-            Divider()
             footer
         }
+        .background(PeekTheme.ground)
     }
 
     @ViewBuilder private var content: some View {
@@ -20,18 +20,25 @@ struct MemoryPeekView: View {
             ErrorState(message: error, retryTitle: "Try again") { store.startPolling() }
         } else if let stats = store.stats, let breakdown = store.breakdown, let assessment = store.assessment {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    PressureCard(stats: stats, assessment: assessment)
-                    BreakdownCard(stats: stats, breakdown: breakdown)
-                    TopProcessesCard()
+                VStack(alignment: .leading, spacing: 16) {
+                    GaugesRow(stats: stats, breakdown: breakdown)
+                    AssessmentNote(assessment: assessment)
+                    VStack(alignment: .leading, spacing: 8) {
+                        SectionLabel(text: "Used since opened")
+                        HistoryChart(series: [.init(values: store.history.values, color: PeekTheme.accent)], maximum: 1)
+                            .frame(height: 56)
+                            .themedCard(radius: 10, padding: 8)
+                    }
+                    BreakdownSection(stats: stats, breakdown: breakdown)
+                    TopProcessesSection()
                 }
-                .padding(12)
+                .padding(14)
             }
             .frame(maxHeight: .infinity)
         } else {
             VStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Reading memory…").font(.caption).foregroundStyle(.secondary)
+                Text("Reading memory…").font(.caption).foregroundStyle(PeekTheme.muted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -44,146 +51,150 @@ struct MemoryPeekView: View {
                 Text("\(store.unreadableProcesses) processes (other users' or protected, including some macOS services) cannot be read and are not listed.")
             }
         }
-        .font(.caption2)
-        .foregroundStyle(.secondary)
+        .font(.system(size: 11))
+        .foregroundStyle(PeekTheme.muted)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .overlay(alignment: .top) { Rectangle().fill(PeekTheme.border).frame(height: 1) }
     }
 }
 
-private struct PressureCard: View {
-    let stats: MemoryStats
-    let assessment: MemoryAssessment
-
-    private var badge: (text: String, tone: StatusBadge.Tone) {
-        switch stats.pressure {
-        case .normal: return ("Pressure: Normal", .good)
-        case .warning: return ("Pressure: Warning", .warning)
-        case .critical: return ("Pressure: Critical", .warning)
-        case nil: return ("Pressure: Not reported", .neutral)
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                IconTile(symbol: "memorychip")
-                Text(assessment.headline).font(.system(size: 13, weight: .semibold)).lineLimit(2)
-                Spacer(minLength: 4)
-                StatusBadge(text: badge.text, tone: badge.tone)
-            }
-            ForEach(Array(assessment.detail.enumerated()), id: \.offset) { _, line in
-                Text(line).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .peekCard()
-    }
+/// Memory colours, shared by the ring, the bar and the legend.
+private enum MemoryColors {
+    static let app = PeekTheme.accent
+    static let wired = PeekTheme.amber
+    static let compressed = PeekTheme.red
+    static let cached = PeekTheme.teal
+    static let free = PeekTheme.freeSegment
 }
 
-private struct BreakdownCard: View {
+private struct GaugesRow: View {
     let stats: MemoryStats
     let breakdown: MemoryBreakdown
 
-    private struct Segment: Identifiable {
-        let id: String
-        let bytes: UInt64
-        let color: Color
-    }
-
-    private var segments: [Segment] {
-        [Segment(id: "App memory", bytes: breakdown.app, color: .blue),
-         Segment(id: "Wired", bytes: breakdown.wired, color: .orange),
-         Segment(id: "Compressed", bytes: breakdown.compressed, color: .purple),
-         Segment(id: "Cached files", bytes: breakdown.cachedFiles, color: .teal),
-         Segment(id: "Free", bytes: breakdown.free, color: Color.primary.opacity(0.08))]
-    }
-
-    private var rows: [(label: String, value: String)] {
-        var rows: [(label: String, value: String)] = [
-            ("Installed", ByteCountText.memory(breakdown.physical)),
-            ("Used", ByteCountText.memory(breakdown.used)),
-            ("  App memory", ByteCountText.memory(breakdown.app)),
-            ("  Wired (kept by macOS)", ByteCountText.memory(breakdown.wired)),
-            ("  Compressed", ByteCountText.memory(breakdown.compressed)),
-            ("Cached files", ByteCountText.memory(breakdown.cachedFiles) + " (reused when apps need it)"),
-            ("Free", ByteCountText.memory(breakdown.free)),
-        ]
-        if let used = stats.swapUsedBytes {
-            rows.append(("Moved to disk (swap)", ByteCountText.memory(used)))
-        } else {
-            rows.append(("Moved to disk (swap)", "Not reported"))
+    private var pressure: (level: Double?, label: String, color: Color) {
+        switch stats.pressure {
+        case .normal: return (0.18, "Normal", PeekTheme.green)
+        case .warning: return (0.5, "Warning", PeekTheme.warningText)
+        case .critical: return (0.85, "Critical", PeekTheme.red)
+        case nil: return (nil, "Not reported", PeekTheme.muted)
         }
-        return rows
+    }
+
+    private func share(_ bytes: UInt64) -> Double {
+        breakdown.physical > 0 ? Double(bytes) / Double(breakdown.physical) : 0
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("How memory is used").font(.caption.weight(.semibold))
-            GeometryReader { proxy in
-                HStack(spacing: 1) {
-                    ForEach(segments) { segment in
-                        Rectangle()
-                            .fill(segment.color)
-                            .frame(width: width(of: segment.bytes, in: proxy.size.width))
-                    }
+        HStack {
+            Spacer()
+            VStack(spacing: 2) {
+                PressureGauge(level: pressure.level).frame(width: 132, height: 76)
+                Text(pressure.label).font(.system(size: 14, weight: .semibold)).foregroundStyle(pressure.color)
+                Text("Memory pressure").font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Memory pressure, \(pressure.label)")
+            Spacer()
+            RingGauge(segments: [RingSegment(fraction: share(breakdown.app), color: MemoryColors.app),
+                                 RingSegment(fraction: share(breakdown.wired), color: MemoryColors.wired),
+                                 RingSegment(fraction: share(breakdown.compressed), color: MemoryColors.compressed)],
+                      lineWidth: 9) {
+                VStack(spacing: 0) {
+                    Text("\(Int((share(breakdown.used) * 100).rounded()))%")
+                        .font(.system(size: 22, weight: .semibold)).monospacedDigit()
+                    Text("used").font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted)
                 }
             }
-            .frame(height: 10)
-            .clipShape(Capsule())
-            .accessibilityHidden(true)
-            HStack(spacing: 10) {
-                ForEach(segments.dropLast()) { segment in
-                    HStack(spacing: 3) {
-                        Circle().fill(segment.color).frame(width: 7, height: 7)
-                        Text(segment.id)
-                    }
-                }
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .accessibilityHidden(true)
-            KeyValueRows(rows: rows)
+            .frame(width: 100, height: 100)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(Int((share(breakdown.used) * 100).rounded())) percent of memory used")
+            Spacer()
         }
-        .peekCard()
-    }
-
-    private func width(of bytes: UInt64, in total: CGFloat) -> CGFloat {
-        guard breakdown.physical > 0 else { return 0 }
-        let gaps = CGFloat(segments.count - 1)
-        return max(total - gaps, 0) * CGFloat(Double(bytes) / Double(breakdown.physical))
     }
 }
 
-private struct TopProcessesCard: View {
+private struct AssessmentNote: View {
+    let assessment: MemoryAssessment
+
+    private var highlighted: Bool { assessment.tone == .warning || assessment.tone == .critical }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(assessment.headline).font(.system(size: 12.5, weight: .semibold))
+            ForEach(Array(assessment.detail.enumerated()), id: \.offset) { _, line in
+                Text(line).foregroundStyle(PeekTheme.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(.system(size: 12.5))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(highlighted ? PeekTheme.noteBackground : PeekTheme.card, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(highlighted ? PeekTheme.noteBorder : PeekTheme.border))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct BreakdownSection: View {
+    let stats: MemoryStats
+    let breakdown: MemoryBreakdown
+
+    private func share(_ bytes: UInt64) -> Double {
+        breakdown.physical > 0 ? Double(bytes) / Double(breakdown.physical) : 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            SectionLabel(text: "How memory is used", trailing: "\(ByteCountText.memory(breakdown.physical)) installed")
+            SegmentedBar(parts: [
+                .init(fraction: share(breakdown.app), color: MemoryColors.app),
+                .init(fraction: share(breakdown.wired), color: MemoryColors.wired),
+                .init(fraction: share(breakdown.compressed), color: MemoryColors.compressed),
+                .init(fraction: share(breakdown.cachedFiles), color: MemoryColors.cached),
+                .init(fraction: share(breakdown.free), color: MemoryColors.free),
+            ])
+            DetailRow(label: "Used", value: ByteCountText.memory(breakdown.used))
+            DetailRow(label: "App memory", value: ByteCountText.memory(breakdown.app), dot: MemoryColors.app)
+            DetailRow(label: "Wired (kept by macOS)", value: ByteCountText.memory(breakdown.wired), dot: MemoryColors.wired)
+            DetailRow(label: "Compressed", value: ByteCountText.memory(breakdown.compressed), dot: MemoryColors.compressed)
+            DetailRow(label: "Cached files (reused when needed)", value: ByteCountText.memory(breakdown.cachedFiles), dot: MemoryColors.cached)
+            DetailRow(label: "Free", value: ByteCountText.memory(breakdown.free), dot: MemoryColors.free)
+            DetailRow(label: "Moved to disk (swap)", value: stats.swapUsedBytes.map(ByteCountText.memory) ?? "Not reported")
+        }
+    }
+}
+
+private struct TopProcessesSection: View {
     @EnvironmentObject private var store: MemoryStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Using the most memory").font(.caption.weight(.semibold))
+        VStack(alignment: .leading, spacing: 4) {
+            SectionLabel(text: "Using the most memory", trailing: "Footprint")
             if let error = store.processError {
-                Text("Processes could not be read: \(error)").font(.caption).foregroundStyle(.orange)
+                Text("Processes could not be read: \(error)").font(.caption).foregroundStyle(PeekTheme.warningText)
             } else if !store.hasReadProcesses {
-                Text("Reading processes…").font(.caption).foregroundStyle(.secondary)
+                Text("Reading processes…").font(.caption).foregroundStyle(PeekTheme.muted)
             } else if store.topProcesses.isEmpty {
-                Text("No processes could be read.").font(.caption).foregroundStyle(.secondary)
+                Text("No processes could be read.").font(.caption).foregroundStyle(PeekTheme.muted)
             } else {
                 ForEach(store.topProcesses) { row in
                     HStack(spacing: 8) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(row.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                            Text("PID \(row.pid)").font(.caption2).foregroundStyle(.secondary)
-                        }
+                        Text(row.name).lineLimit(1)
                         Spacer(minLength: 4)
-                        Text(ByteCountText.memory(row.footprintBytes)).font(.caption.monospacedDigit())
+                        Text(ByteCountText.memory(row.footprintBytes)).font(.system(size: 12.5, design: .monospaced))
                     }
+                    .font(.system(size: 13))
+                    .padding(.vertical, 3)
+                    .overlay(alignment: .bottom) { Rectangle().fill(PeekTheme.hairline).frame(height: 1) }
+                    .help("PID \(row.pid)")
                     .accessibilityElement(children: .combine)
                 }
                 Text("Memory footprint, the figure Activity Monitor's Memory column shows.")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted).padding(.top, 2)
             }
         }
-        .peekCard()
     }
 }
 #endif

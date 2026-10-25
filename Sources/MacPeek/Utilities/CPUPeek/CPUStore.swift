@@ -19,6 +19,8 @@ final class CPUStore: ObservableObject {
     @Published private(set) var error: String?
     @Published private(set) var processError: String?
     @Published private(set) var interval: TimeInterval = 2
+    /// Overall CPU use for each interval since the screen opened.
+    @Published private(set) var history = RecentValues()
 
     private let reader: CPUReading
     private let processReader: ProcessUsageReading
@@ -38,11 +40,18 @@ final class CPUStore: ObservableObject {
         return CPUAssessment.headline(usage: usage, top: processes.first, thermal: snapshot?.thermal)
     }
 
-    /// One read for the launcher line: load average and thermal state, no sampling.
-    func launcherSummary() async -> String? {
+    /// The launcher ring: two CPU readings half a second apart (overall use), plus the load average, or "running hot"
+    /// when macOS reports a high thermal state. A one-shot read, never polling.
+    func launcherGauge() async -> LauncherGauge? {
         let reader = self.reader
-        guard let snapshot = try? await Task.detached(priority: .utility, operation: { try reader.snapshot() }).value else { return nil }
-        return CPUAssessment.launcherSummary(snapshot)
+        let reading = await Task.detached(priority: .utility) { () async -> (usage: CPUUsage, snapshot: CPUSnapshot)? in
+            guard let first = try? reader.snapshot() else { return nil }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard let second = try? reader.snapshot(), let usage = CoreUsage.between(first.cores, second.cores) else { return nil }
+            return (usage, second)
+        }.value
+        guard let reading else { return nil }
+        return LauncherGauge(CPUAssessment.gaugeReading(usage: reading.usage, snapshot: reading.snapshot), tint: .accent)
     }
 
     func startSampling() {
@@ -56,6 +65,7 @@ final class CPUStore: ObservableObject {
         processError = nil
         isWaitingForSecondSample = true
         isMeasuringProcesses = true
+        history.removeAll()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
@@ -87,6 +97,7 @@ final class CPUStore: ObservableObject {
             guard !Task.isCancelled else { return }
             // No comparable previous reading (first sample, or the core count changed): show nothing rather than old usage.
             usage = previousCores.flatMap { CoreUsage.between($0, read.cores) }
+            if let usage { history.append(usage.total) }
             previousCores = read.cores
             snapshot = read
             error = nil

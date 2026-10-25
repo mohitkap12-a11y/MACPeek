@@ -67,10 +67,11 @@ public enum CPUAssessment {
         }
     }
 
-    /// The launcher line: thermal pressure if macOS reports any, otherwise the 1-minute load average.
-    public static func launcherSummary(_ snapshot: CPUSnapshot) -> String? {
-        if let thermal = snapshot.thermal, thermal.isElevated { return "Running hot" }
-        guard let load = snapshot.loadAverage.first else { return nil }
-        return String(format: "Load %.1f", load)
+    /// The launcher ring: overall use, with the 1-minute load average under it, or "running hot" when macOS reports a
+    /// high thermal state.
+    public static func gaugeReading(usage: CPUUsage, snapshot: CPUSnapshot) -> GaugeReading {
+        let hot = snapshot.thermal?.isElevated == true
+        let caption = hot ? "running hot" : (snapshot.loadAverage.first.map { String(format: "load %.2f", $0) } ?? "")
+        return GaugeReading(fraction: usage.total, caption: caption, isAlert: hot)
     }
 }

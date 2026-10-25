@@ -177,6 +177,14 @@ final class VolumeCapacityTests: XCTestCase {
         XCTAssertEqual(v("B", free: 5_000, important: 9_000).availableBytes, 1_000, "never more than the drive")
     }
 
+    func testGaugeReading() {
+        let roomy = v("A", total: 245_100_000_000, free: 72_700_000_000, important: 88_700_000_000)
+        XCTAssertEqual(roomy.gaugeReading.value, "64%")
+        XCTAssertEqual(roomy.gaugeReading.caption, "88.7 GB free")
+        XCTAssertFalse(roomy.gaugeReading.isAlert)
+        XCTAssertTrue(v("B", free: 50, important: nil).gaugeReading.isAlert, "under 10 % available")
+    }
+
     func testStartupDiskFirstThenInternalThenByName() {
         let ordered = VolumeCapacity.ordered([
             v("Zeta", free: 1, important: nil, isInternal: false),

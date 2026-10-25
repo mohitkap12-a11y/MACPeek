@@ -18,6 +18,12 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   libproc scan (CPU time, memory footprint, disk I/O, with process names cached), one set of sampling rules and one byte
   formatter for DiskPeek, MemoryPeek, CPUPeek and ProcessPeek. No new permissions or entitlements.
 ### Changed
+- **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
+  used and free), then a tile for every other enabled utility with its summary. New dark and light colours, a sun/moon
+  button in the launcher to switch between them, and a taller popover (380 x 640). The ring values are one-shot readings
+  taken when the popover opens; CPU is two readings half a second apart. Nothing keeps running.
+- **CPUPeek, MemoryPeek and DiskPeek redesigned**: rings and gauges, a "since opened" history chart, per-core bars, a
+  memory pressure gauge and colour bar, and a startup-disk card with live read/write rates and capacity.
 - DiskPeek and ProcessPeek format sizes with the shared formatter (one decimal below 100, e.g. ProcessPeek now shows "23.4 MB"
   where it showed "23 MB").
 ### Fixed

@@ -44,9 +44,14 @@ public struct MemoryAssessment: Equatable, Sendable {
         self.detail = detail
     }
 
-    /// The short launcher line, e.g. "Pressure: Normal".
-    public static func launcherSummary(_ stats: MemoryStats) -> String? {
-        stats.pressure.map { "Pressure: \($0.rawValue)" }
+    /// The launcher ring: memory in use (app + wired + compressed) out of installed, e.g. "71%" and "17 / 24 GB".
+    public static func gaugeReading(_ stats: MemoryStats) -> GaugeReading? {
+        guard stats.physicalBytes > 0 else { return nil }
+        let used = MemoryBreakdown(stats).used
+        let gib = 1024.0 * 1024 * 1024
+        return GaugeReading(fraction: Double(used) / Double(stats.physicalBytes),
+                            caption: String(format: "%.0f / %.0f GB", Double(used) / gib, Double(stats.physicalBytes) / gib),
+                            isAlert: stats.pressure == .critical)
     }
 
     /// Processes using the most memory, largest first (ties by PID so the order is stable).
