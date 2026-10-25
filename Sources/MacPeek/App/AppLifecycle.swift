@@ -95,6 +95,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             SoundPeekModule(store: soundStore),
             UpdatePeekModule(store: updateStore),
         ])
+        registry.gaugeRefreshInterval = { [weak settings] in settings?.refreshInterval ?? 2 }
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater)
         Self.installEditMenu()

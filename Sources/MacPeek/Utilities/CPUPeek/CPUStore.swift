@@ -28,7 +28,7 @@ final class CPUStore: ObservableObject {
     private var previousCores: [CoreTicks]?
     /// The launcher's latest CPU reading. When the screen opens soon after, it is the baseline, so CPU use shows at once.
     private var launcherCores: (date: Date, cores: [CoreTicks])?
-    private static let launcherBaselineAge: TimeInterval = 10
+    private static let launcherBaselineAge: TimeInterval = 15
     private var sampler = ProcessCPUSampler()
     private var pollTask: Task<Void, Never>?
 
@@ -43,11 +43,16 @@ final class CPUStore: ObservableObject {
         return CPUAssessment.headline(usage: usage, top: processes.first, thermal: snapshot?.thermal)
     }
 
-    /// The launcher ring: two CPU readings a third of a second apart (overall use), plus the load average, or "running
-    /// hot" when macOS reports a high thermal state. A one-shot read, never polling.
+    /// The launcher ring: overall use since the previous launcher reading when that is recent (so live updates cost
+    /// one read each), otherwise two readings a third of a second apart; plus the load average, or "running hot" when
+    /// macOS reports a high thermal state. A one-shot read, never polling.
     func launcherGauge() async -> LauncherGauge? {
         let reader = self.reader
+        let previous = launcherCores.flatMap { Date().timeIntervalSince($0.date) < Self.launcherBaselineAge ? $0.cores : nil }
         let reading = await Task.detached(priority: .utility) { () async -> (usage: CPUUsage, snapshot: CPUSnapshot)? in
+            if let previous, let now = try? reader.snapshot(), let usage = CoreUsage.between(previous, now.cores) {
+                return (usage, now)
+            }
             guard let first = try? reader.snapshot() else { return nil }
             try? await Task.sleep(nanoseconds: 330_000_000)
             guard let second = try? reader.snapshot(), let usage = CoreUsage.between(first.cores, second.cores) else { return nil }

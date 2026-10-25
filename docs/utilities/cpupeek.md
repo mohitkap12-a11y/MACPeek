@@ -30,8 +30,9 @@ At the refresh interval set in Settings (1 to 10 seconds), **only while the scre
 the second follows after 0.4 s and values appear almost at once. Leaving the screen stops the timer and discards
 the baseline, so coming back never shows use computed over the time the screen was closed. Reads run off the main thread. The
 launcher ring (overall use, with the load average under it, or "running hot" and red when macOS reports a high thermal
-state) is two readings a third of a second apart when the popover opens; nothing keeps running. A launcher reading from the last
-10 seconds is the baseline when CPUPeek opens, so overall use shows immediately.
+state) updates at the refresh interval while the launcher is on screen, from consecutive readings (two readings a third of
+a second apart when there is no recent one); it stops when you open a utility or close the menu. A launcher reading from the
+last 15 seconds is the baseline when CPUPeek opens, so overall use shows immediately.
 
 ## Permissions
 None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they

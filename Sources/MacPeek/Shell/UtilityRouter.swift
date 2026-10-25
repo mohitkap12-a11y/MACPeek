@@ -38,22 +38,34 @@ final class UtilityRouter: ObservableObject {
 
     func popoverWillShow() {
         registry.refreshSummaries()
+        if route == .launcher { registry.startGaugeUpdates() }
     }
 
     /// Always return to the launcher so the next open is predictable, and stop any live work.
     func popoverDidClose() {
         registry.cancelSummaries()
+        registry.stopGaugeUpdates()
         leave(route)
         route = .launcher
         supportOrigin = .launcher
     }
 
     private func enter(_ route: Route) {
-        if case .utility(let id) = route { registry.module(for: id)?.didAppear() }
+        switch route {
+        case .utility(let id): registry.module(for: id)?.didAppear()
+        case .launcher:
+            // Back on the launcher: fresh ring readings now, then live updates while it stays on screen.
+            registry.startGaugeUpdates(immediately: true)
+        default: break
+        }
     }
 
     private func leave(_ route: Route) {
-        if case .utility(let id) = route { registry.anyModule(for: id)?.didDisappear() }
+        switch route {
+        case .utility(let id): registry.anyModule(for: id)?.didDisappear()
+        case .launcher: registry.stopGaugeUpdates()
+        default: break
+        }
     }
 }
 #endif

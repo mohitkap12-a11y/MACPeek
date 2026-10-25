@@ -20,8 +20,9 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 ### Changed
 - **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
   used and free), then every other enabled utility as a row with its summary (and the search field). New dark and light colours, a sun/moon
-  button in the launcher to switch between them, and a taller popover (380 x 640). The ring values are one-shot readings
-  taken when the popover opens; CPU is two readings a third of a second apart. The last readings stay on screen until new ones arrive.
+  button in the launcher to switch between them, and a taller popover (380 x 640). The rings update live at the refresh
+  interval while the launcher is on screen (CPU from consecutive readings) and stop when you open a utility or close the
+  menu; the last readings stay on screen until new ones arrive.
 - CPUPeek, MemoryPeek and DiskPeek follow the refresh interval in Settings, down to 1 second, and show values almost at
   once: the second sample follows the first after 0.4 s instead of a full interval.
 - **CPUPeek, MemoryPeek and DiskPeek redesigned**: rings and gauges, a "since opened" history chart, per-core bars, a

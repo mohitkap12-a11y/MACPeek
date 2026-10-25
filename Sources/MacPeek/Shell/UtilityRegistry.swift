@@ -14,6 +14,10 @@ final class UtilityRegistry: ObservableObject {
 
     private let modules: [String: UtilityModule]
     private let defaults: UserDefaults
+    /// Seconds between ring updates while the launcher is on screen (the refresh interval from Settings).
+    var gaugeRefreshInterval: @MainActor () -> TimeInterval = { 2 }
+    /// Keeps the launcher rings live while the launcher is visible; nil otherwise.
+    private var gaugeTask: Task<Void, Never>?
     /// In-flight launcher-summary tasks, so they can be cancelled when a utility is disabled or the popover closes.
     private var summaryTasks: [String: Task<Void, Never>] = [:]
 
@@ -61,6 +65,37 @@ final class UtilityRegistry: ObservableObject {
     /// Starts one tracked, cancellable summary task per enabled utility.
     func refreshSummaries() {
         for info in enabledUtilities { startSummary(info.id) }
+    }
+
+    /// Updates the CPU, Memory and Disk rings at the refresh interval while the launcher is on screen. Each update is
+    /// the same cheap one-shot reading as when the popover opens; nothing runs once the launcher is left or closed.
+    /// `immediately` reads the rings at once (returning to the launcher) instead of after one interval (the popover
+    /// just opened and `refreshSummaries()` is already reading them).
+    func startGaugeUpdates(immediately: Bool = false) {
+        stopGaugeUpdates()
+        gaugeTask = Task { [weak self] in
+            var wait = !immediately
+            while !Task.isCancelled {
+                if wait {
+                    guard let seconds = self?.gaugeRefreshInterval() else { return }
+                    try? await Task.sleep(nanoseconds: UInt64(max(seconds, 1) * 1_000_000_000))
+                }
+                wait = true
+                guard let self, !Task.isCancelled else { return }
+                for info in self.gaugeUtilities {
+                    guard let module = self.module(for: info.id) else { continue }
+                    let gauge = await module.launcherGauge()
+                    guard !Task.isCancelled else { return }
+                    // A failed read keeps the last value rather than blanking the ring.
+                    if let gauge, self.isEnabled(info.id) { self.gauges[info.id] = gauge }
+                }
+            }
+        }
+    }
+
+    func stopGaugeUpdates() {
+        gaugeTask?.cancel()
+        gaugeTask = nil
     }
 
     /// Cancels in-flight summary work (popover closed). Cancellation reaches `lsof` via `ShellCommand`.

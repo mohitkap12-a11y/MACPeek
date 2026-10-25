@@ -36,8 +36,8 @@ Memory is shown in binary units (1 GB = 1024³ bytes), as Activity Monitor does.
 At the refresh interval set in Settings (1 to 10 seconds), **only while the screen is open**; the first read is immediate. Leaving the screen stops the timer, and coming
 back starts from a fresh reading instead of showing the last visit's figures. The reads run
 off the main thread, and leaving the screen also stops a process scan that is already running. The launcher
-ring (memory in use, e.g. "71%" and "17 / 24 GB"; red when pressure is critical) is one read of the system numbers when
-the popover opens, without a process scan.
+ring (memory in use, e.g. "71%" and "17 / 24 GB"; red when pressure is critical) is one read of the system numbers, repeated at the
+refresh interval while the launcher is on screen, without a process scan.
 
 ## Permissions
 None. Every value above is readable by a normal user. libproc refuses other users' processes, which include some macOS services

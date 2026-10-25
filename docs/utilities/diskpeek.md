@@ -35,7 +35,7 @@ At the refresh interval set in Settings (1 to 10 seconds), **only while the scre
 the second follows after 0.4 s and values appear almost at once. Leaving the screen stops the timer and discards
 the baseline, so coming back never shows a rate computed over the time the screen was closed. Drive capacity is read when the
 screen opens and every 30 seconds after, on its own task off the main thread, so it never delays I/O sampling. The counters are read off the
-main thread. The launcher ring shows how full the startup disk is (one read of the mount table when the popover opens).
+main thread. The launcher ring shows how full the startup disk is (one read of the mount table, repeated at the refresh interval while the launcher is on screen).
 
 ## Limits
 - Other users' and protected processes cannot be read by `libproc`; DiskPeek shows how many it skipped.
