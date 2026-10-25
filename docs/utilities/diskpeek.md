@@ -31,7 +31,8 @@ cumulative bytes macOS counts for each process since it started, read by the sam
 - Processes that exit disappear.
 
 ## Sampling
-Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer and discards
+At the refresh interval set in Settings (1 to 10 seconds), **only while the screen is open**. The first sample is a baseline, so
+the second follows after 0.4 s and values appear almost at once. Leaving the screen stops the timer and discards
 the baseline, so coming back never shows a rate computed over the time the screen was closed. Drive capacity is read when the
 screen opens and every 30 seconds after, on its own task off the main thread, so it never delays I/O sampling. The counters are read off the
 main thread. The launcher ring shows how full the startup disk is (one read of the mount table when the popover opens).

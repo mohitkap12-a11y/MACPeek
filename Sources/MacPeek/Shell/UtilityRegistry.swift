@@ -40,7 +40,7 @@ final class UtilityRegistry: ObservableObject {
             .sorted { (modules[$0.id]?.gaugeOrder ?? 0) < (modules[$1.id]?.gaugeOrder ?? 0) }
     }
 
-    /// Enabled utilities shown as plain tiles, in catalog order.
+    /// Enabled utilities listed as rows under the rings, in catalog order.
     var tileUtilities: [UtilityInfo] { enabledUtilities.filter { modules[$0.id]?.gaugeOrder == nil } }
 
     func setEnabled(_ id: String, _ enabled: Bool) {

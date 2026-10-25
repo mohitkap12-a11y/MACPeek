@@ -25,7 +25,7 @@
 - **No work when not visible.** Modules start refreshing in `didAppear()` and stop in `didDisappear()`. The router calls
   `didDisappear()` when the user leaves the screen, disables the utility, or the popover closes. The launcher takes one
   cheap, one-shot summary per enabled utility when the popover opens; CPUPeek, MemoryPeek and DiskPeek also give a
-  one-shot reading for their ring tiles (`launcherGauge()`, ordered by `gaugeOrder`).
+  one-shot reading for their ring tiles (kept on screen until the next one arrives) (`launcherGauge()`, ordered by `gaugeOrder`).
 - **Disabled = zero work.** A utility switched off in *Manage utilities* is not summarized, shown or started. The
   *disabled* set is persisted (not the enabled set), so utilities shipped later appear enabled by default.
 

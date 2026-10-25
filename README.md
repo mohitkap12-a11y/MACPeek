@@ -36,7 +36,7 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
 
 ## Features
 - Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance (switch from the launcher's sun/moon button)
-- One launcher: CPU, Memory and Disk rings at the top, a tile for every other utility, one consistent compact UI
+- One launcher: CPU, Memory and Disk rings at the top, every other utility listed below with its summary and a search, one consistent compact UI
 - **Safe process termination** shared by every utility that can kill something: re-check the target →
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check

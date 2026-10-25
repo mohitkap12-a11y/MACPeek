@@ -2,15 +2,24 @@
 import SwiftUI
 import MacPeekCore
 
-/// The main screen: ring tiles for CPU, Memory and Disk, then a tile for every other enabled utility. Each tile
-/// opens its utility; the values are the one-shot readings taken when the popover opened.
+/// The main screen: ring tiles for CPU, Memory and Disk, then every other enabled utility as a row, grouped by
+/// category, with a search field. The values are the one-shot readings taken when the popover opened; the last ones
+/// stay on screen until the new ones arrive, so the launcher never opens empty.
 struct LauncherView: View {
     @EnvironmentObject private var registry: UtilityRegistry
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.colorScheme) private var colorScheme
+    @State private var query = ""
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
+    /// The listed utilities that match the search, in catalog order.
+    private var rows: [UtilityInfo] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return registry.tileUtilities }
+        return registry.tileUtilities.filter {
+            $0.name.lowercased().contains(q) || $0.tagline.lowercased().contains(q) || $0.question.lowercased().contains(q)
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,9 +40,18 @@ struct LauncherView: View {
                                 }
                             }
                         }
-                        LazyVGrid(columns: columns, spacing: 8) {
-                            ForEach(registry.tileUtilities) { info in
-                                UtilityTile(info: info, summary: registry.summaries[info.id]) { router.go(.utility(info.id)) }
+                        if !registry.tileUtilities.isEmpty {
+                            SearchField(text: $query, prompt: "Search utilities…")
+                                .themedCard(radius: 10, padding: 0)
+                            if rows.isEmpty {
+                                Text("No matching utilities").font(.caption).foregroundStyle(PeekTheme.muted)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                            }
+                            ForEach(UtilityCategory.allCases, id: \.self) { category in
+                                let items = rows.filter { $0.category == category }
+                                if !items.isEmpty {
+                                    UtilitySection(title: category.rawValue, items: items)
+                                }
                             }
                         }
                     }
@@ -146,40 +164,29 @@ private struct GaugeTile: View {
     }
 }
 
-/// Every other utility: its name and, when it has one, its launcher summary.
-private struct UtilityTile: View {
-    let info: UtilityInfo
-    let summary: String?
-    let action: () -> Void
+/// A category of utilities as a card of rows: icon, name, launcher summary (or tagline) and a chevron.
+private struct UtilitySection: View {
+    @EnvironmentObject private var registry: UtilityRegistry
+    @EnvironmentObject private var router: UtilityRouter
+    let title: String
+    let items: [UtilityInfo]
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Image(systemName: info.icon)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(PeekTheme.accent)
-                        .accessibilityHidden(true)
-                    Text(info.name)
-                        .font(.system(size: 12.5, weight: .medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel(text: title)
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, info in
+                    if index > 0 { Rectangle().fill(PeekTheme.hairline).frame(height: 1).padding(.leading, 54) }
+                    PeekRow(icon: info.icon, title: info.name,
+                            subtitle: registry.summaries[info.id] ?? info.tagline) { router.go(.utility(info.id)) }
+                        .help(info.question)
                 }
-                Text(summary ?? " ")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(PeekTheme.muted)
-                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-            .themedCard(radius: 11, padding: 10)
-            .contentShape(Rectangle())
+            .padding(.vertical, 2)
+            .background(PeekTheme.card, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(PeekTheme.border))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(TileButtonStyle())
-        .help(info.question)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(summary.map { "\(info.name), \($0)" } ?? info.name)
-        .accessibilityHint(info.question)
-        .accessibilityAddTraits(.isButton)
     }
 }
 

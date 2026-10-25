@@ -152,7 +152,7 @@ private struct HistorySection: View {
                 .accessibilityElement()
                 .accessibilityLabel("Use per core")
                 .accessibilityValue(usage.perCore.map(PercentText.fraction).joined(separator: ", "))
-                Text("One bar per core, last \(Int(store.interval)) s")
+                Text("One bar per core, latest sample")
                     .font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted)
             }
             .themedCard(radius: 10, padding: 8)

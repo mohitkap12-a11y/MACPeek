@@ -33,7 +33,7 @@ Memory is shown in binary units (1 GB = 1024³ bytes), as Activity Monitor does.
 | Per-process footprint | `proc_pid_rusage(RUSAGE_INFO_V4)` |
 
 ## Refresh
-Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer, and coming
+At the refresh interval set in Settings (1 to 10 seconds), **only while the screen is open**; the first read is immediate. Leaving the screen stops the timer, and coming
 back starts from a fresh reading instead of showing the last visit's figures. The reads run
 off the main thread, and leaving the screen also stops a process scan that is already running. The launcher
 ring (memory in use, e.g. "71%" and "17 / 24 GB"; red when pressure is critical) is one read of the system numbers when

@@ -67,13 +67,14 @@ final class DiskStore: ObservableObject {
             }
         }
         pollTask = Task { [weak self] in
+            var samples = 0
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.tick()
-                // Sampling faster than every 2 s only adds noise and cost.
-                let seconds = max(self.settings.refreshInterval, 2)
+                samples += 1
+                let seconds = self.settings.refreshInterval
                 self.interval = seconds
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: SamplingSchedule.nanoseconds(SamplingSchedule.delay(afterSample: samples, interval: seconds)))
             }
         }
     }

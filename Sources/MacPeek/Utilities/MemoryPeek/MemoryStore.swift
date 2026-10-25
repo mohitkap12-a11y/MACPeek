@@ -55,9 +55,9 @@ final class MemoryStore: ObservableObject {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.tick()
-                let seconds = max(self.settings.refreshInterval, 2)
+                let seconds = self.settings.refreshInterval
                 self.interval = seconds
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: SamplingSchedule.nanoseconds(seconds))
             }
         }
     }

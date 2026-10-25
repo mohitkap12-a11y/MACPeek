@@ -26,6 +26,9 @@ final class CPUStore: ObservableObject {
     private let processReader: ProcessUsageReading
     private let settings: AppSettings
     private var previousCores: [CoreTicks]?
+    /// The launcher's latest CPU reading. When the screen opens soon after, it is the baseline, so CPU use shows at once.
+    private var launcherCores: (date: Date, cores: [CoreTicks])?
+    private static let launcherBaselineAge: TimeInterval = 10
     private var sampler = ProcessCPUSampler()
     private var pollTask: Task<Void, Never>?
 
@@ -40,23 +43,29 @@ final class CPUStore: ObservableObject {
         return CPUAssessment.headline(usage: usage, top: processes.first, thermal: snapshot?.thermal)
     }
 
-    /// The launcher ring: two CPU readings half a second apart (overall use), plus the load average, or "running hot"
-    /// when macOS reports a high thermal state. A one-shot read, never polling.
+    /// The launcher ring: two CPU readings a third of a second apart (overall use), plus the load average, or "running
+    /// hot" when macOS reports a high thermal state. A one-shot read, never polling.
     func launcherGauge() async -> LauncherGauge? {
         let reader = self.reader
         let reading = await Task.detached(priority: .utility) { () async -> (usage: CPUUsage, snapshot: CPUSnapshot)? in
             guard let first = try? reader.snapshot() else { return nil }
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: 330_000_000)
             guard let second = try? reader.snapshot(), let usage = CoreUsage.between(first.cores, second.cores) else { return nil }
             return (usage, second)
         }.value
         guard let reading else { return nil }
+        launcherCores = (Date(), reading.snapshot.cores)
         return LauncherGauge(CPUAssessment.gaugeReading(usage: reading.usage, snapshot: reading.snapshot), tint: .accent)
     }
 
     func startSampling() {
         stopSampling()
-        previousCores = nil
+        // A launcher reading from a moment ago is a fine baseline: overall use appears with the first sample.
+        if let recent = launcherCores, Date().timeIntervalSince(recent.date) < Self.launcherBaselineAge {
+            previousCores = recent.cores
+        } else {
+            previousCores = nil
+        }
         sampler = ProcessCPUSampler()
         usage = nil
         processes = []
@@ -67,14 +76,15 @@ final class CPUStore: ObservableObject {
         isMeasuringProcesses = true
         history.removeAll()
         pollTask = Task { [weak self] in
+            var samples = 0
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.readTopologyIfNeeded()
                 await self.tick()
-                // Sampling faster than every 2 s only adds noise and cost.
-                let seconds = max(self.settings.refreshInterval, 2)
+                samples += 1
+                let seconds = self.settings.refreshInterval
                 self.interval = seconds
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: SamplingSchedule.nanoseconds(SamplingSchedule.delay(afterSample: samples, interval: seconds)))
             }
         }
     }
