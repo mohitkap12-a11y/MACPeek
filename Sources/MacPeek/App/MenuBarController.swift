@@ -12,8 +12,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let router: UtilityRouter
     private let registry: UtilityRegistry
     private var appearanceObserver: AnyCancellable?
+    private var remoteObserver: AnyCancellable?
 
-    init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService) {
+    init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService,
+         remote: RemoteManagementController) {
         self.router = router
         self.registry = registry
         super.init()
@@ -28,6 +30,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(registry)
                 .environmentObject(settings)
                 .environmentObject(updater)
+                .environmentObject(remote)
         )
 
         // The popover window does not reliably follow NSApp.appearance, so apply the chosen theme to it directly.
@@ -43,6 +46,14 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             button.toolTip = "MacPeek"
+        }
+
+        // While Remote management is on, the icon carries a dot and the tooltip says so: it is never on unseen.
+        remoteObserver = remote.$isEnabled.sink { [weak self] enabled in
+            guard let button = self?.statusItem.button else { return }
+            button.image = MenuBarController.makeIcon(remote: enabled)
+            button.image?.accessibilityDescription = enabled ? "MacPeek, Remote management on" : "MacPeek"
+            button.toolTip = enabled ? "MacPeek — Remote management is on" : "MacPeek"
         }
     }
 
@@ -82,8 +93,9 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     func popoverDidClose(_ notification: Notification) { router.popoverDidClose() }
 
     /// Monochrome template icon: a magnifier ("peek") whose lens holds a dot.
-    /// Template images adapt automatically to light/dark menu bars and Retina.
-    static func makeIcon() -> NSImage {
+    /// Template images adapt automatically to light/dark menu bars and Retina. With `remote`, a dot at the top right
+    /// shows that Remote management is on.
+    static func makeIcon(remote: Bool = false) -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
             NSColor.black.setStroke()
             NSColor.black.setFill()
@@ -97,6 +109,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             handle.lineCapStyle = .round
             handle.stroke()
             NSBezierPath(ovalIn: NSRect(x: 5.4, y: 9.4, width: 3.2, height: 3.2)).fill()
+            if remote { NSBezierPath(ovalIn: NSRect(x: 13, y: 12.5, width: 4.5, height: 4.5)).fill() }
             return true
         }
         image.isTemplate = true

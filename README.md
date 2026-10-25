@@ -41,7 +41,7 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
 - Utilities refresh only while their screen is open
-- No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks)
+- No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks). Remote management, for the separate MacPeek Remote console, is off unless you turn it on
 
 ## Install
 Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
@@ -86,6 +86,16 @@ Termination never trusts a stale PID. Details: [SECURITY.md](SECURITY.md).
 No account, no telemetry, no cloud. MacPeek reads local system information to show it to you and never
 transmits it. MacPeek asks GitHub about once a day whether a newer release exists (Settings → Check for updates automatically; update downloads are verified with an EdDSA signature). Otherwise the only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's macOS and npm
 checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
+
+**Remote management** (Settings → Remote management) is off by default. While it is off MacPeek does not listen, does not
+advertise itself and connects nowhere. When you turn it on, MacPeek listens on your local network and advertises itself
+over Bonjour (`_macpeek._tcp`) so a MacPeek Remote console can find it. A console can read anything only after you pair it
+on this Mac (a one-time code plus four words you compare on both screens), and every connection is end-to-end encrypted
+and checked against the paired key. Actions (freeing a port, quitting a process) are a separate switch, are allowed only
+for consoles you paired as "View and act", use the same safety checks as on the Mac, and are recorded in an activity log
+you can read in Settings. A menu-bar dot shows whenever Remote management is on. The protocol is described in
+[docs/remote.md](docs/remote.md). Nothing goes through a MacPeek server: relay access from outside your network is not
+part of this release.
 
 ## Roadmap
 Fourteen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,

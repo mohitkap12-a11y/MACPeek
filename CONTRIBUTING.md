@@ -51,7 +51,8 @@ tests (`swift test --filter MacPeekCoreTests`) do not need Xcode.
 
 ## Rules
 - Add tests with every change. Parser tests must use fixtures captured from a real Mac, never the live machine.
-- No telemetry, no network calls except a check the user explicitly triggers (as NetPeek, DNSPeek and UpdatePeek do) and the app's own update check (Sparkle), no third-party dependencies where native APIs suffice.
+- No telemetry, no network calls except a check the user explicitly triggers (as NetPeek, DNSPeek and UpdatePeek do), the app's own update check (Sparkle) and the RemoteAgent listener, which runs only while the person has turned Remote management on. No third-party dependencies where native APIs suffice (swift-crypto stands in for CryptoKit on Linux CI only).
+- Changes to `RemoteCrypto`, `RemoteProtocol` or `RemoteAgent` must keep [docs/remote.md](docs/remote.md) accurate and need a security review.
 - Never weaken kill safety (revalidation, SIGTERM-first, explicit force).
 - Don't request permissions you don't need, and don't bypass macOS security controls.
 - Never commit certificates, keys or passwords.

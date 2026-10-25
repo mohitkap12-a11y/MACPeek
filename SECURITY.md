@@ -16,6 +16,14 @@ credit reporters who want it once a fix ships (responsible disclosure).
   DNSPeek looks up a name you type, UpdatePeek's **Check now** asks Apple's update servers (`softwareupdate --list`),
   and UpdatePeek's npm check and npm **Update** use the npm registry, which sees the names of your global packages
   (and serves the package you update), as it does whenever you run npm yourself.
+- **Remote management is off by default.** While off, nothing listens, is advertised or connects. When the person turns
+  it on, MacPeek listens on the local network (Bonjour `_macpeek._tcp`) for MacPeek Remote consoles. Only consoles paired
+  on the Mac (one-time 6-digit code, 5 minutes, 3 attempts, then four matching words confirmed on **both** screens) are
+  accepted; each connection is authenticated against the pinned Ed25519 key and encrypted end to end
+  (X25519, HKDF-SHA256, ChaCha20-Poly1305 with counter nonces). Actions need both the Mac's **Allow actions** switch and
+  a console paired "View and act", go through the same safe-termination service as the app, and are recorded in a
+  hash-chained activity log. The Mac's private key is in the Keychain (this device only). The menu-bar icon carries a
+  dot while it is on. Protocol and threat model: [docs/remote.md](docs/remote.md).
 - **No privilege elevation.** MacPeek runs as your user and sends signals only to processes your
   user may signal. It never prompts for, stores or requests administrator rights. When npm is refused permission to
   update a global package, UpdatePeek only **shows** a `sudo npm install -g <name>@latest` command to copy into

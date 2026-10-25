@@ -30,8 +30,14 @@
 - **Disabled = zero work.** A utility switched off in *Manage utilities* is not summarized, shown or started. The
   *disabled* set is persisted (not the enabled set), so utilities shipped later appear enabled by default.
 
+## Remote management
+`RemoteCrypto` (pairing, handshake, encrypted channel), `RemoteProtocol` (envelopes, operations, framing) and
+`RemoteAgent` (settings, paired consoles, activity log, request handling, connection state machine) are UI-free and
+tested on Linux. Only `BonjourListener` (Network.framework) and `KeychainIdentityStore` are macOS-only. The app's
+`RemoteManagementController` creates them only when the person turns Remote management on. See [remote.md](remote.md).
+
 ## Navigation
-`UtilityRouter` owns a `Route` (`launcher`, `utility(id)`, `manage`, `settings`, `about`) inside the single compact
+`UtilityRouter` owns a `Route` (`launcher`, `utility(id)`, `manage`, `settings`, `remote`, `about`, `support`) inside the single compact
 popover. Every sub-screen has a back button; the popover always reopens on the launcher.
 
 ## Safe termination
@@ -50,5 +56,5 @@ popover. Every sub-screen has a back button; the popover always reopens on the l
 8. Duplicates an existing excellent utility? Build only if it passes strongly.
 
 ## Non-goals
-Not Activity Monitor, iStat Menus, a cleaner, RAM booster, antivirus, optimizer, cloud/remote admin tool, AI assistant,
+Not Activity Monitor, iStat Menus, a cleaner, RAM booster, antivirus, optimizer, MDM or cloud admin tool, AI assistant,
 or a cross-platform app.

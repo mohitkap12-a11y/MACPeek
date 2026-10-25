@@ -6,6 +6,7 @@ enum Route: Equatable {
     case utility(String)
     case manage
     case settings
+    case remote
     case about
     case support
 }

@@ -13,6 +13,7 @@ struct MainPopoverView: View {
             case .utility(let id): UtilityContainerView(id: id)
             case .manage: UtilityManagerView()
             case .settings: SettingsView()
+            case .remote: RemoteManagementView()
             case .about: AboutView()
             case .support: SupportView()
             }

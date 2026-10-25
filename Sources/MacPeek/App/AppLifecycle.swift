@@ -19,10 +19,13 @@ import UpdatePeekKit
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController?
+    private var remote: RemoteManagementController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = AppSettings()
         let updater = UpdaterService()
+        let remote = RemoteManagementController()
+        self.remote = remote
 
         // Each utility builds its own services; the shell only sees `UtilityModule`s.
         let discovery = LsofPortDiscovery()
@@ -97,7 +100,8 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         ])
         registry.gaugeRefreshInterval = { [weak settings] in settings?.refreshInterval ?? 2 }
         let router = UtilityRouter(registry: registry)
-        menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater)
+        menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater,
+                                    remote: remote)
         Self.installEditMenu()
         Log.app.info("MacPeek launched")
     }
