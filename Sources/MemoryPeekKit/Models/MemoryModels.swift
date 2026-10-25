@@ -2,7 +2,7 @@ import Foundation
 
 /// How hard macOS is working to find memory, as the kernel reports it. This, not "free memory", says whether a Mac is
 /// short of RAM: macOS fills spare memory with cached files on purpose.
-public enum MemoryPressure: String, Equatable, Sendable {
+public enum MemoryPressure: String, Equatable, Codable, Sendable {
     case normal = "Normal"
     case warning = "Warning"
     case critical = "Critical"
@@ -19,7 +19,7 @@ public enum MemoryPressure: String, Equatable, Sendable {
 }
 
 /// The page counts from `host_statistics64(HOST_VM_INFO64)` that the breakdown uses, plus swap and pressure.
-public struct MemoryStats: Equatable, Sendable {
+public struct MemoryStats: Equatable, Codable, Sendable {
     public let physicalBytes: UInt64
     public let pageSize: UInt64
     public let wiredPages: UInt64
@@ -32,10 +32,12 @@ public struct MemoryStats: Equatable, Sendable {
     public let internalPages: UInt64
     public let swapUsedBytes: UInt64?
     public let pressure: MemoryPressure?
+    /// Swap space macOS has set aside so far (it grows on demand), next to `swapUsedBytes`.
+    public let swapTotalBytes: UInt64?
 
     public init(physicalBytes: UInt64, pageSize: UInt64, wiredPages: UInt64, compressorPages: UInt64,
                 purgeablePages: UInt64, externalPages: UInt64, internalPages: UInt64, swapUsedBytes: UInt64?,
-                pressure: MemoryPressure?) {
+                pressure: MemoryPressure?, swapTotalBytes: UInt64? = nil) {
         self.physicalBytes = physicalBytes
         self.pageSize = pageSize
         self.wiredPages = wiredPages
@@ -45,11 +47,12 @@ public struct MemoryStats: Equatable, Sendable {
         self.internalPages = internalPages
         self.swapUsedBytes = swapUsedBytes
         self.pressure = pressure
+        self.swapTotalBytes = swapTotalBytes
     }
 }
 
 /// Memory split the way Activity Monitor's Memory tab splits it.
-public struct MemoryBreakdown: Equatable, Sendable {
+public struct MemoryBreakdown: Equatable, Codable, Sendable {
     public let physical: UInt64
     /// App memory: anonymous pages that cannot simply be dropped (internal − purgeable).
     public let app: UInt64
@@ -78,7 +81,7 @@ public struct MemoryBreakdown: Equatable, Sendable {
 }
 
 /// One process's memory footprint, for the "using the most memory" list.
-public struct ProcessMemoryRow: Identifiable, Equatable, Sendable {
+public struct ProcessMemoryRow: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let name: String

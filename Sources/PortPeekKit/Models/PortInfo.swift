@@ -1,11 +1,11 @@
 import Foundation
 
-public enum PortProtocol: String, Hashable, Sendable, CaseIterable {
+public enum PortProtocol: String, Hashable, Codable, Sendable, CaseIterable {
     case tcp = "TCP"
     case udp = "UDP"
 }
 
-public enum PortState: Hashable, Sendable {
+public enum PortState: Hashable, Codable, Sendable {
     case listen
     case other(String)
 
@@ -22,7 +22,7 @@ public enum PortState: Hashable, Sendable {
 }
 
 /// One listening socket and the process that owns it. Pure data: no UI state.
-public struct PortInfo: Identifiable, Hashable, Sendable {
+public struct PortInfo: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let port: Int
     public let protocolType: PortProtocol

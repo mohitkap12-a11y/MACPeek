@@ -43,7 +43,8 @@ public struct SystemMemoryReader: MemoryReading {
             purgeablePages: UInt64(vm.purgeable_count), externalPages: UInt64(vm.external_page_count),
             internalPages: UInt64(vm.internal_page_count),
             swapUsedBytes: hasSwap ? swap.xsu_used : nil,
-            pressure: level.flatMap(MemoryPressure.init(sysctlLevel:)))
+            pressure: level.flatMap(MemoryPressure.init(sysctlLevel:)),
+            swapTotalBytes: hasSwap ? swap.xsu_total : nil)
     }
 
     private static func sysctlValue<T: FixedWidthInteger>(_ name: String) -> T? {

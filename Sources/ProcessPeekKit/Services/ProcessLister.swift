@@ -13,7 +13,7 @@ public enum ProcessListError: Error, Equatable, LocalizedError {
 }
 
 /// What is known about one process beyond its `ps` row, loaded only when the user opens it.
-public struct ProcessDetails: Equatable, Sendable {
+public struct ProcessDetails: Equatable, Codable, Sendable {
     public let pid: Int
     /// True when the PID no longer belongs to the process that was listed (it exited and the PID was reused).
     /// Nothing about the replacement process is returned in that case.

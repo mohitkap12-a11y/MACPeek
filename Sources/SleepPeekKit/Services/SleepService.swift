@@ -11,7 +11,7 @@ public enum SleepError: Error, Equatable, LocalizedError {
     }
 }
 
-public struct SleepSnapshot: Equatable, Sendable {
+public struct SleepSnapshot: Equatable, Codable, Sendable {
     public let report: AssertionReport
     public let settings: PowerSettings?
     public let diagnosis: SleepDiagnosis

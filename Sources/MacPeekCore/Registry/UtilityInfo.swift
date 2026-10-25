@@ -1,18 +1,18 @@
 import Foundation
 
-public enum UtilityCategory: String, Sendable, CaseIterable {
+public enum UtilityCategory: String, Codable, Sendable, CaseIterable {
     case everyday = "Utilities"
     case developer = "Developer"
 }
 
-public enum UtilityAvailability: String, Sendable {
+public enum UtilityAvailability: String, Codable, Sendable {
     case available
     case comingSoon
 }
 
 /// Metadata the shell needs about a utility: enough to list it, explain it and toggle it —
 /// never how it gathers data. Utilities own their models, services and views.
-public struct UtilityInfo: Identifiable, Hashable, Sendable {
+public struct UtilityInfo: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let name: String
     /// The user question it answers, e.g. "What is using port 3000?"

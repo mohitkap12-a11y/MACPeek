@@ -2,7 +2,7 @@ import Foundation
 
 /// Cumulative scheduler ticks for one logical CPU since boot (`host_processor_info(PROCESSOR_CPU_LOAD_INFO)`).
 /// They are 32-bit and wrap, so differences use wrapping arithmetic.
-public struct CoreTicks: Equatable, Sendable {
+public struct CoreTicks: Equatable, Codable, Sendable {
     public let user: UInt32
     public let system: UInt32
     public let idle: UInt32
@@ -17,9 +17,9 @@ public struct CoreTicks: Equatable, Sendable {
 }
 
 /// How the CPU is built, as macOS reports it. Read once; it does not change while the Mac runs.
-public struct CPUTopology: Equatable, Sendable {
+public struct CPUTopology: Equatable, Codable, Sendable {
     /// One group per performance level (Apple silicon: performance and efficiency cores), largest level first.
-    public struct CoreGroup: Equatable, Sendable {
+    public struct CoreGroup: Equatable, Codable, Sendable {
         public let name: String
         public let logicalCores: Int
 
@@ -48,7 +48,7 @@ public struct CPUTopology: Equatable, Sendable {
 }
 
 /// `ProcessInfo.thermalState`, mirrored so the logic can be tested anywhere.
-public enum ThermalLevel: String, Equatable, Sendable {
+public enum ThermalLevel: String, Equatable, Codable, Sendable {
     case nominal, fair, serious, critical
 
     public var label: String {
@@ -64,7 +64,7 @@ public enum ThermalLevel: String, Equatable, Sendable {
 }
 
 /// One reading of the whole CPU.
-public struct CPUSnapshot: Equatable, Sendable {
+public struct CPUSnapshot: Equatable, Codable, Sendable {
     public let cores: [CoreTicks]
     /// 1, 5 and 15 minute load averages.
     public let loadAverage: [Double]
@@ -78,7 +78,7 @@ public struct CPUSnapshot: Equatable, Sendable {
 }
 
 /// CPU use over the last sampling interval. Fractions are 0...1.
-public struct CPUUsage: Equatable, Sendable {
+public struct CPUUsage: Equatable, Codable, Sendable {
     public let total: Double
     public let user: Double
     public let system: Double
@@ -94,7 +94,7 @@ public struct CPUUsage: Equatable, Sendable {
 
 /// One process's CPU use over the last interval. 100 % is one core fully busy, as in Activity Monitor, so a busy
 /// multi-threaded process can exceed 100 %.
-public struct ProcessCPURow: Identifiable, Equatable, Sendable {
+public struct ProcessCPURow: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let name: String

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct OperatingSystemInfo: Equatable, Sendable {
+public struct OperatingSystemInfo: Equatable, Codable, Sendable {
     public let major: Int
     public let minor: Int
     public let patch: Int
@@ -24,7 +24,7 @@ public struct OperatingSystemInfo: Equatable, Sendable {
     }
 }
 
-public enum PackageKind: String, Equatable, Sendable {
+public enum PackageKind: String, Equatable, Codable, Sendable {
     case formula, cask
     /// A globally installed npm package (`npm outdated -g`).
     case npm
@@ -39,7 +39,7 @@ public enum PackageKind: String, Equatable, Sendable {
 }
 
 /// A package a package manager lists as outdated, exactly as it reported it. For npm, `currentVersion` is npm's `latest`.
-public struct OutdatedPackage: Identifiable, Equatable, Sendable {
+public struct OutdatedPackage: Identifiable, Equatable, Codable, Sendable {
     public let name: String
     public let kind: PackageKind
     public let installedVersions: [String]
@@ -59,7 +59,7 @@ public struct OutdatedPackage: Identifiable, Equatable, Sendable {
 
 /// What a package manager reported and when. Homebrew answers from its last-fetched index (MacPeek never runs
 /// `brew update`); npm compares with the registry at the time of the check.
-public struct PackageReport: Equatable, Sendable {
+public struct PackageReport: Equatable, Codable, Sendable {
     public let packages: [OutdatedPackage]
     public let checkedAt: Date
     public init(packages: [OutdatedPackage], checkedAt: Date = Date()) {
@@ -68,7 +68,7 @@ public struct PackageReport: Equatable, Sendable {
     }
 }
 
-public enum PackageCheckState: Equatable, Sendable {
+public enum PackageCheckState: Equatable, Codable, Sendable {
     case notInstalled
     case notChecked
     case checking
@@ -77,7 +77,7 @@ public enum PackageCheckState: Equatable, Sendable {
 }
 
 /// A macOS update that macOS itself reported (from `softwareupdate --list` or its own record of its last check).
-public struct MacOSUpdate: Identifiable, Equatable, Sendable {
+public struct MacOSUpdate: Identifiable, Equatable, Codable, Sendable {
     public let name: String
     public let version: String?
     /// nil = not reported.
@@ -95,8 +95,8 @@ public struct MacOSUpdate: Identifiable, Equatable, Sendable {
 }
 
 /// What macOS reported about available updates, where that came from and when.
-public struct MacOSUpdateReport: Equatable, Sendable {
-    public enum Source: Equatable, Sendable {
+public struct MacOSUpdateReport: Equatable, Codable, Sendable {
+    public enum Source: Equatable, Codable, Sendable {
         /// macOS's own record of its last background check (read locally, no request).
         case macOSRecord
         /// `softwareupdate --list`, run when the user pressed Check now (asks Apple's update servers).
@@ -115,7 +115,7 @@ public struct MacOSUpdateReport: Equatable, Sendable {
     }
 }
 
-public enum MacOSUpdateState: Equatable, Sendable {
+public enum MacOSUpdateState: Equatable, Codable, Sendable {
     /// Nothing is known: macOS has no record of an available update and the user has not pressed Check now.
     case notChecked
     case checking
@@ -124,7 +124,7 @@ public enum MacOSUpdateState: Equatable, Sendable {
 }
 
 /// How an attempt to update one package from MacPeek ended.
-public enum PackageInstallOutcome: Equatable, Sendable {
+public enum PackageInstallOutcome: Equatable, Codable, Sendable {
     case installed
     case failed(message: String)
     /// npm is not allowed to change its global packages as this user. `command` is a ready-to-copy command that needs
@@ -150,7 +150,7 @@ public enum UpdatePeekError: Error, LocalizedError, Equatable {
 }
 
 /// What the user can do about an update. Only actions that need no elevation and no extra permission exist here.
-public enum UpdateAction: Equatable, Sendable {
+public enum UpdateAction: Equatable, Codable, Sendable {
     /// Open System Settings → Software Update.
     case openSoftwareUpdate
     /// Copy a fixed command for the user to run in Terminal themselves. MacPeek does not run it.

@@ -2,7 +2,7 @@ import Foundation
 import MacPeekCore
 
 /// One row of `ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm`.
-public struct ProcessEntry: Identifiable, Equatable, Sendable {
+public struct ProcessEntry: Identifiable, Equatable, Codable, Sendable {
     public var id: Int { pid }
     public let pid: Int
     public let ppid: Int
@@ -108,7 +108,7 @@ public enum ElapsedTime {
     }
 }
 
-public struct ProcessSnapshot: Equatable, Sendable {
+public struct ProcessSnapshot: Equatable, Codable, Sendable {
     public let entries: [ProcessEntry]
     private let byPID: [Int: ProcessEntry]
 

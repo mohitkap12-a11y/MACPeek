@@ -1,6 +1,6 @@
 import Foundation
 
-public enum AudioDirection: String, Sendable, CaseIterable {
+public enum AudioDirection: String, Codable, Sendable, CaseIterable {
     case input, output
 
     public var label: String { self == .input ? "Input" : "Output" }
@@ -8,7 +8,7 @@ public enum AudioDirection: String, Sendable, CaseIterable {
 
 /// How a device is connected, mapped from Core Audio's transport-type four-character codes.
 /// `unknown` means macOS reported nothing; `other` is a code this version does not recognise (kept, never guessed at).
-public enum AudioTransport: Equatable, Sendable {
+public enum AudioTransport: Equatable, Codable, Sendable {
     case builtIn, usb, bluetooth, bluetoothLE, hdmi, displayPort, airPlay, thunderbolt, firewire, pci
     case aggregate, virtual
     case other(UInt32)
@@ -59,7 +59,7 @@ public enum AudioTransport: Equatable, Sendable {
 
 /// What a device exposes for one direction. Every field is optional: macOS devices vary, and a missing property is
 /// shown as unavailable rather than invented.
-public struct AudioControls: Equatable, Sendable {
+public struct AudioControls: Equatable, Codable, Sendable {
     /// 0...1, only when the device exposes a readable volume.
     public let volume: Double?
     public let isMuted: Bool?
@@ -85,7 +85,7 @@ public struct AudioControls: Equatable, Sendable {
 
 /// One audio device as Core Audio reported it at a moment in time.
 /// `id` is a runtime identifier only: it can change when a device reconnects or after a restart.
-public struct AudioDevice: Identifiable, Equatable, Sendable {
+public struct AudioDevice: Identifiable, Equatable, Codable, Sendable {
     public let id: UInt32
     public let name: String
     public let transport: AudioTransport
@@ -146,7 +146,7 @@ public struct AudioDevice: Identifiable, Equatable, Sendable {
 }
 
 /// Everything SoundPeek knows at one moment.
-public struct AudioSnapshot: Equatable, Sendable {
+public struct AudioSnapshot: Equatable, Codable, Sendable {
     public let devices: [AudioDevice]
     public let defaultInputID: UInt32?
     public let defaultOutputID: UInt32?

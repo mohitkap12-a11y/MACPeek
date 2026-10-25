@@ -17,6 +17,15 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - Shared `SystemProcessUsageReader`, `ProcessCounterSampler`, `CancellationFlag` and `ByteCountText` (MacPeekCore): one
   libproc scan (CPU time, memory footprint, disk I/O, with process names cached), one set of sampling rules and one byte
   formatter for DiskPeek, MemoryPeek, CPUPeek and ProcessPeek. No new permissions or entitlements.
+- The data models in MacPeekCore and every `<Name>Kit` (snapshots, rows, reports and their enums, plus process-termination
+  targets and results) are now `Codable`, so they can be saved or sent as JSON. Readers, services, parsers and formatters
+  are unchanged, and nothing is encoded or sent anywhere by MacPeek itself.
+- `DeviceInfo` and `SystemDeviceInfoReader` (MacPeekCore): computer name, Bonjour name, model identifier, macOS version
+  and boot time (uptime), with `UptimeText` for labels like "6d 4h". Read-only, no permission.
+- Network throughput (NetPeekKit): `SystemInterfaceCountersReader` reads per-interface byte counters with `getifaddrs` and
+  `TrafficSampler` turns consecutive readings into download and upload rates. Totals leave out loopback, VPN tunnels and
+  Apple's peer-to-peer interfaces, and a 32-bit counter wrap is handled. Not yet shown in the app.
+- `MemoryStats.swapTotalBytes`: the swap space macOS has set aside, next to the amount used.
 ### Changed
 - **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
   used and free), then every other enabled utility as a row with its summary (and the search field). New dark and light colours, a sun/moon
