@@ -23,19 +23,17 @@ struct DiskPeekView: View {
         .background(PeekTheme.ground)
     }
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Sampled every \(Int(store.interval)) s while open; drives every 30 s, network drives skipped.")
-            if store.unreadableProcesses > 0 {
-                Text("\(store.unreadableProcesses) processes (other users' or protected) cannot be read and are not shown.")
-            }
+    /// Shown only when some processes could not be read, so the list is never mistaken for complete.
+    @ViewBuilder private var footer: some View {
+        if store.unreadableProcesses > 0 {
+            Text("\(store.unreadableProcesses) processes (other users' or protected) cannot be read and are not shown.")
+                .font(.system(size: 11))
+                .foregroundStyle(PeekTheme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .overlay(alignment: .top) { Rectangle().fill(PeekTheme.border).frame(height: 1) }
         }
-        .font(.system(size: 11))
-        .foregroundStyle(PeekTheme.muted)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .overlay(alignment: .top) { Rectangle().fill(PeekTheme.border).frame(height: 1) }
     }
 }
 
@@ -112,7 +110,7 @@ private struct MainVolumeCard: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(PeekTheme.muted)
             }
-            Text("Read and write rates are your processes together, sampled while this screen is open.")
+            Text("Read and write rates of your processes together.")
                 .font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted)
         }
         .themedCard(radius: 12, padding: 12)

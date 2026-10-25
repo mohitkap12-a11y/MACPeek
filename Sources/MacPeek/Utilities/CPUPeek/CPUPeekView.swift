@@ -41,19 +41,17 @@ struct CPUPeekView: View {
         }
     }
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("Sampled every \(Int(store.interval)) s while this screen is open. Sampling stops when you leave it.")
-            if store.unreadableProcesses > 0 {
-                Text("\(store.unreadableProcesses) processes (other users' or protected, including some macOS services) cannot be read and are not listed.")
-            }
+    /// Shown only when some processes could not be read, so the list is never mistaken for complete.
+    @ViewBuilder private var footer: some View {
+        if store.unreadableProcesses > 0 {
+            Text("\(store.unreadableProcesses) processes (other users' or protected, including some macOS services) cannot be read and are not listed.")
+                .font(.system(size: 11))
+                .foregroundStyle(PeekTheme.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .overlay(alignment: .top) { Rectangle().fill(PeekTheme.border).frame(height: 1) }
         }
-        .font(.system(size: 11))
-        .foregroundStyle(PeekTheme.muted)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .overlay(alignment: .top) { Rectangle().fill(PeekTheme.border).frame(height: 1) }
     }
 }
 
