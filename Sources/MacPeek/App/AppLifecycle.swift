@@ -8,6 +8,8 @@ import USBPeekKit
 import SleepPeekKit
 import ProcessPeekKit
 import DiskPeekKit
+import MemoryPeekKit
+import CPUPeekKit
 import EnvPeekKit
 import DNSPeekKit
 import NetPeekKit
@@ -53,7 +55,13 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             settings: settings,
             notifier: notifier
         )
-        let diskStore = DiskStore(reader: SystemDiskIOReader(), settings: settings)
+        // One libproc reader (and its name cache) shared by DiskPeek, MemoryPeek and CPUPeek. Only one utility screen
+        // is open at a time, so their scans never overlap.
+        let processUsageReader = SystemProcessUsageReader()
+        let diskStore = DiskStore(reader: SystemDiskIOReader(usage: processUsageReader),
+                                  volumeReader: SystemVolumeCapacityReader(), settings: settings)
+        let memoryStore = MemoryStore(reader: SystemMemoryReader(), processReader: processUsageReader, settings: settings)
+        let cpuStore = CPUStore(reader: SystemCPUReader(), processReader: processUsageReader, settings: settings)
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
 
         let dnsReader = SystemDNSReader()
@@ -76,6 +84,8 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             DisplayPeekModule(store: displayStore),
             USBPeekModule(store: usbStore),
             SleepPeekModule(store: sleepStore),
+            MemoryPeekModule(store: memoryStore),
+            CPUPeekModule(store: cpuStore),
             FileLockPeekModule(store: fileLockStore),
             ProcessPeekModule(store: processStore),
             DiskPeekModule(store: diskStore),
@@ -85,6 +95,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             SoundPeekModule(store: soundStore),
             UpdatePeekModule(store: updateStore),
         ])
+        registry.gaugeRefreshInterval = { [weak settings] in settings?.refreshInterval ?? 2 }
         let router = UtilityRouter(registry: registry)
         menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater)
         Self.installEditMenu()

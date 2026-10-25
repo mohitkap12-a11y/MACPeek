@@ -13,6 +13,8 @@ enum Log {
     static let sleepPeek = Logger(subsystem: subsystem, category: "MacPeek.SleepPeek")
     static let processPeek = Logger(subsystem: subsystem, category: "MacPeek.ProcessPeek")
     static let diskPeek = Logger(subsystem: subsystem, category: "MacPeek.DiskPeek")
+    static let memoryPeek = Logger(subsystem: subsystem, category: "MacPeek.MemoryPeek")
+    static let cpuPeek = Logger(subsystem: subsystem, category: "MacPeek.CPUPeek")
     static let netPeek = Logger(subsystem: subsystem, category: "MacPeek.NetPeek")
     static let dnsPeek = Logger(subsystem: subsystem, category: "MacPeek.DNSPeek")
     // SoundPeek never logs device names, IDs or UIDs.

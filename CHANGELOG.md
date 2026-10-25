@@ -4,6 +4,34 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [0.2.0] - Unreleased
 ### Added
+- **MemoryPeek**: answers "Is my Mac actually running out of memory?" It leads with memory pressure (Normal, Warning,
+  Critical) and a plain-language reading, then shows how memory is split (app memory, wired, compressed, cached files, free),
+  how much has been moved to disk (swap), and the 15 processes with the largest memory footprint (the figure Activity Monitor
+  shows). Reads only while its screen is open; the launcher shows the current pressure. It never "frees" memory.
+- **CPUPeek**: answers "What is making my Mac slow or hot right now?" Overall and per-core CPU use, the chip and its
+  performance/efficiency cores, load average, macOS's thermal state, and the 20 busiest processes over the last interval
+  (100 % = one core, as in Activity Monitor). Sampled only while its screen is open, and labelled as sampled; the launcher
+  shows the load average, or "Running hot".
+- **DiskPeek: Storage.** DiskPeek now also shows each local drive's capacity and available space, including how much of it is
+  space macOS frees by itself, with a "Low space" badge under 10 %. Network drives are skipped. It never scans your folders.
+- Shared `SystemProcessUsageReader`, `ProcessCounterSampler`, `CancellationFlag` and `ByteCountText` (MacPeekCore): one
+  libproc scan (CPU time, memory footprint, disk I/O, with process names cached), one set of sampling rules and one byte
+  formatter for DiskPeek, MemoryPeek, CPUPeek and ProcessPeek. No new permissions or entitlements.
+### Changed
+- **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
+  used and free), then every other enabled utility as a row with its summary (and the search field). New dark and light colours, a sun/moon
+  button in the launcher to switch between them, and a taller popover (380 x 640). The rings update live at the refresh
+  interval while the launcher is on screen (CPU from consecutive readings) and stop when you open a utility or close the
+  menu; the last readings stay on screen until new ones arrive.
+- CPUPeek, MemoryPeek and DiskPeek follow the refresh interval in Settings, down to 1 second, and show values almost at
+  once: the second sample follows the first after 0.4 s instead of a full interval.
+- **CPUPeek, MemoryPeek and DiskPeek redesigned**: rings and gauges, a "since opened" history chart, per-core bars, a
+  memory pressure gauge and colour bar, and a startup-disk card with live read/write rates and capacity.
+- DiskPeek and ProcessPeek format sizes with the shared formatter (one decimal below 100, e.g. ProcessPeek now shows "23.4 MB"
+  where it showed "23 MB").
+### Fixed
+- DiskPeek no longer reports a long-running process that could not be read in the previous sample as if its whole lifetime
+  of disk I/O happened in one interval; it starts a new baseline instead.
 - **In-app updates.** MacPeek can now update itself (using [Sparkle](https://sparkle-project.org)). About once a day it asks
   GitHub whether a newer release exists, and **Settings → Updates → Check for Updates…** checks on demand. Automatic
   checks are on by default and can be switched off in Settings. Updates are verified with an EdDSA signature and Apple's

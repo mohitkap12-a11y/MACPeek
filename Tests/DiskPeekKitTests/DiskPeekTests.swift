@@ -73,9 +73,24 @@ final class DiskIOSamplerTests: XCTestCase {
     func testAProcessThatAppearsBetweenSamplesCountsEverythingItHasDone() throws {
         var sampler = DiskIOSampler()
         _ = sampler.ingest([c(1, read: 0, write: 0)], at: t0)
-        let result = sampler.ingest([c(1, read: 0, write: 0), c(7, read: 4_000, write: 0)], at: t0.addingTimeInterval(2))
+        let started = DiskCounters(pid: 7, name: "p7", bytesRead: 4_000, bytesWritten: 0, generation: 9,
+                                   ageNanoseconds: 1_000_000_000)
+        let result = sampler.ingest([c(1, read: 0, write: 0), started], at: t0.addingTimeInterval(2))
         let new = try XCTUnwrap(result.first { $0.pid == 7 })
         XCTAssertEqual(new.readBytesPerSecond, 2_000, accuracy: 0.001)
+    }
+
+    func testALongRunningProcessThatWasUnreadableIsNotChargedItsLifetime() {
+        var sampler = DiskIOSampler()
+        _ = sampler.ingest([c(1, read: 0, write: 0)], at: t0)
+        let old = DiskCounters(pid: 7, name: "p7", bytesRead: 90_000_000_000, bytesWritten: 0, generation: 9,
+                               ageNanoseconds: 3_600_000_000_000)
+        let result = sampler.ingest([c(1, read: 0, write: 0), old], at: t0.addingTimeInterval(2))
+        XCTAssertFalse(result.contains { $0.pid == 7 }, "it starts a new baseline instead of reporting 45 GB/s")
+        let next = sampler.ingest([c(1, read: 0, write: 0),
+                                   DiskCounters(pid: 7, name: "p7", bytesRead: 90_000_002_000, bytesWritten: 0, generation: 9,
+                                                ageNanoseconds: 3_602_000_000_000)], at: t0.addingTimeInterval(4))
+        XCTAssertEqual(next.first { $0.pid == 7 }?.readSinceOpened, 2_000)
     }
 
     func testExitedProcessesDisappear() {
@@ -123,13 +138,6 @@ final class LiveDiskReaderTests: XCTestCase {
         }
     }
 
-    func testCancellationFlag() {
-        let flag = CancellationFlag()
-        XCTAssertFalse(flag.isCancelled)
-        flag.cancel()
-        XCTAssertTrue(flag.isCancelled)
-    }
-
     func testReadsCountersIncludingThisProcess() throws {
         let result: DiskReadResult
         do { result = try SystemDiskIOReader().read() } catch { throw XCTSkip("disk counters unavailable here: \(error)") }
@@ -137,5 +145,62 @@ final class LiveDiskReaderTests: XCTestCase {
         let me = Int(ProcessInfo.processInfo.processIdentifier)
         let own = try XCTUnwrap(result.counters.first { $0.pid == me }, "the current process is always readable")
         XCTAssertFalse(own.name.isEmpty)
+    }
+}
+
+final class VolumeCapacityTests: XCTestCase {
+    private func v(_ name: String, total: Int64 = 1_000, free: Int64, important: Int64?, root: Bool = false,
+                   isInternal: Bool? = true, removable: Bool? = false) -> VolumeCapacity {
+        VolumeCapacity(name: name, path: "/Volumes/\(name)", totalBytes: total, strictlyFreeBytes: free,
+                       availableForImportantUsageBytes: important, isRoot: root, isInternal: isInternal, isRemovable: removable)
+    }
+
+    func testAvailableIncludesWhatMacOSCanFree() {
+        let volume = v("A", free: 200, important: 350)
+        XCTAssertEqual(volume.availableBytes, 350)
+        XCTAssertEqual(volume.purgeableBytes, 150)
+        XCTAssertEqual(volume.usedBytes, 650)
+        XCTAssertEqual(volume.usedFraction, 0.65, accuracy: 0.0001)
+        XCTAssertFalse(volume.isLowOnSpace)
+    }
+
+    func testWithoutImportantUsageFallsBackToFreeSpace() {
+        let volume = v("A", free: 50, important: nil)
+        XCTAssertEqual(volume.availableBytes, 50)
+        XCTAssertEqual(volume.purgeableBytes, 0)
+        XCTAssertTrue(volume.isLowOnSpace, "under 10 % available")
+    }
+
+    func testImplausibleValuesAreClamped() {
+        let volume = v("A", free: 300, important: 100)
+        XCTAssertEqual(volume.availableBytes, 300, "never less than what is strictly free")
+        XCTAssertEqual(v("B", free: 5_000, important: 9_000).availableBytes, 1_000, "never more than the drive")
+    }
+
+    func testGaugeReading() {
+        let roomy = v("A", total: 245_100_000_000, free: 72_700_000_000, important: 88_700_000_000)
+        XCTAssertEqual(roomy.gaugeReading.value, "64%")
+        XCTAssertEqual(roomy.gaugeReading.caption, "88.7 GB free")
+        XCTAssertFalse(roomy.gaugeReading.isAlert)
+        XCTAssertTrue(v("B", free: 50, important: nil).gaugeReading.isAlert, "under 10 % available")
+    }
+
+    func testStartupDiskFirstThenInternalThenByName() {
+        let ordered = VolumeCapacity.ordered([
+            v("Zeta", free: 1, important: nil, isInternal: false),
+            v("Backup", free: 1, important: nil, isInternal: false, removable: true),
+            v("Data", free: 1, important: nil),
+            v("Macintosh HD", free: 1, important: nil, root: true),
+        ])
+        XCTAssertEqual(ordered.map(\.name), ["Macintosh HD", "Data", "Backup", "Zeta"])
+        XCTAssertEqual(ordered.map(\.kindLabel), ["Startup disk", nil, "Removable", "External"])
+    }
+
+    func testLiveReaderListsTheStartupDisk() throws {
+        let volumes: [VolumeCapacity]
+        do { volumes = try SystemVolumeCapacityReader().read() } catch { throw XCTSkip("drive capacity unavailable here: \(error)") }
+        let root = try XCTUnwrap(volumes.first)
+        XCTAssertTrue(root.isRoot, "the startup disk is listed first")
+        XCTAssertGreaterThan(root.totalBytes, 0)
     }
 }

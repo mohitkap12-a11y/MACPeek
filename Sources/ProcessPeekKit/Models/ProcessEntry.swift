@@ -1,4 +1,5 @@
 import Foundation
+import MacPeekCore
 
 /// One row of `ps -axo pid,ppid,uid,user,state,lstart,etime,%cpu,rss,comm`.
 public struct ProcessEntry: Identifiable, Equatable, Sendable {
@@ -78,13 +79,8 @@ public struct ProcessEntry: Identifiable, Equatable, Sendable {
 }
 
 public enum ByteCountLabel {
-    /// 4880 → "4.8 MB"; 24_000 → "23 MB"; 1_500_000 → "1.4 GB".
-    public static func kilobytes(_ kb: Int) -> String {
-        let value = Double(kb)
-        if value >= 1_048_576 { return String(format: "%.1f GB", value / 1_048_576) }
-        if value >= 1024 { return value >= 10_240 ? String(format: "%.0f MB", value / 1024) : String(format: "%.1f MB", value / 1024) }
-        return "\(kb) KB"
-    }
+    /// 4880 → "4.8 MB"; 24_000 → "23.4 MB"; 1_500_000 → "1.4 GB". The shared `ByteCountText` rules.
+    public static func kilobytes(_ kb: Int) -> String { ByteCountText.memory(UInt64(max(kb, 0)) * 1024) }
 }
 
 public enum ElapsedTime {

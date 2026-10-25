@@ -20,9 +20,11 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **NetPeek** | Is my network connection actually healthy? | ✅ Available |
 | **BatteryPeek** | What is my MacBook battery actually doing? | Coming soon |
 | **SleepPeek** | Why isn't my Mac sleeping? | ✅ Available |
+| **MemoryPeek** | Is my Mac actually running out of memory? | ✅ Available |
+| **CPUPeek** | What is making my Mac slow or hot right now? | ✅ Available |
 | **FileLockPeek** | What process is using this file? | ✅ Available |
 | **ProcessPeek** | What exactly is this process? | ✅ Available |
-| **DiskPeek** | Which app is using my disk right now? | ✅ Available |
+| **DiskPeek** | Which app is using my disk right now, and how full is each drive? | ✅ Available |
 | **EnvPeek** | What environment variables does this environment see? | ✅ Available |
 | **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | ✅ Available |
 | **SoundPeek** | Why is my audio going to the wrong place? | ✅ Available |
@@ -33,8 +35,8 @@ every utility with a description, what it reads, what access it needs, and an on
 is switched off does no work at all: no polling, no scanning, nothing in the launcher.
 
 ## Features
-- Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance
-- One launcher, one search, one consistent compact UI for every utility
+- Native Swift/SwiftUI, menu-bar only (no Dock icon), light/dark/system appearance (switch from the launcher's sun/moon button)
+- One launcher: CPU, Memory and Disk rings at the top, every other utility listed below with its summary and a search, one consistent compact UI
 - **Safe process termination** shared by every utility that can kill something: re-check the target →
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
@@ -69,7 +71,7 @@ MacPeek (menu-bar app)                      Sources/MacPeek
  ├─ SharedUI: PeekHeader · PeekRow · StatusBadge · EmptyState · CopyButton …
  └─ Utilities/<Name>/  view + module for each utility
 MacPeekCore (shared, UI-free)               Sources/MacPeekCore
- └─ ProcessTerminationService · PermissionService · ProcessInspecting · ShellCommand · UtilityCatalog
+ └─ ProcessTerminationService · PermissionService · ProcessInspecting · ProcessUsageReader · ShellCommand · UtilityCatalog
 <Name>Kit (one per utility, UI-free)        Sources/PortPeekKit, …
  └─ models · parsers · discovery · services — unit-tested with fixtures
 ```
@@ -86,8 +88,8 @@ transmits it. MacPeek asks GitHub about once a day whether a newer release exist
 checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 ## Roadmap
-Twelve utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, ProcessPeek, DiskPeek, EnvPeek, NetPeek,
-DNSPeek, SoundPeek, UpdatePeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+Fourteen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,
+EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
 ## Contributing / License

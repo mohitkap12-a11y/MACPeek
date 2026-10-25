@@ -39,6 +39,8 @@ let package = Package(
         .library(name: "NetPeekKit", targets: ["NetPeekKit"]),
         .library(name: "SoundPeekKit", targets: ["SoundPeekKit"]),
         .library(name: "UpdatePeekKit", targets: ["UpdatePeekKit"]),
+        .library(name: "MemoryPeekKit", targets: ["MemoryPeekKit"]),
+        .library(name: "CPUPeekKit", targets: ["CPUPeekKit"]),
     ],
     dependencies: sparkleDependencies,
     targets: [
@@ -55,12 +57,14 @@ let package = Package(
         .target(name: "NetPeekKit", dependencies: ["MacPeekCore", "DNSPeekKit"], path: "Sources/NetPeekKit"),
         .target(name: "SoundPeekKit", dependencies: ["MacPeekCore"], path: "Sources/SoundPeekKit"),
         .target(name: "UpdatePeekKit", dependencies: ["MacPeekCore"], path: "Sources/UpdatePeekKit"),
+        .target(name: "MemoryPeekKit", dependencies: ["MacPeekCore"], path: "Sources/MemoryPeekKit"),
+        .target(name: "CPUPeekKit", dependencies: ["MacPeekCore"], path: "Sources/CPUPeekKit"),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
         .executableTarget(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
                            "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
-                           "SoundPeekKit", "UpdatePeekKit"] + sparkleTargetDependencies,
+                           "SoundPeekKit", "UpdatePeekKit", "MemoryPeekKit", "CPUPeekKit"] + sparkleTargetDependencies,
             path: "Sources/MacPeek"
         ),
         .testTarget(name: "MacPeekCoreTests", dependencies: ["MacPeekCore"], path: "Tests/MacPeekCoreTests"),
@@ -100,7 +104,9 @@ let package = Package(
             path: "Tests/ProcessPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
-        .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit"], path: "Tests/DiskPeekKitTests"),
+        .testTarget(name: "DiskPeekKitTests", dependencies: ["DiskPeekKit", "MacPeekCore"], path: "Tests/DiskPeekKitTests"),
+        .testTarget(name: "MemoryPeekKitTests", dependencies: ["MemoryPeekKit", "MacPeekCore"], path: "Tests/MemoryPeekKitTests"),
+        .testTarget(name: "CPUPeekKitTests", dependencies: ["CPUPeekKit", "MacPeekCore"], path: "Tests/CPUPeekKitTests"),
         .testTarget(name: "EnvPeekKitTests", dependencies: ["EnvPeekKit"], path: "Tests/EnvPeekKitTests"),
         .testTarget(
             name: "DNSPeekKitTests",
