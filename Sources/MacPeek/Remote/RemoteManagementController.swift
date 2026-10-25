@@ -55,7 +55,8 @@ final class RemoteManagementController: ObservableObject {
             let listener = BonjourListener(state: state, handler: RequestHandler(readers: .system(), actions: .system(),
                                                                                  agentVersion: Self.appVersion),
                                            name: Self.deviceName) { [weak self] status in
-                Task { @MainActor in self?.listenerStatus = status }
+                let controller = self
+                Task { @MainActor in controller?.listenerStatus = status }
             }
             self.listener = listener
             Task {
@@ -87,7 +88,10 @@ final class RemoteManagementController: ObservableObject {
             .appendingPathComponent("MacPeek/Remote", isDirectory: true)
         let state = AgentState(identity: identity, store: FileAgentStore(directory: directory))
         Task {
-            await state.setOnChange { [weak self] in Task { @MainActor in await self?.refresh() } }
+            await state.setOnChange { [weak self] in
+                let controller = self
+                Task { @MainActor in await controller?.refresh() }
+            }
         }
         return state
     }
