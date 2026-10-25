@@ -32,10 +32,12 @@ public struct MemoryStats: Equatable, Codable, Sendable {
     public let internalPages: UInt64
     public let swapUsedBytes: UInt64?
     public let pressure: MemoryPressure?
+    /// Swap space macOS has set aside so far (it grows on demand), next to `swapUsedBytes`.
+    public let swapTotalBytes: UInt64?
 
     public init(physicalBytes: UInt64, pageSize: UInt64, wiredPages: UInt64, compressorPages: UInt64,
                 purgeablePages: UInt64, externalPages: UInt64, internalPages: UInt64, swapUsedBytes: UInt64?,
-                pressure: MemoryPressure?) {
+                pressure: MemoryPressure?, swapTotalBytes: UInt64? = nil) {
         self.physicalBytes = physicalBytes
         self.pageSize = pageSize
         self.wiredPages = wiredPages
@@ -45,6 +47,7 @@ public struct MemoryStats: Equatable, Codable, Sendable {
         self.internalPages = internalPages
         self.swapUsedBytes = swapUsedBytes
         self.pressure = pressure
+        self.swapTotalBytes = swapTotalBytes
     }
 }
 

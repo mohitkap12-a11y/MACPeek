@@ -16,6 +16,19 @@ final class CodableTests: XCTestCase {
         try assertRoundTrips(MemoryBreakdown(stats))
         try assertRoundTrips(MemoryStats(physicalBytes: 8_589_934_592, pageSize: 16_384, wiredPages: 0, compressorPages: 0,
                                          purgeablePages: 0, externalPages: 0, internalPages: 0, swapUsedBytes: nil, pressure: nil))
+        try assertRoundTrips(MemoryStats(physicalBytes: 8_589_934_592, pageSize: 16_384, wiredPages: 1, compressorPages: 2,
+                                         purgeablePages: 3, externalPages: 4, internalPages: 5, swapUsedBytes: 1_073_741_824,
+                                         pressure: .normal, swapTotalBytes: 2_147_483_648))
         try assertRoundTrips(ProcessMemoryRow(pid: 3120, name: "Xcode", footprintBytes: 4_402_341_478))
+    }
+
+    func testSwapTotalIsOptionalOnTheWire() throws {
+        let stats = MemoryStats(physicalBytes: 1, pageSize: 1, wiredPages: 0, compressorPages: 0, purgeablePages: 0,
+                                externalPages: 0, internalPages: 0, swapUsedBytes: 0, pressure: .normal)
+        XCTAssertNil(stats.swapTotalBytes)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: try JSONEncoder().encode(stats)) as? [String: Any])
+        json["swapTotalBytes"] = nil
+        let decoded = try JSONDecoder().decode(MemoryStats.self, from: try JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(decoded, stats)
     }
 }
