@@ -72,7 +72,7 @@ final class FormattingTests: XCTestCase {
         XCTAssertEqual(ByteCountLabel.kilobytes(640), "640 KB")
         XCTAssertEqual(ByteCountLabel.kilobytes(1024), "1.0 MB")
         XCTAssertEqual(ByteCountLabel.kilobytes(4880), "4.8 MB")
-        XCTAssertEqual(ByteCountLabel.kilobytes(24_000), "23 MB")
+        XCTAssertEqual(ByteCountLabel.kilobytes(24_000), "23.4 MB")
         XCTAssertEqual(ByteCountLabel.kilobytes(1_500_000), "1.4 GB")
     }
 }

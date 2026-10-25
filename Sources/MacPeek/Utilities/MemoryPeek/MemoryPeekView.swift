@@ -163,6 +163,8 @@ private struct TopProcessesCard: View {
             Text("Using the most memory").font(.caption.weight(.semibold))
             if let error = store.processError {
                 Text("Processes could not be read: \(error)").font(.caption).foregroundStyle(.orange)
+            } else if !store.hasReadProcesses {
+                Text("Reading processes…").font(.caption).foregroundStyle(.secondary)
             } else if store.topProcesses.isEmpty {
                 Text("No processes could be read.").font(.caption).foregroundStyle(.secondary)
             } else {

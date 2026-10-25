@@ -72,7 +72,7 @@ public enum UtilityCatalog {
         tagline: "See which processes are hitting your disk, and how full each drive is.",
         summary: "Shows how full each local drive is, including the space macOS can free by itself, and samples per-process disk reads and writes while it is open, clearly labelled as sampled. It stops as soon as you leave it.",
         icon: "internaldrive", category: .developer, availability: .available,
-        reads: ["Capacity and free space of local drives (Foundation volume information), only while DiskPeek is open",
+        reads: ["Capacity and free space of local drives (the mount table and Foundation volume information), only while DiskPeek is open",
                 "Per-process disk I/O counters (libproc) for processes your user can inspect, only while DiskPeek is open"],
         permissions: ["None. Other users' processes are not shown, and DiskPeek never looks inside your folders."]
     )

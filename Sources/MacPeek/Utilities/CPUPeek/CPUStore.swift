@@ -14,6 +14,8 @@ final class CPUStore: ObservableObject {
     @Published private(set) var unreadableProcesses = 0
     @Published private(set) var topology: CPUTopology?
     @Published private(set) var isWaitingForSecondSample = true
+    /// The process list needs its own second sample (after opening, or after a failed scan) and says so on its card.
+    @Published private(set) var isMeasuringProcesses = true
     @Published private(set) var error: String?
     @Published private(set) var processError: String?
     @Published private(set) var interval: TimeInterval = 2
@@ -49,7 +51,11 @@ final class CPUStore: ObservableObject {
         sampler = ProcessCPUSampler()
         usage = nil
         processes = []
+        snapshot = nil
+        error = nil
+        processError = nil
         isWaitingForSecondSample = true
+        isMeasuringProcesses = true
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
@@ -79,7 +85,8 @@ final class CPUStore: ObservableObject {
         do {
             let read = try await Task.detached(priority: .utility) { try reader.snapshot() }.value
             guard !Task.isCancelled else { return }
-            if let previousCores { usage = CoreUsage.between(previousCores, read.cores) ?? usage }
+            // No comparable previous reading (first sample, or the core count changed): show nothing rather than old usage.
+            usage = previousCores.flatMap { CoreUsage.between($0, read.cores) }
             previousCores = read.cores
             snapshot = read
             error = nil
@@ -95,7 +102,7 @@ final class CPUStore: ObservableObject {
 
         let processReader = self.processReader
         do {
-            let flag = ProcessScanCancellation()
+            let flag = CancellationFlag()
             let result = try await withTaskCancellationHandler {
                 try await Task.detached(priority: .utility) { try processReader.read(isCancelled: { flag.isCancelled }) }.value
             } onCancel: {
@@ -105,16 +112,18 @@ final class CPUStore: ObservableObject {
             processes = Array(sampler.ingest(result.usages, at: Date()).prefix(20))
             unreadableProcesses = result.unreadable
             processError = nil
+            isMeasuringProcesses = sampler.isBaselineOnly
         } catch {
             if Task.isCancelled { return }
             sampler = ProcessCPUSampler()
             processes = []
             unreadableProcesses = 0
             processError = error.localizedDescription
+            isMeasuringProcesses = true
             Log.cpuPeek.error("reading processes failed: \(error.localizedDescription, privacy: .public)")
         }
-        // A failing process scan is shown on its card; it must not hold the whole screen on "first sample".
-        isWaitingForSecondSample = usage == nil || (processError == nil && sampler.isBaselineOnly)
+        // Only overall CPU use gates the screen; the process card shows its own measuring and error states.
+        isWaitingForSecondSample = usage == nil
     }
 }
 #endif

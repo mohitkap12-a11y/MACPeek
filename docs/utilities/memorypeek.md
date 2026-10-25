@@ -33,7 +33,8 @@ Memory is shown in binary units (1 GB = 1024³ bytes), as Activity Monitor does.
 | Per-process footprint | `proc_pid_rusage(RUSAGE_INFO_V4)` |
 
 ## Refresh
-Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer. The reads run
+Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer, and coming
+back starts from a fresh reading instead of showing the last visit's figures. The reads run
 off the main thread, and leaving the screen also stops a process scan that is already running. The launcher line
 ("Pressure: Normal") is one read of the system numbers when the popover opens, without a process scan.
 

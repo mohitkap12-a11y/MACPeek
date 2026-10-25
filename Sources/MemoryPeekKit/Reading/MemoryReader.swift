@@ -9,8 +9,8 @@ public protocol MemoryReading: Sendable {
 }
 
 #if canImport(Darwin)
-/// Reads `hw.memsize`, `host_statistics64(HOST_VM_INFO64)`, `vm.swapusage`, `kern.memorystatus_vm_pressure_level` and
-/// `kern.memorystatus_level`. None of them needs a permission. Swap and pressure are optional: if macOS refuses
+/// Reads `hw.memsize`, `host_statistics64(HOST_VM_INFO64)`, `vm.swapusage` and `kern.memorystatus_vm_pressure_level`.
+/// None of them needs a permission. Swap and pressure are optional: if macOS refuses
 /// one, it is shown as not reported instead of failing the whole read.
 public struct SystemMemoryReader: MemoryReading {
     public init() {}
@@ -36,18 +36,14 @@ public struct SystemMemoryReader: MemoryReading {
         var swapSize = MemoryLayout<xsw_usage>.size
         let hasSwap = sysctlbyname("vm.swapusage", &swap, &swapSize, nil, 0) == 0
         let level: Int32? = Self.sysctlValue("kern.memorystatus_vm_pressure_level")
-        let available: Int32? = Self.sysctlValue("kern.memorystatus_level")
 
         return MemoryStats(
             physicalBytes: physical, pageSize: UInt64(vm_kernel_page_size),
-            freePages: UInt64(vm.free_count), activePages: UInt64(vm.active_count),
-            inactivePages: UInt64(vm.inactive_count), speculativePages: UInt64(vm.speculative_count),
             wiredPages: UInt64(vm.wire_count), compressorPages: UInt64(vm.compressor_page_count),
             purgeablePages: UInt64(vm.purgeable_count), externalPages: UInt64(vm.external_page_count),
             internalPages: UInt64(vm.internal_page_count),
-            swapUsedBytes: hasSwap ? swap.xsu_used : nil, swapTotalBytes: hasSwap ? swap.xsu_total : nil,
-            pressure: level.flatMap(MemoryPressure.init(sysctlLevel:)),
-            availablePercent: available.flatMap { (0...100).contains($0) ? Int($0) : nil })
+            swapUsedBytes: hasSwap ? swap.xsu_used : nil,
+            pressure: level.flatMap(MemoryPressure.init(sysctlLevel:)))
     }
 
     private static func sysctlValue<T: FixedWidthInteger>(_ name: String) -> T? {

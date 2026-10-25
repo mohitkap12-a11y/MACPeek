@@ -14,8 +14,15 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   shows the load average, or "Running hot".
 - **DiskPeek: Storage.** DiskPeek now also shows each local drive's capacity and available space, including how much of it is
   space macOS frees by itself, with a "Low space" badge under 10 %. Network drives are skipped. It never scans your folders.
-- Shared `SystemProcessUsageReader` (MacPeekCore): per-process CPU time and memory footprint from `proc_pid_rusage`, used by
-  MemoryPeek and CPUPeek. No new permissions or entitlements.
+- Shared `SystemProcessUsageReader`, `ProcessCounterSampler`, `CancellationFlag` and `ByteCountText` (MacPeekCore): one
+  libproc scan (CPU time, memory footprint, disk I/O, with process names cached), one set of sampling rules and one byte
+  formatter for DiskPeek, MemoryPeek, CPUPeek and ProcessPeek. No new permissions or entitlements.
+### Changed
+- DiskPeek and ProcessPeek format sizes with the shared formatter (one decimal below 100, e.g. ProcessPeek now shows "23.4 MB"
+  where it showed "23 MB").
+### Fixed
+- DiskPeek no longer reports a long-running process that could not be read in the previous sample as if its whole lifetime
+  of disk I/O happened in one interval; it starts a new baseline instead.
 - **In-app updates.** MacPeek can now update itself (using [Sparkle](https://sparkle-project.org)). About once a day it asks
   GitHub whether a newer release exists, and **Settings → Updates → Check for Updates…** checks on demand. Automatic
   checks are on by default and can be switched off in Settings. Updates are verified with an EdDSA signature and Apple's

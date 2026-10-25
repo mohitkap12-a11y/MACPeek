@@ -1,4 +1,5 @@
 import Foundation
+import MacPeekCore
 
 /// Cumulative disk I/O counters macOS keeps for one process since it started.
 public struct DiskCounters: Equatable, Sendable {
@@ -10,25 +11,18 @@ public struct DiskCounters: Equatable, Sendable {
     /// back with a different generation is a different process, even if its counters happen to be higher. Zero
     /// means "unknown", in which case only a counter that goes down reveals a reused PID.
     public let generation: UInt64
+    /// How long ago the process started, when known (see `ProcessCounterSampler`).
+    public let ageNanoseconds: UInt64?
 
-    public init(pid: Int, name: String, bytesRead: UInt64, bytesWritten: UInt64, generation: UInt64 = 0) {
+    public init(pid: Int, name: String, bytesRead: UInt64, bytesWritten: UInt64, generation: UInt64 = 0,
+                ageNanoseconds: UInt64? = nil) {
         self.pid = pid
         self.name = name
         self.bytesRead = bytesRead
         self.bytesWritten = bytesWritten
         self.generation = generation
+        self.ageNanoseconds = ageNanoseconds
     }
-}
-
-/// A flag a synchronous reader polls so that cancelling the surrounding task can stop a scan that is already running.
-public final class CancellationFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var cancelled = false
-
-    public init() {}
-
-    public var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
-    public func cancel() { lock.lock(); cancelled = true; lock.unlock() }
 }
 
 public struct DiskReadResult: Equatable, Sendable {
@@ -74,19 +68,9 @@ public enum DiskSort: String, CaseIterable, Sendable {
 
 public enum ByteRate {
     /// 1_500_000 → "1.4 MB/s"; 0 → "0 B/s". Binary units, like Activity Monitor.
-    public static func label(_ bytesPerSecond: Double) -> String { ByteSize.label(bytesPerSecond) + "/s" }
+    public static func label(_ bytesPerSecond: Double) -> String { ByteCountText.binary(bytesPerSecond) + "/s" }
 }
 
 public enum ByteSize {
-    public static func label(_ bytes: Double) -> String {
-        let units = ["B", "KB", "MB", "GB", "TB"]
-        var value = max(bytes, 0)
-        var index = 0
-        while value >= 1024 && index < units.count - 1 {
-            value /= 1024
-            index += 1
-        }
-        if index == 0 { return "\(Int(value)) B" }
-        return value >= 100 ? String(format: "%.0f %@", value, units[index]) : String(format: "%.1f %@", value, units[index])
-    }
+    public static func label(_ bytes: Double) -> String { ByteCountText.binary(bytes) }
 }

@@ -55,39 +55,60 @@ public struct VolumeCapacity: Identifiable, Equatable, Sendable {
 }
 
 public protocol VolumeCapacityReading: Sendable {
-    /// Local, visible mounted volumes. Network volumes are skipped so an unresponsive server cannot stall DiskPeek.
+    /// Local, visible, writable mounted volumes (plus the startup disk).
     func read() throws -> [VolumeCapacity]
 }
 
 #if canImport(Darwin)
+/// Lists mounts with `getfsstat(MNT_NOWAIT)`, which returns the kernel's cached statistics without touching any file
+/// system, so a hung network server or a sleeping external disk cannot stall DiskPeek or be woken by it. Only local,
+/// browsable mounts are kept, and read-only ones (mounted disk images, installers) are skipped, except the startup
+/// disk, whose sealed system volume is always read-only. Name, internal/removable and the "important usage" figure
+/// come from Foundation for the kept volumes only.
 public struct SystemVolumeCapacityReader: VolumeCapacityReading {
     public init() {}
 
     public func read() throws -> [VolumeCapacity] {
-        // Ask only for the cheap local/browsable flags first; capacity is read for local volumes only.
-        let probe: [URLResourceKey] = [.volumeIsLocalKey, .volumeIsBrowsableKey]
-        guard let urls = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: probe,
-                                                               options: [.skipHiddenVolumes]) else {
-            throw DiskReadError.unavailable("macOS did not list any mounted drives.")
-        }
+        let mounts = try Self.mounts()
         var volumes: [VolumeCapacity] = []
-        for url in urls {
-            guard let flags = try? url.resourceValues(forKeys: Set(probe)),
-                  flags.volumeIsLocal == true, flags.volumeIsBrowsable != false else { continue }
-            let keys: Set<URLResourceKey> = [.volumeNameKey, .volumeTotalCapacityKey, .volumeAvailableCapacityKey,
-                                             .volumeAvailableCapacityForImportantUsageKey, .volumeIsInternalKey,
-                                             .volumeIsRemovableKey, .volumeIsRootFileSystemKey]
-            guard let values = try? url.resourceValues(forKeys: keys),
-                  let total = values.volumeTotalCapacity, total > 0,
-                  let free = values.volumeAvailableCapacity else { continue }
+        for mount in mounts {
+            let flags = Int32(bitPattern: mount.f_flags)
+            let path = Self.string(mount.f_mntonname)
+            let isRoot = path == "/"
+            guard flags & MNT_LOCAL != 0, flags & MNT_DONTBROWSE == 0, isRoot || flags & MNT_RDONLY == 0 else { continue }
+            let blockSize = Int64(mount.f_bsize)
+            let total = Int64(clamping: mount.f_blocks) * blockSize
+            guard total > 0 else { continue }
+            let free = Int64(clamping: mount.f_bavail) * blockSize
+            let keys: Set<URLResourceKey> = [.volumeNameKey, .volumeAvailableCapacityForImportantUsageKey,
+                                             .volumeIsInternalKey, .volumeIsRemovableKey]
+            let values = try? URL(fileURLWithPath: path, isDirectory: true).resourceValues(forKeys: keys)
             volumes.append(VolumeCapacity(
-                name: values.volumeName ?? url.lastPathComponent, path: url.path,
-                totalBytes: Int64(total), strictlyFreeBytes: Int64(free),
-                availableForImportantUsageBytes: values.volumeAvailableCapacityForImportantUsage,
-                isRoot: values.volumeIsRootFileSystem ?? (url.path == "/"),
-                isInternal: values.volumeIsInternal, isRemovable: values.volumeIsRemovable))
+                name: values?.volumeName ?? (isRoot ? "Startup disk" : (path as NSString).lastPathComponent),
+                path: path, totalBytes: total, strictlyFreeBytes: free,
+                availableForImportantUsageBytes: values?.volumeAvailableCapacityForImportantUsage,
+                isRoot: isRoot, isInternal: values?.volumeIsInternal, isRemovable: values?.volumeIsRemovable))
         }
         return VolumeCapacity.ordered(volumes)
+    }
+
+    private static func mounts() throws -> [statfs] {
+        let count = getfsstat(nil, 0, MNT_NOWAIT)
+        guard count > 0 else { throw DiskReadError.unavailable("macOS did not list any mounted drives.") }
+        // Room for a mount or two appearing between the two calls.
+        var buffer = [statfs](repeating: statfs(), count: Int(count) + 4)
+        let filled = buffer.withUnsafeMutableBufferPointer { pointer in
+            getfsstat(pointer.baseAddress, Int32(pointer.count * MemoryLayout<statfs>.stride), MNT_NOWAIT)
+        }
+        guard filled > 0 else { throw DiskReadError.unavailable("macOS did not list any mounted drives.") }
+        return Array(buffer.prefix(Int(filled)))
+    }
+
+    private static func string<T>(_ tuple: T) -> String {
+        withUnsafeBytes(of: tuple) { raw in
+            let bytes = raw.prefix { $0 != 0 }
+            return String(decoding: bytes, as: UTF8.self)
+        }
     }
 }
 #else

@@ -18,8 +18,11 @@
   counters are 32-bit and wrap; differences use wrapping arithmetic.
 - Per-process use comes from `proc_pid_rusage(RUSAGE_INFO_V4)` (`ri_user_time + ri_system_time`), converted from Mach time
   units with `mach_timebase_info` (they are not nanoseconds on Apple silicon). `ProcessCPUSampler` subtracts consecutive samples
-  the same way DiskPeek does: the first sample is a baseline, a PID with a different start time is a different process, a
-  process that appears between samples started inside the interval, and a counter that goes down reports nothing.
+  with the rules DiskPeek uses (`ProcessCounterSampler`): the first sample is a baseline, a PID with a different start time
+  is a different process, a process that appears between samples counts in full only if its age shows it started inside the
+  interval (a long-running process that could not be read last time starts a new baseline instead of showing an absurd
+  percentage), and a counter that goes down reports nothing.
+- If the core count changes between two readings, CPUPeek shows nothing for that interval rather than the previous figures.
 - This is more current than ProcessPeek's CPU column, which is `ps`'s decaying average.
 
 ## Sampling

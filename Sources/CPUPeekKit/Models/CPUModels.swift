@@ -123,7 +123,8 @@ public enum PercentText {
 
     /// 183.4 → "183 %"; 0.4 → "0.4 %". Percent of one core.
     public static func ofOneCore(_ percent: Double) -> String {
-        let value = max(percent, 0)
-        return value < 10 ? String(format: "%.1f %%", value) : "\(Int(value.rounded())) %"
+        let tenths = (max(percent, 0) * 10).rounded() / 10
+        // Round first, so 9.97 reads "10 %", not "10.0 %".
+        return tenths < 10 ? String(format: "%.1f %%", tenths) : "\(Int(tenths.rounded())) %"
     }
 }

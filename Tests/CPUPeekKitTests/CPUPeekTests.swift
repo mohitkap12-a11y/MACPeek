@@ -37,8 +37,9 @@ final class ProcessCPUSamplerTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000)
     private let second: UInt64 = 1_000_000_000
 
-    private func u(_ pid: Int, cpu: UInt64, generation: UInt64 = 1) -> ProcessUsage {
-        ProcessUsage(pid: pid, name: "p\(pid)", generation: generation, cpuTimeNanoseconds: cpu, memoryFootprintBytes: 0)
+    private func u(_ pid: Int, cpu: UInt64, generation: UInt64 = 1, age: UInt64? = nil) -> ProcessUsage {
+        ProcessUsage(pid: pid, name: "p\(pid)", generation: generation, ageNanoseconds: age, cpuTimeNanoseconds: cpu,
+                     memoryFootprintBytes: 0)
     }
 
     func testFirstSampleOnlySetsABaseline() {
@@ -61,9 +62,20 @@ final class ProcessCPUSamplerTests: XCTestCase {
     func testReusedPIDAndNewProcessCountOnlyTheirOwnTime() {
         var sampler = ProcessCPUSampler()
         _ = sampler.ingest([u(1, cpu: 100 * second, generation: 1)], at: t0)
-        let rows = sampler.ingest([u(1, cpu: 1 * second, generation: 2), u(9, cpu: second / 2)], at: t0.addingTimeInterval(2))
+        let rows = sampler.ingest([u(1, cpu: 1 * second, generation: 2), u(9, cpu: second / 2, age: second)],
+                                  at: t0.addingTimeInterval(2))
         XCTAssertEqual(rows.first { $0.pid == 1 }?.percent ?? -1, 50, accuracy: 0.001)
         XCTAssertEqual(rows.first { $0.pid == 9 }?.percent ?? -1, 25, accuracy: 0.001)
+    }
+
+    func testALongRunningProcessThatWasUnreadableIsNotChargedItsLifetime() {
+        var sampler = ProcessCPUSampler()
+        _ = sampler.ingest([u(1, cpu: 0)], at: t0)
+        // Two hours of CPU, missing from the previous scan: without the age check this would read 360000 %.
+        let rows = sampler.ingest([u(1, cpu: 0), u(5, cpu: 7_200 * second, age: 10_000 * second)], at: t0.addingTimeInterval(2))
+        XCTAssertFalse(rows.contains { $0.pid == 5 })
+        let next = sampler.ingest([u(1, cpu: 0), u(5, cpu: 7_201 * second, age: 10_002 * second)], at: t0.addingTimeInterval(4))
+        XCTAssertEqual(next.first { $0.pid == 5 }?.percent ?? -1, 50, accuracy: 0.001, "measured from its new baseline")
     }
 
     func testCounterGoingDownReportsNothing() {
@@ -87,6 +99,8 @@ final class CPUTextTests: XCTestCase {
         XCTAssertEqual(PercentText.fraction(-1), "0 %")
         XCTAssertEqual(PercentText.ofOneCore(183.4), "183 %")
         XCTAssertEqual(PercentText.ofOneCore(0.44), "0.4 %")
+        XCTAssertEqual(PercentText.ofOneCore(9.97), "10 %", "rounded before choosing the format")
+        XCTAssertEqual(PercentText.ofOneCore(9.94), "9.9 %")
     }
 
     func testHeadlines() {

@@ -73,9 +73,24 @@ final class DiskIOSamplerTests: XCTestCase {
     func testAProcessThatAppearsBetweenSamplesCountsEverythingItHasDone() throws {
         var sampler = DiskIOSampler()
         _ = sampler.ingest([c(1, read: 0, write: 0)], at: t0)
-        let result = sampler.ingest([c(1, read: 0, write: 0), c(7, read: 4_000, write: 0)], at: t0.addingTimeInterval(2))
+        let started = DiskCounters(pid: 7, name: "p7", bytesRead: 4_000, bytesWritten: 0, generation: 9,
+                                   ageNanoseconds: 1_000_000_000)
+        let result = sampler.ingest([c(1, read: 0, write: 0), started], at: t0.addingTimeInterval(2))
         let new = try XCTUnwrap(result.first { $0.pid == 7 })
         XCTAssertEqual(new.readBytesPerSecond, 2_000, accuracy: 0.001)
+    }
+
+    func testALongRunningProcessThatWasUnreadableIsNotChargedItsLifetime() {
+        var sampler = DiskIOSampler()
+        _ = sampler.ingest([c(1, read: 0, write: 0)], at: t0)
+        let old = DiskCounters(pid: 7, name: "p7", bytesRead: 90_000_000_000, bytesWritten: 0, generation: 9,
+                               ageNanoseconds: 3_600_000_000_000)
+        let result = sampler.ingest([c(1, read: 0, write: 0), old], at: t0.addingTimeInterval(2))
+        XCTAssertFalse(result.contains { $0.pid == 7 }, "it starts a new baseline instead of reporting 45 GB/s")
+        let next = sampler.ingest([c(1, read: 0, write: 0),
+                                   DiskCounters(pid: 7, name: "p7", bytesRead: 90_000_002_000, bytesWritten: 0, generation: 9,
+                                                ageNanoseconds: 3_602_000_000_000)], at: t0.addingTimeInterval(4))
+        XCTAssertEqual(next.first { $0.pid == 7 }?.readSinceOpened, 2_000)
     }
 
     func testExitedProcessesDisappear() {
@@ -121,13 +136,6 @@ final class LiveDiskReaderTests: XCTestCase {
         XCTAssertThrowsError(try SystemDiskIOReader().read(isCancelled: { true })) { error in
             XCTAssertTrue(error is CancellationError, "\(error)")
         }
-    }
-
-    func testCancellationFlag() {
-        let flag = CancellationFlag()
-        XCTAssertFalse(flag.isCancelled)
-        flag.cancel()
-        XCTAssertTrue(flag.isCancelled)
     }
 
     func testReadsCountersIncludingThisProcess() throws {

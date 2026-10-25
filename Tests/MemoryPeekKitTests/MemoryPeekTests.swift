@@ -9,11 +9,9 @@ private let page: UInt64 = 16_384
 /// 1 GB purgeable), so 3 GB free.
 private func stats(pressure: MemoryPressure? = .normal, swapUsed: UInt64? = 0, physical: UInt64 = 16 * gib) -> MemoryStats {
     let pages = { (bytes: UInt64) in bytes / page }
-    return MemoryStats(physicalBytes: physical, pageSize: page, freePages: pages(3 * gib), activePages: 0, inactivePages: 0,
-                       speculativePages: 0, wiredPages: pages(2 * gib), compressorPages: pages(1 * gib),
+    return MemoryStats(physicalBytes: physical, pageSize: page, wiredPages: pages(2 * gib), compressorPages: pages(1 * gib),
                        purgeablePages: pages(1 * gib), externalPages: pages(5 * gib), internalPages: pages(5 * gib),
-                       swapUsedBytes: swapUsed, swapTotalBytes: swapUsed.map { _ in 2 * gib },
-                       pressure: pressure, availablePercent: 60)
+                       swapUsedBytes: swapUsed, pressure: pressure)
 }
 
 final class MemoryBreakdownTests: XCTestCase {
@@ -29,10 +27,8 @@ final class MemoryBreakdownTests: XCTestCase {
     }
 
     func testNeverGoesNegative() {
-        let s = MemoryStats(physicalBytes: gib, pageSize: page, freePages: 0, activePages: 0, inactivePages: 0,
-                            speculativePages: 0, wiredPages: gib / page, compressorPages: gib / page, purgeablePages: 10,
-                            externalPages: 0, internalPages: 2, swapUsedBytes: nil, swapTotalBytes: nil,
-                            pressure: nil, availablePercent: nil)
+        let s = MemoryStats(physicalBytes: gib, pageSize: page, wiredPages: gib / page, compressorPages: gib / page,
+                            purgeablePages: 10, externalPages: 0, internalPages: 2, swapUsedBytes: nil, pressure: nil)
         let b = MemoryBreakdown(s)
         XCTAssertEqual(b.app, 0, "purgeable larger than internal does not underflow")
         XCTAssertEqual(b.free, 0, "more accounted than installed does not underflow")
@@ -54,7 +50,7 @@ final class MemoryAssessmentTests: XCTestCase {
         let a = MemoryAssessment(stats: stats(pressure: .normal, swapUsed: 2 * gib))
         XCTAssertEqual(a.tone, .good)
         XCTAssertEqual(a.headline, "Memory is fine")
-        XCTAssertTrue(a.detail.contains { $0.contains("2.00 GB") && $0.contains("normal") }, "\(a.detail)")
+        XCTAssertTrue(a.detail.contains { $0.contains("2.0 GB") && $0.contains("normal") }, "\(a.detail)")
     }
 
     func testWarningAndCritical() {

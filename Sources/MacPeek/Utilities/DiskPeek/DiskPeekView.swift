@@ -81,8 +81,10 @@ private struct StorageSection: View {
             Text("Storage").font(.caption.weight(.semibold))
             if let error = store.volumesError {
                 Text("Drive capacity is not available: \(error)").font(.caption).foregroundStyle(.orange)
-            } else if store.volumes.isEmpty {
+            } else if !store.hasReadVolumes {
                 Text("Reading drives…").font(.caption).foregroundStyle(.secondary)
+            } else if store.volumes.isEmpty {
+                Text("No local drives to show.").font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(store.volumes.prefix(4)) { volume in VolumeRow(volume: volume) }
                 if store.volumes.count > 4 {

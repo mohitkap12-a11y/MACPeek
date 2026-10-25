@@ -125,6 +125,8 @@ private struct ProcessesCard: View {
             Text("Using the most CPU").font(.caption.weight(.semibold))
             if let error = store.processError {
                 Text("Processes could not be read: \(error)").font(.caption).foregroundStyle(.orange)
+            } else if store.isMeasuringProcesses {
+                Text("Measuring… the busiest processes appear after the next sample.").font(.caption).foregroundStyle(.secondary)
             } else if store.processes.isEmpty {
                 Text("None of your processes used the CPU during the last interval.").font(.caption).foregroundStyle(.secondary)
             } else {

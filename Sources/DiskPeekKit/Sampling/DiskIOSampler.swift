@@ -1,76 +1,51 @@
 import Foundation
+import MacPeekCore
 
-/// Turns cumulative per-process counters into per-interval rates.
-///
-/// - The first sample only sets a baseline (there is nothing to subtract yet).
-/// - A PID that comes back with a different `generation` (process start time) is a different process and starts
-///   a new baseline. Without a generation, a counter that goes *down* means the same; nothing negative or absurd
-///   is ever reported.
-/// - A process that was not in the previous sample started inside the interval, so everything it has done so
-///   far happened inside it, and its whole counter counts as that interval's activity.
+/// Turns cumulative per-process disk counters into per-interval rates and totals since DiskPeek opened. The baseline,
+/// reused-PID and new-process rules are `ProcessCounterSampler`'s, shared with CPUPeek.
 public struct DiskIOSampler: Sendable {
     private struct Total {
         var read: UInt64 = 0
         var written: UInt64 = 0
     }
 
-    private var previous: [Int: DiskCounters] = [:]
-    private var previousDate: Date?
+    private var counters = ProcessCounterSampler()
     private var totals: [Int: Total] = [:]
-    public private(set) var sampleCount = 0
 
     public init() {}
 
-    /// True until a second sample has produced a first set of rates.
-    public var isBaselineOnly: Bool { sampleCount < 2 }
+    public var sampleCount: Int { counters.sampleCount }
 
-    public mutating func ingest(_ counters: [DiskCounters], at date: Date) -> [DiskActivity] {
-        defer {
-            previous = Dictionary(counters.map { ($0.pid, $0) }, uniquingKeysWith: { _, last in last })
-            previousDate = date
-            totals = totals.filter { previous[$0.key] != nil }
-            sampleCount += 1
-        }
-        guard let previousDate, date > previousDate else {
-            // Baseline: remember where every counter stands.
-            for counter in counters where totals[counter.pid] == nil { totals[counter.pid] = Total() }
-            return []
-        }
-        let interval = date.timeIntervalSince(previousDate)
+    /// True until a second sample has produced a first set of rates.
+    public var isBaselineOnly: Bool { counters.isBaselineOnly }
+
+    public mutating func ingest(_ samples: [DiskCounters], at date: Date) -> [DiskActivity] {
+        let interval = counters.ingest(samples.map {
+            ProcessCounterSampler.Sample(pid: $0.pid, generation: $0.generation, ageNanoseconds: $0.ageNanoseconds,
+                                         counters: [$0.bytesRead, $0.bytesWritten])
+        }, at: date)
+        let present = Set(samples.map(\.pid))
+        totals = totals.filter { present.contains($0.key) }
+        guard let interval else { return [] }
 
         var result: [DiskActivity] = []
-        for counter in counters {
-            let readDelta: UInt64
-            let writeDelta: UInt64
-            if let old = previous[counter.pid] {
-                if old.generation != counter.generation {
-                    // A different process now holds this PID (it started inside the interval), whatever its counters.
-                    totals[counter.pid] = Total()
-                    readDelta = counter.bytesRead
-                    writeDelta = counter.bytesWritten
-                } else if counter.bytesRead >= old.bytesRead && counter.bytesWritten >= old.bytesWritten {
-                    readDelta = counter.bytesRead - old.bytesRead
-                    writeDelta = counter.bytesWritten - old.bytesWritten
-                } else {
-                    // Counters went down with no generation to tell us why: treat it as a reused PID and start over.
-                    totals[counter.pid] = Total()
-                    readDelta = 0
-                    writeDelta = 0
-                }
-            } else {
-                readDelta = counter.bytesRead
-                writeDelta = counter.bytesWritten
+        for sample in samples {
+            var total = totals[sample.pid] ?? Total()
+            let delta = interval.deltas[sample.pid] ?? .rebaselined
+            switch delta {
+            case .continued: break
+            case .started, .rebaselined: total = Total()
             }
-            var total = totals[counter.pid] ?? Total()
-            total.read &+= readDelta
-            total.written &+= writeDelta
-            totals[counter.pid] = total
+            let values = delta.values ?? [0, 0]
+            total.read &+= values[0]
+            total.written &+= values[1]
+            totals[sample.pid] = total
 
-            if readDelta > 0 || writeDelta > 0 || total.read > 0 || total.written > 0 {
+            if values[0] > 0 || values[1] > 0 || total.read > 0 || total.written > 0 {
                 result.append(DiskActivity(
-                    pid: counter.pid, name: counter.name,
-                    readBytesPerSecond: Double(readDelta) / interval,
-                    writeBytesPerSecond: Double(writeDelta) / interval,
+                    pid: sample.pid, name: sample.name,
+                    readBytesPerSecond: Double(values[0]) / interval.seconds,
+                    writeBytesPerSecond: Double(values[1]) / interval.seconds,
                     readSinceOpened: total.read, writtenSinceOpened: total.written))
             }
         }

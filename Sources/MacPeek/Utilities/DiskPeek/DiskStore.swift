@@ -1,10 +1,12 @@
 #if os(macOS)
 import Foundation
+import MacPeekCore
 import DiskPeekKit
 
 /// Observable state for DiskPeek. It samples per-process disk counters on a timer, but only while its screen is
 /// on screen. Leaving the screen stops the timer and discards the baseline, so returning never shows a huge
-/// "rate" computed over the time it was closed. Drive capacity is read when the screen opens and every 30 s after.
+/// "rate" computed over the time it was closed. Drive capacity is read on its own task when the screen opens and every
+/// 30 s after, so a slow drive never holds up I/O sampling.
 @MainActor
 final class DiskStore: ObservableObject {
     @Published private(set) var activity: [DiskActivity] = []
@@ -15,13 +17,15 @@ final class DiskStore: ObservableObject {
     @Published private(set) var interval: TimeInterval = 2
     @Published private(set) var volumes: [VolumeCapacity] = []
     @Published private(set) var volumesError: String?
+    /// False until the first drive read finishes, so "no drives" is not confused with "still reading".
+    @Published private(set) var hasReadVolumes = false
 
     private let reader: DiskIOReading
     private let volumeReader: VolumeCapacityReading
     private let settings: AppSettings
     private var sampler = DiskIOSampler()
     private var pollTask: Task<Void, Never>?
-    private var volumesReadAt: Date?
+    private var volumeTask: Task<Void, Never>?
     private static let volumeRefresh: TimeInterval = 30
 
     init(reader: DiskIOReading, volumeReader: VolumeCapacityReading, settings: AppSettings) {
@@ -38,11 +42,16 @@ final class DiskStore: ObservableObject {
         sampler = DiskIOSampler()
         activity = []
         isWaitingForSecondSample = true
-        volumesReadAt = nil
+        volumeTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.readVolumes()
+                try? await Task.sleep(nanoseconds: UInt64(Self.volumeRefresh * 1_000_000_000))
+            }
+        }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.readVolumesIfDue()
                 await self.tick()
                 // Sampling faster than every 2 s only adds noise and cost.
                 let seconds = max(self.settings.refreshInterval, 2)
@@ -55,21 +64,23 @@ final class DiskStore: ObservableObject {
     func stopSampling() {
         pollTask?.cancel()
         pollTask = nil
+        volumeTask?.cancel()
+        volumeTask = nil
     }
 
-    private func readVolumesIfDue() async {
-        if let volumesReadAt, Date().timeIntervalSince(volumesReadAt) < Self.volumeRefresh { return }
-        volumesReadAt = Date()
+    private func readVolumes() async {
         let volumeReader = self.volumeReader
         do {
             let read = try await Task.detached(priority: .utility) { try volumeReader.read() }.value
             guard !Task.isCancelled else { return }
             volumes = read
             volumesError = nil
+            hasReadVolumes = true
         } catch {
             if Task.isCancelled { return }
             volumes = []
             volumesError = error.localizedDescription
+            hasReadVolumes = true
             Log.diskPeek.error("reading drive capacity failed: \(error.localizedDescription, privacy: .public)")
         }
     }

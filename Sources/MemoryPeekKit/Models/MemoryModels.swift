@@ -18,14 +18,10 @@ public enum MemoryPressure: String, Equatable, Sendable {
     }
 }
 
-/// Raw page counts from `host_statistics64(HOST_VM_INFO64)` plus the totals around them.
+/// The page counts from `host_statistics64(HOST_VM_INFO64)` that the breakdown uses, plus swap and pressure.
 public struct MemoryStats: Equatable, Sendable {
     public let physicalBytes: UInt64
     public let pageSize: UInt64
-    public let freePages: UInt64
-    public let activePages: UInt64
-    public let inactivePages: UInt64
-    public let speculativePages: UInt64
     public let wiredPages: UInt64
     /// Pages the compressor occupies (the compressed data itself, not what it holds).
     public let compressorPages: UInt64
@@ -35,30 +31,20 @@ public struct MemoryStats: Equatable, Sendable {
     /// Anonymous pages (app memory).
     public let internalPages: UInt64
     public let swapUsedBytes: UInt64?
-    public let swapTotalBytes: UInt64?
     public let pressure: MemoryPressure?
-    /// `kern.memorystatus_level`: the percentage of memory macOS considers available.
-    public let availablePercent: Int?
 
-    public init(physicalBytes: UInt64, pageSize: UInt64, freePages: UInt64, activePages: UInt64, inactivePages: UInt64,
-                speculativePages: UInt64, wiredPages: UInt64, compressorPages: UInt64, purgeablePages: UInt64,
-                externalPages: UInt64, internalPages: UInt64, swapUsedBytes: UInt64?, swapTotalBytes: UInt64?,
-                pressure: MemoryPressure?, availablePercent: Int?) {
+    public init(physicalBytes: UInt64, pageSize: UInt64, wiredPages: UInt64, compressorPages: UInt64,
+                purgeablePages: UInt64, externalPages: UInt64, internalPages: UInt64, swapUsedBytes: UInt64?,
+                pressure: MemoryPressure?) {
         self.physicalBytes = physicalBytes
         self.pageSize = pageSize
-        self.freePages = freePages
-        self.activePages = activePages
-        self.inactivePages = inactivePages
-        self.speculativePages = speculativePages
         self.wiredPages = wiredPages
         self.compressorPages = compressorPages
         self.purgeablePages = purgeablePages
         self.externalPages = externalPages
         self.internalPages = internalPages
         self.swapUsedBytes = swapUsedBytes
-        self.swapTotalBytes = swapTotalBytes
         self.pressure = pressure
-        self.availablePercent = availablePercent
     }
 }
 

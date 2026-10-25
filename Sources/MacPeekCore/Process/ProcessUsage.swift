@@ -3,23 +3,32 @@ import Foundation
 import Darwin
 #endif
 
-/// What macOS has counted for one process since it started: CPU time and its memory footprint right now.
+/// What macOS has counted for one process since it started.
 public struct ProcessUsage: Equatable, Sendable {
     public let pid: Int
     public let name: String
     /// Identifies *which* process holds the PID (its start time as the OS reports it). Zero means unknown.
     public let generation: UInt64
+    /// How long ago the process started, when known. Lets a sampler tell a process that started inside an interval
+    /// from one that merely could not be read last time.
+    public let ageNanoseconds: UInt64?
     /// User + system CPU time since the process started, in nanoseconds.
     public let cpuTimeNanoseconds: UInt64
     /// Physical memory footprint in bytes: the figure Activity Monitor's Memory column shows.
     public let memoryFootprintBytes: UInt64
+    public let diskBytesRead: UInt64
+    public let diskBytesWritten: UInt64
 
-    public init(pid: Int, name: String, generation: UInt64 = 0, cpuTimeNanoseconds: UInt64, memoryFootprintBytes: UInt64) {
+    public init(pid: Int, name: String, generation: UInt64 = 0, ageNanoseconds: UInt64? = nil, cpuTimeNanoseconds: UInt64,
+                memoryFootprintBytes: UInt64, diskBytesRead: UInt64 = 0, diskBytesWritten: UInt64 = 0) {
         self.pid = pid
         self.name = name
         self.generation = generation
+        self.ageNanoseconds = ageNanoseconds
         self.cpuTimeNanoseconds = cpuTimeNanoseconds
         self.memoryFootprintBytes = memoryFootprintBytes
+        self.diskBytesRead = diskBytesRead
+        self.diskBytesWritten = diskBytesWritten
     }
 }
 
@@ -44,8 +53,8 @@ public enum ProcessUsageError: Error, LocalizedError, Equatable {
     }
 }
 
-/// A flag a synchronous scan polls so that cancelling the surrounding task stops a scan that is already running.
-public final class ProcessScanCancellation: @unchecked Sendable {
+/// A flag a synchronous reader polls so that cancelling the surrounding task can stop a scan that is already running.
+public final class CancellationFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
 
@@ -66,22 +75,22 @@ public extension ProcessUsageReading {
 }
 
 #if canImport(Darwin)
-/// Per-process counters from `proc_pid_rusage(RUSAGE_INFO_V4)`. libproc refuses other users' processes, which are
-/// counted as unreadable instead of being shown.
-public struct SystemProcessUsageReader: ProcessUsageReading {
-    /// `ri_user_time` / `ri_system_time` are in Mach absolute time units, which are nanoseconds on Intel but not on
-    /// Apple silicon. The timebase converts them.
-    private let timebaseNumer: UInt64
-    private let timebaseDenom: UInt64
+/// Per-process counters from `proc_pid_rusage(RUSAGE_INFO_V4)`, the one libproc scan MemoryPeek, CPUPeek and DiskPeek
+/// share. libproc refuses other users' processes, which are counted as unreadable instead of being shown. Names are
+/// cached per process (PID + start time), so `proc_name` runs only for processes not seen before.
+public final class SystemProcessUsageReader: ProcessUsageReading, @unchecked Sendable {
+    /// `ri_user_time`, `ri_system_time` and `ri_proc_start_abstime` are in Mach absolute time units, which are
+    /// nanoseconds on Intel but not on Apple silicon. The timebase converts them.
+    private let nanosecondsPerTick: Double
+    private let lock = NSLock()
+    private var names: [Int32: (generation: UInt64, name: String)] = [:]
 
     public init() {
         var timebase = mach_timebase_info_data_t()
         if mach_timebase_info(&timebase) == KERN_SUCCESS, timebase.denom != 0 {
-            timebaseNumer = UInt64(timebase.numer)
-            timebaseDenom = UInt64(timebase.denom)
+            nanosecondsPerTick = Double(timebase.numer) / Double(timebase.denom)
         } else {
-            timebaseNumer = 1
-            timebaseDenom = 1
+            nanosecondsPerTick = 1
         }
     }
 
@@ -90,19 +99,41 @@ public struct SystemProcessUsageReader: ProcessUsageReading {
         guard !pids.isEmpty else { throw ProcessUsageError.unavailable("macOS did not list any processes.") }
         var usages: [ProcessUsage] = []
         var unreadable = 0
+        var seen: [Int32: (generation: UInt64, name: String)] = [:]
+        lock.lock()
+        let cached = names
+        lock.unlock()
         for pid in pids where pid > 0 {
             if isCancelled() { throw CancellationError() }
             guard let usage = rusage(pid) else {
                 unreadable += 1
                 continue
             }
-            let ticks = usage.ri_user_time &+ usage.ri_system_time
-            let nanoseconds = ticks.multipliedReportingOverflow(by: timebaseNumer)
-            let cpu = nanoseconds.overflow ? UInt64.max : nanoseconds.partialValue / timebaseDenom
-            usages.append(ProcessUsage(pid: Int(pid), name: name(of: pid), generation: usage.ri_proc_start_abstime,
-                                       cpuTimeNanoseconds: cpu, memoryFootprintBytes: usage.ri_phys_footprint))
+            let generation = usage.ri_proc_start_abstime
+            let name: String
+            if let hit = cached[pid], hit.generation == generation {
+                name = hit.name
+            } else {
+                name = Self.name(of: pid)
+            }
+            seen[pid] = (generation, name)
+            let now = mach_absolute_time()
+            let age = now >= generation && generation > 0 ? nanoseconds(now - generation) : nil
+            usages.append(ProcessUsage(pid: Int(pid), name: name, generation: generation, ageNanoseconds: age,
+                                       cpuTimeNanoseconds: nanoseconds(usage.ri_user_time &+ usage.ri_system_time),
+                                       memoryFootprintBytes: usage.ri_phys_footprint,
+                                       diskBytesRead: usage.ri_diskio_bytesread, diskBytesWritten: usage.ri_diskio_byteswritten))
         }
+        // Keep only processes that still exist, so the cache never grows past the process table.
+        lock.lock()
+        names = seen
+        lock.unlock()
         return ProcessUsageSnapshot(usages: usages, unreadable: unreadable)
+    }
+
+    private func nanoseconds(_ ticks: UInt64) -> UInt64 {
+        let value = Double(ticks) * nanosecondsPerTick
+        return value >= Double(UInt64.max) ? UInt64.max : UInt64(value)
     }
 
     private func allPIDs() -> [pid_t] {
@@ -125,7 +156,7 @@ public struct SystemProcessUsageReader: ProcessUsageReading {
         return result == 0 ? info : nil
     }
 
-    private func name(of pid: pid_t) -> String {
+    private static func name(of pid: pid_t) -> String {
         var buffer = [CChar](repeating: 0, count: 256)
         let length = proc_name(pid, &buffer, UInt32(buffer.count))
         return length > 0 ? String(cString: buffer) : "PID \(pid)"
@@ -133,7 +164,7 @@ public struct SystemProcessUsageReader: ProcessUsageReading {
 }
 #else
 /// MacPeek ships for macOS only; on Linux the reader reports itself unavailable so tests can skip.
-public struct SystemProcessUsageReader: ProcessUsageReading {
+public final class SystemProcessUsageReader: ProcessUsageReading, @unchecked Sendable {
     public init() {}
 
     public func read(isCancelled: @Sendable () -> Bool) throws -> ProcessUsageSnapshot {

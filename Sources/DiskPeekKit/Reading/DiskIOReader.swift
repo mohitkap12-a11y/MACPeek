@@ -1,7 +1,5 @@
 import Foundation
-#if canImport(Darwin)
-import Darwin
-#endif
+import MacPeekCore
 
 public protocol DiskIOReading: Sendable {
     /// Reads the counters of every process the current user may inspect. Synchronous (one call per process), so
@@ -25,53 +23,26 @@ public enum DiskReadError: Error, LocalizedError, Equatable {
 }
 
 #if canImport(Darwin)
-/// Per-process disk counters from `proc_pid_rusage(RUSAGE_INFO_V4)` (`ri_diskio_bytesread` / `ri_diskio_byteswritten`).
-/// libproc refuses other users' processes, which are counted as unreadable instead of being shown.
+/// Per-process disk counters (`ri_diskio_bytesread` / `ri_diskio_byteswritten`) from the libproc scan MemoryPeek and
+/// CPUPeek also use. libproc refuses other users' processes, which are counted as unreadable instead of being shown.
 public struct SystemDiskIOReader: DiskIOReading {
-    public init() {}
+    private let usage: ProcessUsageReading
+
+    public init(usage: ProcessUsageReading = SystemProcessUsageReader()) {
+        self.usage = usage
+    }
 
     public func read(isCancelled: @Sendable () -> Bool) throws -> DiskReadResult {
-        let pids = allPIDs()
-        guard !pids.isEmpty else { throw DiskReadError.unavailable("macOS did not list any processes.") }
-        var counters: [DiskCounters] = []
-        var unreadable = 0
-        for pid in pids where pid > 0 {
-            if isCancelled() { throw CancellationError() }
-            guard let usage = rusage(pid) else {
-                unreadable += 1
-                continue
-            }
-            counters.append(DiskCounters(pid: Int(pid), name: name(of: pid),
-                                         bytesRead: usage.ri_diskio_bytesread, bytesWritten: usage.ri_diskio_byteswritten,
-                                         generation: usage.ri_proc_start_abstime))
+        let snapshot: ProcessUsageSnapshot
+        do {
+            snapshot = try usage.read(isCancelled: isCancelled)
+        } catch let error as ProcessUsageError {
+            throw DiskReadError.unavailable(error.localizedDescription)
         }
-        return DiskReadResult(counters: counters, unreadable: unreadable)
-    }
-
-    private func allPIDs() -> [pid_t] {
-        var capacity = 2048
-        while capacity <= 1 << 20 {
-            var pids = [pid_t](repeating: 0, count: capacity)
-            let count = Int(proc_listallpids(&pids, Int32(capacity * MemoryLayout<pid_t>.stride)))
-            if count < 0 { return [] }
-            if count < capacity { return Array(pids.prefix(count)) }
-            capacity *= 2
-        }
-        return []
-    }
-
-    private func rusage(_ pid: pid_t) -> rusage_info_v4? {
-        var info = rusage_info_v4()
-        let result = withUnsafeMutablePointer(to: &info) { pointer in
-            pointer.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V4, $0) }
-        }
-        return result == 0 ? info : nil
-    }
-
-    private func name(of pid: pid_t) -> String {
-        var buffer = [CChar](repeating: 0, count: 256)
-        let length = proc_name(pid, &buffer, UInt32(buffer.count))
-        return length > 0 ? String(cString: buffer) : "PID \(pid)"
+        return DiskReadResult(counters: snapshot.usages.map {
+            DiskCounters(pid: $0.pid, name: $0.name, bytesRead: $0.diskBytesRead, bytesWritten: $0.diskBytesWritten,
+                         generation: $0.generation, ageNanoseconds: $0.ageNanoseconds)
+        }, unreadable: snapshot.unreadable)
     }
 }
 #else

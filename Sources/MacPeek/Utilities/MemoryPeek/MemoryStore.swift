@@ -12,6 +12,8 @@ final class MemoryStore: ObservableObject {
     @Published private(set) var unreadableProcesses = 0
     @Published private(set) var error: String?
     @Published private(set) var processError: String?
+    /// False until the first process scan of this visit finishes.
+    @Published private(set) var hasReadProcesses = false
     @Published private(set) var interval: TimeInterval = 2
 
     private let reader: MemoryReading
@@ -37,6 +39,13 @@ final class MemoryStore: ObservableObject {
 
     func startPolling() {
         stopPolling()
+        // Never show the last visit's figures (or error) as current while the first read runs.
+        stats = nil
+        topProcesses = []
+        unreadableProcesses = 0
+        error = nil
+        processError = nil
+        hasReadProcesses = false
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
@@ -69,7 +78,7 @@ final class MemoryStore: ObservableObject {
 
         let processReader = self.processReader
         do {
-            let flag = ProcessScanCancellation()
+            let flag = CancellationFlag()
             let snapshot = try await withTaskCancellationHandler {
                 try await Task.detached(priority: .utility) { try processReader.read(isCancelled: { flag.isCancelled }) }.value
             } onCancel: {
@@ -79,11 +88,13 @@ final class MemoryStore: ObservableObject {
             topProcesses = MemoryAssessment.topProcesses(snapshot.usages)
             unreadableProcesses = snapshot.unreadable
             processError = nil
+            hasReadProcesses = true
         } catch {
             if Task.isCancelled { return }
             topProcesses = []
             unreadableProcesses = 0
             processError = error.localizedDescription
+            hasReadProcesses = true
             Log.memoryPeek.error("reading processes failed: \(error.localizedDescription, privacy: .public)")
         }
     }

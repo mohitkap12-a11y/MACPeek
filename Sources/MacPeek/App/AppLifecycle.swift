@@ -55,8 +55,11 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             settings: settings,
             notifier: notifier
         )
-        let diskStore = DiskStore(reader: SystemDiskIOReader(), volumeReader: SystemVolumeCapacityReader(), settings: settings)
+        // One libproc reader (and its name cache) shared by DiskPeek, MemoryPeek and CPUPeek. Only one utility screen
+        // is open at a time, so their scans never overlap.
         let processUsageReader = SystemProcessUsageReader()
+        let diskStore = DiskStore(reader: SystemDiskIOReader(usage: processUsageReader),
+                                  volumeReader: SystemVolumeCapacityReader(), settings: settings)
         let memoryStore = MemoryStore(reader: SystemMemoryReader(), processReader: processUsageReader, settings: settings)
         let cpuStore = CPUStore(reader: SystemCPUReader(), processReader: processUsageReader, settings: settings)
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())

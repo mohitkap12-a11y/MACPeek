@@ -12,23 +12,28 @@ local snapshots, iCloud copies), and DiskPeek says how much of it is that kind o
 DiskPeek**. Every value is sampled and labelled that way.
 
 ## How it works
-Drive capacity comes from Foundation's volume information (`mountedVolumeURLs` with `.skipHiddenVolumes`, then
-`volumeTotalCapacity`, `volumeAvailableCapacity` and `volumeAvailableCapacityForImportantUsage`). Only local, browsable volumes
-are listed; network volumes are skipped so an unresponsive server cannot stall the screen. At most four drives are shown.
+Drive capacity comes from the kernel's mount table (`getfsstat` with `MNT_NOWAIT`, which returns cached statistics without
+touching any file system, so a hung network server or a sleeping external disk can neither stall DiskPeek nor be woken by it).
+Only local, browsable mounts are listed; network volumes and read-only mounts (mounted disk images, installers) are skipped,
+except the startup disk, whose sealed system volume is always read-only. The name, internal/removable flags and the
+"available" figure (`volumeAvailableCapacityForImportantUsage`) come from Foundation for the listed drives only. At most four
+drives are shown.
 
 Per-process counters come from `proc_pid_rusage(RUSAGE_INFO_V4)` (`ri_diskio_bytesread`, `ri_diskio_byteswritten`), the
-cumulative bytes macOS counts for each process since it started. `DiskIOSampler` subtracts consecutive samples:
+cumulative bytes macOS counts for each process since it started, read by the same libproc scan MemoryPeek and CPUPeek use. `DiskIOSampler` subtracts consecutive samples:
 
 - The **first sample is a baseline only**; rates appear after the second sample.
 - A counter that **goes down** means the PID now belongs to a different process, so it starts a new baseline: no negative or
   absurd values.
-- A process that appears **between samples** started inside the interval, so everything it has done counts toward that interval.
+- A process that appears **between samples** counts everything it has done toward that interval only if its age shows it
+  started inside it. A long-running process that simply could not be read last time starts a new baseline instead, so its
+  lifetime total is never reported as one interval's rate.
 - Processes that exit disappear.
 
 ## Sampling
 Every `max(refresh interval, 2)` seconds, **only while the screen is open**. Leaving the screen stops the timer and discards
 the baseline, so coming back never shows a rate computed over the time the screen was closed. Drive capacity is read when the
-screen opens and every 30 seconds after, off the main thread. The counters are read off the
+screen opens and every 30 seconds after, on its own task off the main thread, so it never delays I/O sampling. The counters are read off the
 main thread. There is no launcher summary.
 
 ## Limits
