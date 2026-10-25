@@ -96,7 +96,7 @@ public struct SystemVolumeCapacityReader: VolumeCapacityReading {
         let count = getfsstat(nil, 0, MNT_NOWAIT)
         guard count > 0 else { throw DiskReadError.unavailable("macOS did not list any mounted drives.") }
         // Room for a mount or two appearing between the two calls.
-        var buffer = [statfs](repeating: statfs(), count: Int(count) + 4)
+        var buffer = Array(repeating: statfs(), count: Int(count) + 4)
         let filled = buffer.withUnsafeMutableBufferPointer { pointer in
             getfsstat(pointer.baseAddress, Int32(pointer.count * MemoryLayout<statfs>.stride), MNT_NOWAIT)
         }
