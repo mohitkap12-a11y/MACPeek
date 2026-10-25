@@ -142,9 +142,9 @@ final class LiveDiskReaderTests: XCTestCase {
 
 final class VolumeCapacityTests: XCTestCase {
     private func v(_ name: String, total: Int64 = 1_000, free: Int64, important: Int64?, root: Bool = false,
-                   internal: Bool? = true, removable: Bool? = false) -> VolumeCapacity {
+                   isInternal: Bool? = true, removable: Bool? = false) -> VolumeCapacity {
         VolumeCapacity(name: name, path: "/Volumes/\(name)", totalBytes: total, strictlyFreeBytes: free,
-                       availableForImportantUsageBytes: important, isRoot: root, isInternal: internal, isRemovable: removable)
+                       availableForImportantUsageBytes: important, isRoot: root, isInternal: isInternal, isRemovable: removable)
     }
 
     func testAvailableIncludesWhatMacOSCanFree() {
@@ -171,8 +171,8 @@ final class VolumeCapacityTests: XCTestCase {
 
     func testStartupDiskFirstThenInternalThenByName() {
         let ordered = VolumeCapacity.ordered([
-            v("Zeta", free: 1, important: nil, internal: false),
-            v("Backup", free: 1, important: nil, internal: false, removable: true),
+            v("Zeta", free: 1, important: nil, isInternal: false),
+            v("Backup", free: 1, important: nil, isInternal: false, removable: true),
             v("Data", free: 1, important: nil),
             v("Macintosh HD", free: 1, important: nil, root: true),
         ])
