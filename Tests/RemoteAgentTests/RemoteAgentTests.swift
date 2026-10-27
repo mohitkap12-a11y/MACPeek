@@ -249,6 +249,54 @@ final class AgentPairingTests: XCTestCase {
         XCTAssertNil(remaining)
     }
 
+    func testParallelConnectionsShareTheAttemptLimit() async throws {
+        let harness = Harness()
+        let code = try unwrapped(await harness.state.newPairingCode())
+        let wrong = code.digits == "000000" ? "111111" : "000000"
+        // Every connection starts pairing before any guess is checked, as an attacker trying many codes at once would.
+        var started: [(AgentConnection, Outbox, ConsolePairing, PairingMessage.Accept)] = []
+        for _ in 0...PairingCode.maximumAttempts {
+            let (connection, outbox) = await harness.connect()
+            let console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
+            try await deliver(.pairStart(console.start()), to: connection)
+            guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
+            started.append((connection, outbox, console, accept))
+        }
+        for (connection, outbox, var console, accept) in started.dropLast() {
+            try await deliver(.pairReveal(try console.reveal(after: accept, code: wrong).reveal), to: connection)
+            guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
+        }
+        // The code is withdrawn, so even the right code on a connection begun earlier no longer pairs.
+        let (connection, outbox, _, accept) = try unwrapped(started.last)
+        var console = try unwrapped(started.last).2
+        try await deliver(.pairReveal(try console.reveal(after: accept, code: code.digits).reveal), to: connection)
+        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
+        let pending = await harness.state.pendingPairing
+        XCTAssertNil(pending)
+    }
+
+    func testBothConfirmationsArrivingTogetherPairOnce() async throws {
+        // The console's Confirm and the decision on this Mac race; whichever finishes the pairing, it must succeed once.
+        for _ in 0..<25 {
+            let harness = Harness()
+            let code = try unwrapped(await harness.state.newPairingCode())
+            let (connection, outbox) = await harness.connect()
+            var console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
+            try await deliver(.pairStart(console.start()), to: connection)
+            guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
+            try await deliver(.pairReveal(try console.reveal(after: accept, code: code.digits).reveal), to: connection)
+            let confirm = try console.confirm()
+            async let fromConsole: Void = deliver(.pairConfirm(confirm), to: connection)
+            async let fromMac: Void = harness.state.resolvePairing(role: .viewOnly)
+            _ = try await (fromConsole, fromMac)
+            let messages = await outbox.take()
+            XCTAssertEqual(messages.filter { if case .pairConfirm = $0 { return true } else { return false } }.count, 1, "\(messages)")
+            XCTAssertFalse(messages.contains { if case .refused = $0 { return true } else { return false } }, "\(messages)")
+            let consoles = await harness.state.consoles
+            XCTAssertEqual(consoles.count, 1)
+        }
+    }
+
     func testTurningOffEndsAPairingAndRefusesNewConnections() async throws {
         let harness = Harness()
         _ = await harness.state.newPairingCode()

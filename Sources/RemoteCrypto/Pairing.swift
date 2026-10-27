@@ -165,7 +165,8 @@ public struct ConsolePairing {
 /// The Mac's side of pairing, for one displayed code.
 public struct MacPairing {
     private let identity: DeviceIdentity
-    private let code: PairingCode
+    /// The code this pairing checks against, so the agent can tell whether it is still the one on screen.
+    public let code: PairingCode
     private let ephemeral = Curve25519.KeyAgreement.PrivateKey()
     private let nonce = randomNonce()
     private var start: PairingMessage.Start?
