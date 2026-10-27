@@ -120,9 +120,24 @@ public actor AgentState {
         changed()
     }
 
-    func pairingNeedsConfirmation(connectionID: UUID, words: [String]) {
+    /// Checks a console's Reveal against the code on screen now, in one step, so the attempt limit holds however many
+    /// connections a console opens: a pairing begun before the code was withdrawn (after too many wrong guesses, a
+    /// cancel or a new code) cannot keep guessing with it. On success the pairing waits for the person here.
+    func reveal(_ reveal: PairingMessage.Reveal, for pairing: MacPairing, connectionID: UUID) throws -> MacPairing {
+        guard settings.isEnabled, let code = pairingCode, code == pairing.code, pendingPairing == nil else {
+            throw AgentRefusal("This Mac is not showing a pairing code.")
+        }
+        var pairing = pairing
+        let words: [String]
+        do {
+            words = try pairing.words(after: reveal, now: clock())
+        } catch let error as PairingError where error == .wrongCode || error == .codeExpired {
+            recordFailedPairing(error)
+            throw error
+        }
         pendingPairing = PendingPairing(connectionID: connectionID, words: words, console: nil)
         changed()
+        return pairing
     }
 
     func pairingConsoleConfirmed(connectionID: UUID, console: PublicIdentity) {
@@ -141,9 +156,10 @@ public actor AgentState {
         await connection.localDecision(role)
     }
 
-    /// Called by the connection once both people confirmed and the Mac's Confirm has been sent.
-    func completePairing(connectionID: UUID, console: PublicIdentity, role: ConsoleRole) {
-        guard pendingPairing?.connectionID == connectionID else { return }
+    /// Called by the connection once both people confirmed, before it sends the Mac's Confirm. False when the pairing
+    /// was cancelled meanwhile: then nothing is stored and the Confirm must not be sent.
+    func completePairing(connectionID: UUID, console: PublicIdentity, role: ConsoleRole) -> Bool {
+        guard settings.isEnabled, pendingPairing?.connectionID == connectionID else { return false }
         pendingPairing = nil
         pairingCode = nil
         consoles.removeAll { $0.identity.isSameDevice(as: console) }
@@ -152,6 +168,7 @@ public actor AgentState {
         record(actor: Self.localActor, fingerprint: nil, event: "Paired \(console.name) (\(console.fingerprint))",
                outcome: role.label)
         changed()
+        return true
     }
 
     func pairingEnded(connectionID: UUID, declined: Bool) {

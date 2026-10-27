@@ -61,6 +61,8 @@ final class RemoteManagementController: ObservableObject {
             self.listener = listener
             Task {
                 await state.update(settings)
+                // Switched off (or restarted) while the settings were applied: never start a listener nothing can stop.
+                guard self.listener === listener, self.isEnabled else { return }
                 listener.start()
                 await refresh()
             }

@@ -11,6 +11,8 @@ public actor AgentConnection {
         case pairingAwaitingReveal(MacPairing)
         /// Both people must confirm the words: the console sends Confirm, the person here picks a role.
         case pairingAwaitingConfirmations(MacPairing, console: PublicIdentity?, role: ConsoleRole?)
+        /// Both confirmed; the pairing is being stored. Claimed before awaiting, so it is finished only once.
+        case finishingPairing
         case awaitingFinish(MacHandshake)
         case open(SecureChannel, console: PublicIdentity)
         case closed
@@ -52,8 +54,9 @@ public actor AgentConnection {
     /// Sends `refused` (when there is a reason) and ends the connection.
     public func close(reason: String?) async {
         guard !isClosed else { return }
-        if case .pairingAwaitingConfirmations = phase {
-            await state.pairingEnded(connectionID: id, declined: false)
+        switch phase {
+        case .pairingAwaitingConfirmations, .finishingPairing: await state.pairingEnded(connectionID: id, declined: false)
+        default: break
         }
         phase = .closed
         if let reason { await write(.refused(reason)) }
@@ -80,27 +83,26 @@ public actor AgentConnection {
             }
             do {
                 let accept = try pairing.accept(start)
-                phase = .pairingAwaitingReveal(pairing)
+                guard advance(to: .pairingAwaitingReveal(pairing)) else { return }
                 await write(.pairAccept(accept))
             } catch let error as PairingError where error == .codeExpired {
                 await state.recordFailedPairing(error)
                 throw error
             }
 
-        case (.pairingAwaitingReveal(var pairing), .pairReveal(let reveal)):
-            do {
-                let words = try pairing.words(after: reveal)
-                phase = .pairingAwaitingConfirmations(pairing, console: nil, role: nil)
-                await state.pairingNeedsConfirmation(connectionID: id, words: words)
-            } catch let error as PairingError where error == .wrongCode || error == .codeExpired {
-                await state.recordFailedPairing(error)
-                throw error
+        case (.pairingAwaitingReveal(let pairing), .pairReveal(let reveal)):
+            // Checked by the state, against the code on screen now, so parallel connections share one attempt limit.
+            let checked = try await state.reveal(reveal, for: pairing, connectionID: id)
+            guard advance(to: .pairingAwaitingConfirmations(checked, console: nil, role: nil)) else {
+                await state.pairingEnded(connectionID: id, declined: false)
+                return
             }
 
         case (.pairingAwaitingConfirmations(let pairing, nil, let role), .pairConfirm(let confirm)):
             let console = try pairing.consoleIdentity(from: confirm)
             phase = .pairingAwaitingConfirmations(pairing, console: console, role: role)
             await state.pairingConsoleConfirmed(connectionID: id, console: console)
+            guard !isClosed else { return }
             try await finishPairingIfConfirmed()
 
         case (.awaitingFirstMessage, .hello(let hello)):
@@ -114,17 +116,19 @@ public actor AgentConnection {
             let (channel, console) = try handshake.accept(finish) { identity in
                 consoles.contains { $0.identity.isSameDevice(as: identity) }
             }
-            phase = .open(channel, console: console)
+            guard advance(to: .open(channel, console: console)) else { return }
             await state.consoleConnected(connectionID: id, console: console)
 
         case (.open(var channel, let console), .sealed(let frame)):
             let request = try JSONDecoder().decode(Envelope.self, from: try channel.open(frame))
             // Looked up again for every request, so a revoked console or a changed role takes effect at once.
             guard let paired = await state.pairedConsole(console) else { throw AgentRefusal("This console's pairing was revoked.") }
+            guard !isClosed else { return }
             let (response, record) = await handler.handle(request, from: paired, settings: await state.settings)
             if let record { await state.recordAction(by: paired, event: record.event, outcome: record.outcome) }
             let sealed = try channel.seal(try JSONEncoder().encode(response))
-            phase = .open(channel, console: console)
+            // Closed while the request ran (revoked, turned off): do not reopen the connection or answer.
+            guard advance(to: .open(channel, console: console)) else { return }
             await write(.sealed(sealed))
 
         default:
@@ -152,10 +156,23 @@ public actor AgentConnection {
     private func finishPairingIfConfirmed() async throws {
         guard case .pairingAwaitingConfirmations(let pairing, let console?, let role?) = phase else { return }
         let confirm = try pairing.confirm()
-        await state.completePairing(connectionID: id, console: console, role: role)
+        // The console's Confirm and the decision here can both arrive while the other is still awaiting: whichever gets
+        // here first finishes the pairing, and the other finds nothing left to do.
+        phase = .finishingPairing
+        // Only send the Confirm (which makes the console pin this Mac) once this Mac has stored the console.
+        guard await state.completePairing(connectionID: id, console: console, role: role) else {
+            throw AgentRefusal("Pairing was cancelled on this Mac.")
+        }
         // The console may go straight on to a handshake on this connection.
-        phase = .awaitingFirstMessage
+        guard advance(to: .awaitingFirstMessage) else { return }
         await write(.pairConfirm(confirm))
+    }
+
+    /// Moves to `next` unless the connection was closed while this one was waiting; false means it was.
+    private func advance(to next: Phase) -> Bool {
+        guard !isClosed else { return false }
+        phase = next
+        return true
     }
 
     private func write(_ message: WireMessage) async {
