@@ -28,11 +28,15 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let ports: Operation = "ports.list"
     public static let processes: Operation = "processes.list"
     public static let sleep: Operation = "sleep.snapshot"
+    public static let dnsConfiguration: Operation = "dns.configuration"
+    /// Asks one of the Mac's own DNS servers for a name, as DNSPeek's "Test" does.
+    public static let dnsProbe: Operation = "dns.probe"
     public static let freePort: Operation = "ports.free"
     public static let quitProcess: Operation = "processes.quit"
 
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
-                                            .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep]
+                                            .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
+                                            .dnsConfiguration, .dnsProbe]
     public static let actions: [Operation] = [.freePort, .quitProcess]
 
     public var isAction: Bool { Self.actions.contains(self) }
@@ -120,6 +124,18 @@ public struct Capabilities: Equatable, Codable, Sendable {
         self.device = device
         self.operations = operations
         self.actionsAllowed = actionsAllowed
+    }
+}
+
+/// `dns.probe`: which of the Mac's DNS servers to ask, and for which name. The Mac only asks servers in its own
+/// configuration, so a console cannot use it to send queries anywhere else.
+public struct DNSProbeRequest: Equatable, Codable, Sendable {
+    public let server: String
+    public let name: String
+
+    public init(server: String, name: String) {
+        self.server = server
+        self.name = name
     }
 }
 
