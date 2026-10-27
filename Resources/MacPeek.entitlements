@@ -3,6 +3,7 @@
 <plist version="1.0">
 <dict>
     <!-- Intentionally empty: not sandboxed (PortPeek needs lsof and kill()), hardened runtime only.
-         No network entitlements are requested: MacPeek never uses the network. -->
+         Network entitlements apply only to sandboxed apps, so none are listed. MacPeek's network use is the update
+         check, checks the person starts, and Remote management when they turn it on (see README, Privacy). -->
 </dict>
 </plist>

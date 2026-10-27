@@ -18,6 +18,9 @@
     <key>SUPublicEDKey</key><string>__SPARKLE_PUBLIC_ED_KEY__</string>
     <key>SUEnableAutomaticChecks</key><true/>
     <key>SUScheduledCheckInterval</key><integer>86400</integer>
+    <!-- Remote management (off by default): shown by macOS the first time it is turned on. -->
+    <key>NSLocalNetworkUsageDescription</key><string>MacPeek uses your local network only when you turn on Remote management, so MacPeek Remote consoles you pair with can find and connect to this Mac.</string>
+    <key>NSBonjourServices</key><array><string>_macpeek._tcp</string></array>
     <key>NSHumanReadableCopyright</key><string>MIT License. Open source.</string>
 </dict>
 </plist>

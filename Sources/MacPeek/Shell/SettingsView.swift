@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var updater: UpdaterService
+    @EnvironmentObject private var remote: RemoteManagementController
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,8 +50,18 @@ struct SettingsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                Section("Remote management") {
+                    Button {
+                        router.go(.remote)
+                    } label: {
+                        LabeledContent("MacPeek Remote", value: remote.isEnabled ? "On" : "Off")
+                    }
+                    .buttonStyle(.plain)
+                    Text("Off by default. Lets MacPeek Remote consoles you pair with see this Mac, and act on it if you allow.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section("Privacy") {
-                    Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off) and checks you start yourself (NetPeek, DNSPeek, UpdatePeek).")
+                    Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off), checks you start yourself (NetPeek, DNSPeek, UpdatePeek) and, only if you turn it on, Remote management, which listens on your local network for consoles you have paired.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

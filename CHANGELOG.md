@@ -26,6 +26,14 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   `TrafficSampler` turns consecutive readings into download and upload rates. Totals leave out loopback, VPN tunnels and
   Apple's peer-to-peer interfaces, and a 32-bit counter wrap is handled. Not yet shown in the app.
 - `MemoryStats.swapTotalBytes`: the swap space macOS has set aside, next to the amount used.
+- **Remote management** (Settings → Remote management), **off by default**, for the upcoming MacPeek Remote console.
+  When turned on, MacPeek listens on the local network and advertises itself over Bonjour; while off, nothing listens or
+  connects. Consoles must be paired on the Mac with a one-time code and four words compared on both screens, every
+  connection is end-to-end encrypted and checked against the paired key, actions need a separate **Allow actions**
+  switch and a "View and act" pairing, and every action and pairing change is recorded in an activity log. A dot on the
+  menu-bar icon shows while it is on. New UI-free targets `RemoteCrypto`, `RemoteProtocol` and `RemoteAgent`, tested on
+  Linux; the protocol is documented in `docs/remote.md`. The app asks for local network access the first time it is
+  turned on (`NSLocalNetworkUsageDescription`).
 ### Changed
 - **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
   used and free), then every other enabled utility as a row with its summary (and the search field). New dark and light colours, a sun/moon
