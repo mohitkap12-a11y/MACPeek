@@ -6,3 +6,4 @@ dist/
 DerivedData/
 .DS_Store
 node_modules/
+Package.resolved

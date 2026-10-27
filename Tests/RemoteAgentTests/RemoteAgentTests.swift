@@ -3,6 +3,7 @@ import MacPeekCore
 import CPUPeekKit
 import PortPeekKit
 import ProcessPeekKit
+import DNSPeekKit
 import RemoteCrypto
 import RemoteProtocol
 @testable import RemoteAgent
@@ -60,8 +61,15 @@ private func readers() -> AgentReaders {
                  cpuSnapshot: { throw Unreadable() }, memory: { throw Unreadable() }, processUsage: { throw Unreadable() },
                  volumes: { throw Unreadable() }, networkCounters: { throw Unreadable() },
                  networkSnapshot: { throw Unreadable() }, ports: { [port] }, processes: { throw Unreadable() },
-                 sleep: { throw Unreadable() })
+                 sleep: { throw Unreadable() },
+                 dnsConfiguration: { dnsConfiguration },
+                 dnsProbe: { server, _ in ServerProbe(server: server, outcome: .answered(queryMilliseconds: 12, status: "NOERROR", answers: 1)) })
 }
+
+private let dnsConfiguration = DNSConfiguration(
+    resolvers: [DNSResolver(id: "1", number: 1, nameservers: ["192.168.1.1"], domain: nil, searchDomains: [], interface: "en0",
+                            options: nil, timeoutSeconds: nil, flags: [], reachability: "Reachable", order: nil, isScoped: false)],
+    scopedResolvers: [])
 
 private func actions(_ counter: ActionCounter) -> AgentActions {
     AgentActions(freePort: { _, _ in await counter.increment(); return .terminated },
@@ -333,6 +341,26 @@ final class AgentSessionTests: XCTestCase {
 
         let unknown = try unwrapped(try await session.send(.request("files.delete")))
         XCTAssertEqual(try unknown.body(RemoteError.self).code, .unknownOperation)
+    }
+
+    func testDNSProbesOnlyTheMacsOwnServers() async throws {
+        let harness = Harness()
+        let session = try await Session(harness, identity: try await pair(harness, role: .viewOnly))
+
+        let configuration = try unwrapped(try await session.send(.request(.dnsConfiguration))).body(DNSConfiguration.self)
+        XCTAssertEqual(configuration.activeServers, ["192.168.1.1"])
+
+        let own = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "apple.com"))
+        let probe = try unwrapped(try await session.send(own)).body(ServerProbe.self)
+        XCTAssertEqual(probe.server, "192.168.1.1")
+
+        let elsewhere = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "203.0.113.9", name: "apple.com"))
+        let elsewhereCode = try unwrapped(try await session.send(elsewhere)).body(RemoteError.self).code
+        XCTAssertEqual(elsewhereCode, .notPermitted)
+
+        let badName = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "-x; rm"))
+        let badNameCode = try unwrapped(try await session.send(badName)).body(RemoteError.self).code
+        XCTAssertEqual(badNameCode, .invalidPayload)
     }
 
     func testUnpairedConsoleIsRefused() async throws {

@@ -7,6 +7,7 @@ import NetPeekKit
 import PortPeekKit
 import ProcessPeekKit
 import SleepPeekKit
+import DNSPeekKit
 import RemoteProtocol
 
 /// Where the agent's answers come from. `system()` uses the same readers as MacPeek's own utilities; tests pass fakes.
@@ -22,6 +23,8 @@ public struct AgentReaders: Sendable {
     public var ports: @Sendable () async throws -> [PortInfo]
     public var processes: @Sendable () async throws -> ProcessSnapshot
     public var sleep: @Sendable () async throws -> SleepSnapshot
+    public var dnsConfiguration: @Sendable () async throws -> DNSConfiguration
+    public var dnsProbe: @Sendable (_ server: String, _ name: String) async throws -> ServerProbe
 
     public init(device: @escaping @Sendable () -> DeviceInfo, cpuTopology: @escaping @Sendable () -> CPUTopology,
                 cpuSnapshot: @escaping @Sendable () throws -> CPUSnapshot, memory: @escaping @Sendable () throws -> MemoryStats,
@@ -31,7 +34,13 @@ public struct AgentReaders: Sendable {
                 networkSnapshot: @escaping @Sendable () async throws -> NetSnapshot,
                 ports: @escaping @Sendable () async throws -> [PortInfo],
                 processes: @escaping @Sendable () async throws -> ProcessSnapshot,
-                sleep: @escaping @Sendable () async throws -> SleepSnapshot) {
+                sleep: @escaping @Sendable () async throws -> SleepSnapshot,
+                dnsConfiguration: @escaping @Sendable () async throws -> DNSConfiguration = {
+                    throw RemoteError(.unavailable, "DNS is not available here.")
+                },
+                dnsProbe: @escaping @Sendable (String, String) async throws -> ServerProbe = { _, _ in
+                    throw RemoteError(.unavailable, "DNS is not available here.")
+                }) {
         self.device = device
         self.cpuTopology = cpuTopology
         self.cpuSnapshot = cpuSnapshot
@@ -43,17 +52,22 @@ public struct AgentReaders: Sendable {
         self.ports = ports
         self.processes = processes
         self.sleep = sleep
+        self.dnsConfiguration = dnsConfiguration
+        self.dnsProbe = dnsProbe
     }
 
     public static func system() -> AgentReaders {
         let cpu = SystemCPUReader(), memory = SystemMemoryReader(), usage = SystemProcessUsageReader()
         let volumes = SystemVolumeCapacityReader(), counters = SystemInterfaceCountersReader(), network = SystemNetworkReader()
         let ports = PortService(), processes = PSProcessLister(), sleep = PMSetSleepReader(), device = SystemDeviceInfoReader()
+        let dns = SystemDNSReader()
         return AgentReaders(device: { device.read() }, cpuTopology: { cpu.topology() }, cpuSnapshot: { try cpu.snapshot() },
                             memory: { try memory.read() }, processUsage: { try usage.read(isCancelled: { false }) },
                             volumes: { try volumes.read() }, networkCounters: { try counters.read() },
                             networkSnapshot: { try await network.snapshot() }, ports: { try await ports.scan() },
-                            processes: { try await processes.snapshot() }, sleep: { try await sleep.snapshot() })
+                            processes: { try await processes.snapshot() }, sleep: { try await sleep.snapshot() },
+                            dnsConfiguration: { try await dns.configuration() },
+                            dnsProbe: { server, name in try await dns.probe(server: server, name: name) })
     }
 }
 
@@ -133,6 +147,16 @@ public struct RequestHandler: Sendable {
         case .ports: return try request.response(try await readers.ports())
         case .processes: return try request.response(try await readers.processes())
         case .sleep: return try request.response(try await readers.sleep())
+        case .dnsConfiguration: return try request.response(try await readers.dnsConfiguration())
+        case .dnsProbe:
+            let body = try request.body(DNSProbeRequest.self)
+            guard NetworkInput.isHostname(body.name) else { throw RemoteError(.invalidPayload, "That is not a host name.") }
+            let configuration = try await readers.dnsConfiguration()
+            let servers = Set((configuration.resolvers + configuration.scopedResolvers).flatMap(\.nameservers))
+            guard servers.contains(body.server) else {
+                throw RemoteError(.notPermitted, "This Mac only tests the DNS servers it is configured to use.")
+            }
+            return try request.response(try await readers.dnsProbe(body.server, body.name))
         default:
             throw RemoteError(.unknownOperation, "This Mac does not know \(request.operation.rawValue).")
         }

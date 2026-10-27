@@ -71,7 +71,8 @@ changed, replayed, dropped or reordered frame fails to open and ends the connect
 ## Requests
 Inside a sealed frame is an `Envelope` (`version`, `id`, `kind`, `operation`, JSON `payload`). Reads return the Kits'
 own models: `agent.capabilities`, `device.info`, `cpu.topology`, `cpu.snapshot`, `memory.stats`, `process.usage`,
-`disk.volumes`, `network.counters`, `network.snapshot`, `ports.list`, `processes.list`, `sleep.snapshot`. Actions are
+`disk.volumes`, `network.counters`, `network.snapshot`, `ports.list`, `processes.list`, `sleep.snapshot`,
+`dns.configuration` and `dns.probe` (only to a server in the Mac's own DNS configuration, for a valid host name). Actions are
 `ports.free` and `processes.quit`; they carry the row the console saw, which the Mac re-validates before signalling.
 The console's pairing and role are looked up again for every request, so revoking or changing a role applies at once.
 Errors: `unsupportedVersion`, `unknownOperation`, `invalidPayload`, `notPermitted`, `actionsDisabled`, `unavailable`.

@@ -84,7 +84,7 @@ let package = Package(
         .target(
             name: "RemoteAgent",
             dependencies: ["RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit", "DiskPeekKit",
-                           "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit"],
+                           "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit"],
             path: "Sources/RemoteAgent"
         ),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
@@ -157,7 +157,7 @@ let package = Package(
         .testTarget(
             name: "RemoteAgentTests",
             dependencies: ["RemoteAgent", "RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit",
-                           "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit"],
+                           "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit"],
             path: "Tests/RemoteAgentTests"
         ),
     ]
