@@ -86,4 +86,24 @@ detects changes; it cannot stop someone with access to the account from deleting
 - A person who controls this Mac's user account (they can read the Keychain item and the files).
 - Denial of service on the local network: a peer can open and hold connections, and can occupy the one pairing slot
   while a code is on screen (the person can cancel and show a new code). A peer that is not paired gets nothing else.
-- The relay and accounts, which are not implemented.
+- The relay and accounts, which are not implemented (see below).
+
+## Planned: protocol version 2
+
+Not implemented; recorded here so the changes can be reviewed before they are built. MacPeek itself stays free and never
+asks for an account: accounts belong to the person using the console.
+
+- **Workspace keys.** At pairing, the console sends a workspace public key and a certificate chain (workspace key →
+  member key → device key) instead of only its own key. The Mac pins the workspace key with the role the person at the
+  Mac chose, and accepts any device whose chain verifies, applying the lower of the member's role and that role. The
+  code-and-four-words ceremony is unchanged. Version 1 pairings keep working.
+- **Revocation lists**, signed by the workspace key with an increasing sequence number, reach the Mac from consoles
+  and the relay; a revoked device or member is refused at once.
+- **Claim.** The Mac signs a statement that it belongs to a workspace, which the relay uses for routing.
+- **Relay.** A separate "Allow from anywhere" switch, off by default. When on, the Mac keeps one outbound WebSocket to
+  the relay and authenticates by signing a challenge with its own key; no account or token is stored on the Mac.
+  Sessions through the relay are the same end-to-end SIGMA-I sessions as on the LAN, and actions still need **Allow
+  actions**.
+- **History.** While Remote management is on, the Mac keeps 30 days of 30-second CPU, memory, disk and network points
+  (about 2.6 MB) on the Mac, and a new `history.range` request returns them to paired consoles as compact binary
+  chunks. Nothing is sent anywhere unless a paired console asks for it.
