@@ -309,7 +309,8 @@ public actor AgentState {
                     throw RemoteError(.notPermitted, "This console already reaches this Mac through its account.")
                 }
                 guard grant.isValid() else { throw RemoteError(.invalidPayload, "The account's certificate does not check out.") }
-                if let membership, membership.workspaceID != grant.workspaceID {
+                // Another account, or a key that is not the one pinned for this one: only pairing at the Mac moves it.
+                if let membership, membership.workspaceID != grant.workspaceID || membership.workspaceKey != grant.workspaceKey {
                     throw RemoteError(.notPermitted,
                                       "This Mac belongs to another account. Pair it again at the Mac to move it to yours.")
                 }
