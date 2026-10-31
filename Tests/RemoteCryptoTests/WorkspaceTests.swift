@@ -94,7 +94,7 @@ final class WorkspaceTests: XCTestCase {
                                                                      deviceKey: deviceKey)) {
             XCTAssertEqual($0 as? WorkspaceError, .issuerMayNotCertify)
         }
-        let plainMember = try workspace.member(.member, id: "m_admin", key: WorkspaceKeys.publicKey(of: adminKey))
+        let plainMember = try workspace.member(.operatorRole, id: "m_admin", key: WorkspaceKeys.publicKey(of: adminKey))
         XCTAssertThrowsError(try chain(.viewer, issuer: plainMember).verify(workspaceID: workspace.id,
                                                                             workspaceKey: workspace.publicKey, deviceKey: deviceKey)) {
             XCTAssertEqual($0 as? WorkspaceError, .issuerMayNotCertify)
