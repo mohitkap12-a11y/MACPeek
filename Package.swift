@@ -29,7 +29,7 @@ let sparkleTargetDependencies: [Target.Dependency] = []
 // builds neither declare nor fetch it.
 #if os(Linux)
 let cryptoDependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/apple/swift-crypto.git", exact: "3.12.5"),
+    .package(url: "https://github.com/apple/swift-crypto.git", exact: "5.0.3"),
 ]
 let cryptoTargetDependencies: [Target.Dependency] = [.product(name: "Crypto", package: "swift-crypto")]
 #else
