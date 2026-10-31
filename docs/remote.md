@@ -115,7 +115,7 @@ claim   = Sign_Mac("macpeek-claim-v1" \n Mac key \n workspace id \n time)
 
 A chain is one member certificate signed by the workspace key, or two when a team admin (`owner` or `admin` role)
 certified the member with their own key; an admin cannot certify an owner, and nothing longer is accepted. Roles are
-`owner`, `admin`, `member` and `viewer`; a viewer only reads, anyone else gets the access chosen on the Mac.
+`owner`, `admin`, `operator` and `viewer`; a viewer only reads, anyone else gets the access chosen on the Mac.
 
 **Sessions.** The console's Finish carries its chain next to its identity, inside the same encrypted box. The Mac
 accepts the handshake when the chain verifies against the pinned workspace key for the very key that signed the Finish

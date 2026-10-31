@@ -35,7 +35,10 @@ public enum WorkspaceError: Error, Equatable, Sendable {
 
 /// What a member may do in a workspace. A Mac applies the lower of this and the access chosen at pairing on the Mac.
 public enum WorkspaceRole: String, Codable, Sendable, CaseIterable {
-    case owner, admin, member, viewer
+    case owner, admin
+    /// Views and acts on Macs ("operator" on the wire; `operator` is a Swift keyword).
+    case operatorRole = "operator"
+    case viewer
 
     /// Whether this role may act at all (free ports, quit processes) where the Mac allows it.
     public var mayAct: Bool { self != .viewer }

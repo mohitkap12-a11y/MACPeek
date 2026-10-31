@@ -41,9 +41,9 @@ struct TestWorkspace {
 final class WorkspaceTests: XCTestCase {
     func testChainVerifiesAndReturnsTheMemberRole() throws {
         let workspace = TestWorkspace()
-        let chain = try workspace.chain(.member)
+        let chain = try workspace.chain(.operatorRole)
         XCTAssertEqual(try chain.verify(workspaceID: workspace.id, workspaceKey: workspace.publicKey,
-                                        deviceKey: workspace.device.publicIdentity.signingKey), .member)
+                                        deviceKey: workspace.device.publicIdentity.signingKey), .operatorRole)
     }
 
     func testChainRefusesAnotherWorkspaceOrDevice() throws {
