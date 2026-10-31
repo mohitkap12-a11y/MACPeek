@@ -1,4 +1,4 @@
-# Remote management protocol (version 1)
+# Remote management protocol (versions 1 and 2)
 
 MacPeek can be managed from MacPeek Remote, a separate console app. This page describes what the agent built into MacPeek
 does, so it can be reviewed. The code is in `Sources/RemoteCrypto`, `Sources/RemoteProtocol` and `Sources/RemoteAgent`.
@@ -86,20 +86,63 @@ detects changes; it cannot stop someone with access to the account from deleting
 - A person who controls this Mac's user account (they can read the Keychain item and the files).
 - Denial of service on the local network: a peer can open and hold connections, and can occupy the one pairing slot
   while a code is on screen (the person can cancel and show a new code). A peer that is not paired gets nothing else.
-- The relay and accounts, which are not implemented (see below).
+- The relay, which is not implemented (see below).
 
-## Planned: protocol version 2
+## Accounts (protocol version 2)
 
-Not implemented; recorded here so the changes can be reviewed before they are built. MacPeek itself stays free and never
-asks for an account: accounts belong to the person using the console.
+MacPeek itself stays free and never asks for an account: accounts belong to the person using MacPeek Remote. Version 2
+only adds to version 1, so either app can be older: the envelope stays at version 1, unknown JSON fields are ignored,
+and an agent that speaks version 2 reports `protocolVersion: 2` and the `workspace.*` operations in
+`agent.capabilities`. The code is `Sources/RemoteCrypto/Workspace.swift`.
 
-- **Workspace keys.** At pairing, the console sends a workspace public key and a certificate chain (workspace key →
-  member key → device key) instead of only its own key. The Mac pins the workspace key with the role the person at the
-  Mac chose, and accepts any device whose chain verifies, applying the lower of the member's role and that role. The
-  code-and-four-words ceremony is unchanged. Version 1 pairings keep working.
-- **Revocation lists**, signed by the workspace key with an increasing sequence number, reach the Mac from consoles
-  and the relay; a revoked device or member is refused at once.
-- **Claim.** The Mac signs a statement that it belongs to a workspace, which the relay uses for routing.
+**What the Mac pins.** A console signed in to an account adds a *grant* to its pairing Confirm: the account's workspace
+id, its Ed25519 workspace public key, a display name and the console's certificate chain. The code-and-four-words
+ceremony is unchanged, and the Mac shows "This adds this Mac to …'s MacPeek account" next to the words. When the person
+at the Mac confirms, it stores `{workspace id, workspace key, the access they chose}` in
+`~/Library/Application Support/MacPeek/Remote/workspace.json` (mode 0600) instead of pinning that console, and returns a
+*claim* in its own Confirm. A Mac belongs to one workspace at a time; pairing into another one at the Mac replaces it and
+ends the old account's sessions.
+
+**Certificates.** Every signed message is UTF-8 text, fields joined by `\n` (no field may contain a newline), keys in
+standard base64, times in milliseconds:
+
+```text
+member  = Sign_issuer("macpeek-member-v1" \n workspace id \n member id \n member key \n role \n issued)
+device  = Sign_member("macpeek-device-v1" \n workspace id \n member id \n device id \n device key \n name \n issued)
+revoked = Sign_workspace("macpeek-revocations-v1" \n workspace id \n sequence \n sorted keys joined by ",")
+claim   = Sign_Mac("macpeek-claim-v1" \n Mac key \n workspace id \n time)
+```
+
+A chain is one member certificate signed by the workspace key, or two when a team admin (`owner` or `admin` role)
+certified the member with their own key; an admin cannot certify an owner, and nothing longer is accepted. Roles are
+`owner`, `admin`, `operator` and `viewer`; a viewer only reads, anyone else gets the access chosen on the Mac.
+
+**Sessions.** The console's Finish carries its chain next to its identity, inside the same encrypted box. The Mac
+accepts the handshake when the chain verifies against the pinned workspace key for the very key that signed the Finish
+and no key in it is on the revocation list. Pinned version 1 consoles are accepted as before. The chain is checked again
+on every request, so a revocation, leaving the account or a changed access level applies at once.
+
+**Operations.** None is an action, so "Allow actions" does not gate them:
+
+| Operation | Body | What it does |
+|---|---|---|
+| `workspace.status` | — | Returns the workspace id (or none), the revocation list number, a fresh claim and whether this console came in through the workspace |
+| `workspace.adopt` | a grant | "Move this Mac to your account", from a console paired on its own: the Mac joins that workspace with the access the console had, forgets the console's own pairing, posts a notification and logs it. Refused when the Mac already belongs to another account (that needs pairing at the Mac). **Undo move** in Settings restores the console's pairing |
+| `workspace.revocations` | a revocation list | Stored when signed by the pinned workspace key with a higher number than the one held; open sessions of newly revoked devices end at once. Any console of the account may deliver it |
+
+**On the Mac**, Settings ▸ Remote management shows the account, the access its devices get, the devices that connected
+through it, **Undo move** and **Remove from account**. Every change is in the activity log.
+
+**Not covered yet.** The workspace private key lives in the account owner's encrypted vault, so each of the owner's
+devices that can open the vault holds it. Revoking a stolen owner device stops that device, but someone who also got its
+vault open could certify a new device; until replacing the workspace key in place is built (with teams), the remedy is
+**Remove from account** on each Mac and pairing again. A revocation reaches a Mac only when a console of the account
+connects to it on the local network; with the relay it will reach it at once.
+
+## Planned: relay and history
+
+Not implemented; recorded here so the changes can be reviewed before they are built.
+
 - **Relay.** A separate "Allow from anywhere" switch, off by default. When on, the Mac keeps one outbound WebSocket to
   the relay and authenticates by signing a challenge with its own key; no account or token is stored on the Mac.
   Sessions through the relay are the same end-to-end SIGMA-I sessions as on the LAN, and actions still need **Allow

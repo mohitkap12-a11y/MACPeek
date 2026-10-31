@@ -26,6 +26,12 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   `TrafficSampler` turns consecutive readings into download and upload rates. Totals leave out loopback, VPN tunnels and
   Apple's peer-to-peer interfaces, and a 32-bit counter wrap is handled. Not yet shown in the app.
 - `MemoryStats.swapTotalBytes`: the swap space macOS has set aside, next to the amount used.
+- **Remote management: accounts (protocol version 2).** A MacPeek Remote console signed in to an account can pair this
+  Mac into the account, so every device of that account can connect, with the access chosen at the Mac (the code and
+  four words are unchanged, and the Mac says the pairing adds it to an account). Consoles paired before keep working and
+  can offer "Move this Mac to your account", which the Mac announces and lets you undo. Devices removed from the
+  account are refused as soon as one of its consoles hands the Mac the account's signed revocation list. Settings shows
+  the account, its devices, **Undo move** and **Remove from account**. MacPeek itself still needs no account.
 - **Remote management** (Settings → Remote management), **off by default**, for the upcoming MacPeek Remote console.
   When turned on, MacPeek listens on the local network and advertises itself over Bonjour; while off, nothing listens or
   connects. Consoles must be paired on the Mac with a one-time code and four words compared on both screens, every
