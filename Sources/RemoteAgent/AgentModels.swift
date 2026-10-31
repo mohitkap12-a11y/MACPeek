@@ -44,12 +44,73 @@ public struct PairedConsole: Identifiable, Equatable, Codable, Sendable {
     }
 }
 
+/// A device that reached this Mac through its workspace, kept for the person at the Mac to see.
+public struct WorkspaceDevice: Identifiable, Equatable, Codable, Sendable {
+    public var id: Data { identity.signingKey }
+    public let identity: PublicIdentity
+    public let memberID: String
+    public var lastConnected: Date
+
+    public init(identity: PublicIdentity, memberID: String, lastConnected: Date) {
+        self.identity = identity
+        self.memberID = memberID
+        self.lastConnected = lastConnected
+    }
+}
+
+/// The workspace (a MacPeek account) this Mac trusts: its pinned key, the access the person at the Mac chose, and the
+/// newest revocation list. A Mac belongs to one workspace at a time.
+public struct WorkspaceMembership: Equatable, Codable, Sendable {
+    public let workspaceID: String
+    public let workspaceKey: Data
+    /// Whose account this is, for people (the owner's email). Never used for trust.
+    public let name: String
+    /// The most a device in the workspace may do here; each device gets the lower of this and its member's role.
+    public var roleCap: ConsoleRole
+    public let joinedAt: Date
+    public var revocations: RevocationList?
+    public var devices: [WorkspaceDevice]
+    /// The console that moved this Mac in, when it was paired before: "Undo" pairs it again on its own.
+    public let movedFrom: PairedConsole?
+
+    public init(workspaceID: String, workspaceKey: Data, name: String, roleCap: ConsoleRole, joinedAt: Date,
+                revocations: RevocationList? = nil, devices: [WorkspaceDevice] = [], movedFrom: PairedConsole? = nil) {
+        self.workspaceID = workspaceID
+        self.workspaceKey = workspaceKey
+        self.name = name
+        self.roleCap = roleCap
+        self.joinedAt = joinedAt
+        self.revocations = revocations
+        self.devices = devices
+        self.movedFrom = movedFrom
+    }
+
+    public var revokedKeys: Set<Data> { Set(revocations?.revokedKeys ?? []) }
+    public var revocationSequence: Int { revocations?.sequence ?? 0 }
+
+    /// The access a device with this chain gets here, or nil if the chain does not hold.
+    public func role(for identity: PublicIdentity, chain: WorkspaceChain) -> ConsoleRole? {
+        guard let memberRole = try? chain.verify(workspaceID: workspaceID, workspaceKey: workspaceKey,
+                                                 deviceKey: identity.signingKey, revoked: revokedKeys) else { return nil }
+        return memberRole.mayAct ? roleCap : .viewOnly
+    }
+}
+
 /// Where the agent keeps who is paired and what happened. The identity's private key is not here: it is in the Keychain.
 public protocol AgentStoring: Sendable {
     func loadConsoles() throws -> [PairedConsole]
     func saveConsoles(_ consoles: [PairedConsole]) throws
     func loadLog() throws -> ActivityLog
     func saveLog(_ log: ActivityLog) throws
+    func loadMembership() throws -> WorkspaceMembership?
+    /// Nil removes it.
+    func saveMembership(_ membership: WorkspaceMembership?) throws
+}
+
+extension AgentStoring {
+    // Stores written before protocol version 2 keep no workspace.
+    public func loadMembership() throws -> WorkspaceMembership? { nil }
+    public func saveMembership(_ membership: WorkspaceMembership?) throws {}
 }
 
 /// JSON files readable only by this user, in MacPeek's Application Support folder.
@@ -64,11 +125,20 @@ public struct FileAgentStore: AgentStoring {
     public var directory: URL { URL(fileURLWithPath: directoryPath, isDirectory: true) }
     private var consolesURL: URL { directory.appendingPathComponent("paired-consoles.json") }
     private var logURL: URL { directory.appendingPathComponent("activity-log.json") }
+    private var membershipURL: URL { directory.appendingPathComponent("workspace.json") }
 
     public func loadConsoles() throws -> [PairedConsole] { try load([PairedConsole].self, from: consolesURL) ?? [] }
     public func saveConsoles(_ consoles: [PairedConsole]) throws { try writePrivately(try JSONEncoder().encode(consoles), to: consolesURL) }
     public func loadLog() throws -> ActivityLog { try load(ActivityLog.self, from: logURL) ?? ActivityLog() }
     public func saveLog(_ log: ActivityLog) throws { try writePrivately(try JSONEncoder().encode(log), to: logURL) }
+    public func loadMembership() throws -> WorkspaceMembership? { try load(WorkspaceMembership.self, from: membershipURL) }
+    public func saveMembership(_ membership: WorkspaceMembership?) throws {
+        guard let membership else {
+            if FileManager.default.fileExists(atPath: membershipURL.path) { try FileManager.default.removeItem(at: membershipURL) }
+            return
+        }
+        try writePrivately(try JSONEncoder().encode(membership), to: membershipURL)
+    }
 
     private func load<Value: Decodable>(_ type: Value.Type, from url: URL) throws -> Value? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }

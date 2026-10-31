@@ -12,7 +12,8 @@ import Crypto
 //   Mac → console   Reply   a one-time key, plus the Mac's identity signed over both keys (encrypted)
 //   console → Mac   Finish  the console's identity signed over the handshake (encrypted)
 //
-// Each side accepts only an identity it pinned when pairing. One-time keys give forward secrecy: a stolen identity key
+// Each side accepts only an identity it pinned when pairing; since protocol version 2 a console may instead show a
+// certificate chain to the workspace key the Mac pinned (Workspace.swift), inside its encrypted Finish. One-time keys give forward secrecy: a stolen identity key
 // cannot decrypt earlier sessions. Frames use ChaCha20-Poly1305 with a per-direction key and a counter nonce, so a
 // frame that is changed, replayed, dropped or reordered is rejected.
 
@@ -110,31 +111,42 @@ private struct HandshakeKeys {
 private struct SignedIdentity: Codable {
     let identity: PublicIdentity
     let signature: Data
+    /// The console's workspace chain, if it has one. Older Macs ignore it.
+    var chain: WorkspaceChain?
 
-    static func seal(_ identity: DeviceIdentity, role: String, transcript: Data, key: SymmetricKey) throws -> Data {
+    static func seal(_ identity: DeviceIdentity, role: String, transcript: Data, key: SymmetricKey,
+                     chain: WorkspaceChain? = nil) throws -> Data {
         let signed = SignedIdentity(identity: identity.publicIdentity,
-                                    signature: try identity.signature(for: HandshakeKeys.signedData(role: role, transcript: transcript)))
+                                    signature: try identity.signature(for: HandshakeKeys.signedData(role: role, transcript: transcript)),
+                                    chain: chain)
         return try ChaChaPoly.seal(try JSONEncoder().encode(signed), using: key).combined
     }
 
     static func open(_ sealed: Data, role: String, transcript: Data, key: SymmetricKey) throws -> PublicIdentity {
+        try openSigned(sealed, role: role, transcript: transcript, key: key).identity
+    }
+
+    static func openSigned(_ sealed: Data, role: String, transcript: Data, key: SymmetricKey) throws -> SignedIdentity {
         guard let box = try? ChaChaPoly.SealedBox(combined: sealed), let plain = try? ChaChaPoly.open(box, using: key),
               let signed = try? JSONDecoder().decode(SignedIdentity.self, from: plain) else { throw SessionError.decryptionFailed }
         guard signed.identity.isValidSignature(signed.signature, for: HandshakeKeys.signedData(role: role, transcript: transcript)) else {
             throw SessionError.invalidSignature
         }
-        return signed.identity
+        return signed
     }
 }
 
 /// The console's side: it starts the connection.
 public struct ConsoleHandshake {
     private let identity: DeviceIdentity
+    private let chain: WorkspaceChain?
     private let ephemeral = Curve25519.KeyAgreement.PrivateKey()
     private var keys: HandshakeKeys?
 
-    public init(identity: DeviceIdentity) {
+    /// `chain` certifies `identity` in the workspace a Mac pinned; leave it nil for a Mac paired with this console alone.
+    public init(identity: DeviceIdentity, chain: WorkspaceChain? = nil) {
         self.identity = identity
+        self.chain = chain
     }
 
     public func hello() -> HandshakeMessage.Hello {
@@ -153,7 +165,8 @@ public struct ConsoleHandshake {
         guard trust(mac) else { throw SessionError.untrustedPeer }
         self.keys = keys
         let finish = HandshakeMessage.Finish(sealedIdentity: try SignedIdentity.seal(identity, role: "console",
-                                                                                     transcript: keys.transcript, key: keys.finishKey))
+                                                                                     transcript: keys.transcript, key: keys.finishKey,
+                                                                                     chain: chain))
         return (finish, SecureChannel(sendKey: keys.consoleToMac, receiveKey: keys.macToConsole), mac)
     }
 }
@@ -183,9 +196,18 @@ public struct MacHandshake {
     /// Checks the console's identity with `trust` (is it a paired console?) and returns the channel and the console.
     public func accept(_ finish: HandshakeMessage.Finish, trust: (PublicIdentity) -> Bool) throws
         -> (channel: SecureChannel, console: PublicIdentity) {
+        let accepted = try accept(finish, trustChain: { identity, _ in trust(identity) })
+        return (accepted.channel, accepted.console)
+    }
+
+    /// Like `accept(_:trust:)`, also handing `trustChain` the console's workspace chain when it sent one. The identity
+    /// has already proved it holds its key; the chain still has to be checked against the pinned workspace.
+    public func accept(_ finish: HandshakeMessage.Finish, trustChain: (PublicIdentity, WorkspaceChain?) -> Bool) throws
+        -> (channel: SecureChannel, console: PublicIdentity, chain: WorkspaceChain?) {
         guard let keys else { throw SessionError.unexpectedMessage }
-        let console = try SignedIdentity.open(finish.sealedIdentity, role: "console", transcript: keys.transcript, key: keys.finishKey)
-        guard trust(console) else { throw SessionError.untrustedPeer }
-        return (SecureChannel(sendKey: keys.macToConsole, receiveKey: keys.consoleToMac), console)
+        let signed = try SignedIdentity.openSigned(finish.sealedIdentity, role: "console", transcript: keys.transcript,
+                                                   key: keys.finishKey)
+        guard trustChain(signed.identity, signed.chain) else { throw SessionError.untrustedPeer }
+        return (SecureChannel(sendKey: keys.macToConsole, receiveKey: keys.consoleToMac), signed.identity, signed.chain)
     }
 }

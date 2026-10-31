@@ -30,6 +30,7 @@ struct RemoteManagementView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     pairingSection(snapshot)
+                    if let membership = snapshot.membership { accountSection(membership, snapshot: snapshot) }
                     consolesSection(snapshot)
                     activitySection(snapshot)
                     Section("This Mac") {
@@ -73,6 +74,10 @@ struct RemoteManagementView: View {
                 Text(pending.console == nil ? "Waiting for the console to confirm too." :
                         "\(pending.console?.name ?? "The console") confirmed.")
                     .font(.caption).foregroundStyle(.secondary)
+                if let account = pending.account {
+                    Text("This adds this Mac to \(account)'s MacPeek account: every device signed in to that account can connect, with the access you choose here. You can remove it at any time.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             } else if let code = snapshot.pairingCode, !code.isExpired() {
                 Text(code.formatted)
                     .font(.system(size: 28, weight: .semibold, design: .monospaced))
@@ -91,6 +96,36 @@ struct RemoteManagementView: View {
                     remote.showPairingCode()
                 }
                 Text("A code works once, for five minutes.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func accountSection(_ membership: WorkspaceMembership, snapshot: AgentState.Snapshot) -> some View {
+        Section("Account") {
+            LabeledContent("Belongs to") { Text("\(membership.name)'s account") }
+            Picker("Access", selection: Binding(get: { membership.roleCap }, set: remote.setAccountRole)) {
+                ForEach(ConsoleRole.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Text("Every device signed in to this account can connect, with at most this access. Devices removed from the account are refused as soon as one of its consoles tells this Mac.")
+                .font(.caption).foregroundStyle(.secondary)
+            ForEach(membership.devices.sorted { $0.lastConnected > $1.lastConnected }) { device in
+                HStack {
+                    Circle().fill(snapshot.connectedConsoles.contains(device.id) ? Color.green : Color.secondary.opacity(0.4))
+                        .frame(width: 7, height: 7)
+                        .accessibilityLabel(snapshot.connectedConsoles.contains(device.id) ? "Connected" : "Not connected")
+                    Text(device.identity.name).font(.callout)
+                    Spacer()
+                    Text(device.lastConnected, style: .relative).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            HStack {
+                if let moved = membership.movedFrom {
+                    Button("Undo move") { remote.undoMove() }
+                        .help("Pairs \(moved.identity.name) with this Mac on its own again and removes the account.")
+                }
+                Spacer()
+                Button("Remove from account", role: .destructive) { remote.leaveAccount() }
             }
         }
     }

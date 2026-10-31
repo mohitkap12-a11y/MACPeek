@@ -4,9 +4,14 @@ import PortPeekKit
 import ProcessPeekKit
 import RemoteCrypto
 
-/// Version 1 of what a MacPeek Remote console and a Mac's agent say to each other.
+/// What a MacPeek Remote console and a Mac's agent say to each other. Version 2 (accounts) only adds: the envelope
+/// stays at version 1, so older consoles and agents keep talking, and an agent that speaks version 2 lists the
+/// `workspace.*` operations in its capabilities.
 public enum RemoteProtocolVersion {
+    /// The envelope format, checked on every request.
     public static let current = 1
+    /// The newest protocol this agent speaks, reported in `agent.capabilities`.
+    public static let features = 2
 }
 
 /// What a request asks for. Reads return the Kits' own models (raw counters where a rate needs two readings, so the
@@ -33,11 +38,19 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let dnsProbe: Operation = "dns.probe"
     public static let freePort: Operation = "ports.free"
     public static let quitProcess: Operation = "processes.quit"
+    /// Which workspace (account) this Mac belongs to, its revocation list number and a fresh claim.
+    public static let workspaceStatus: Operation = "workspace.status"
+    /// Moves a Mac paired with this console alone into the console's workspace ("Move this Mac to your account").
+    public static let workspaceAdopt: Operation = "workspace.adopt"
+    /// Hands the Mac a newer revocation list for its workspace.
+    public static let workspaceRevocations: Operation = "workspace.revocations"
 
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
                                             .dnsConfiguration, .dnsProbe]
     public static let actions: [Operation] = [.freePort, .quitProcess]
+    /// Account operations: answered by the agent itself, not gated by "Allow actions".
+    public static let workspace: [Operation] = [.workspaceStatus, .workspaceAdopt, .workspaceRevocations]
 
     public var isAction: Bool { Self.actions.contains(self) }
 }
@@ -136,6 +149,25 @@ public struct DNSProbeRequest: Equatable, Codable, Sendable {
     public init(server: String, name: String) {
         self.server = server
         self.name = name
+    }
+}
+
+/// `workspace.status`, and the answer to `workspace.adopt` and `workspace.revocations`.
+public struct WorkspaceStatus: Equatable, Codable, Sendable {
+    /// Nil while this Mac trusts only consoles paired with it one by one.
+    public let workspaceID: String?
+    /// The number of the revocation list the Mac holds; 0 for none.
+    public let revocationSequence: Int
+    /// A claim signed just now, when the Mac belongs to a workspace.
+    public let claim: MacClaim?
+    /// Whether this console reached the Mac through the workspace (true) or as a console paired with it alone.
+    public let viaWorkspace: Bool
+
+    public init(workspaceID: String?, revocationSequence: Int, claim: MacClaim?, viaWorkspace: Bool) {
+        self.workspaceID = workspaceID
+        self.revocationSequence = revocationSequence
+        self.claim = claim
+        self.viaWorkspace = viaWorkspace
     }
 }
 

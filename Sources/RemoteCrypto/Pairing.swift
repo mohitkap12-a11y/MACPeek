@@ -85,28 +85,34 @@ struct PairingSecrets {
     }
 }
 
-/// A long-term identity, signed over one session so it cannot be replayed into another.
+/// A long-term identity, signed over one session so it cannot be replayed into another. Since protocol version 2 the
+/// console may add a workspace grant (pin this account, not only me) and the Mac its claim; both travel inside the
+/// box, which only the two sides of this pairing can seal or open. Older apps ignore the fields they do not know.
 struct IdentityProof: Codable {
     let identity: PublicIdentity
     let signature: Data
+    var grant: WorkspaceGrant?
+    var claim: MacClaim?
 
     static func signedData(role: String, transcript: Data) -> Data { Data("macpeek-identity-v1 \(role)".utf8) + transcript }
 
-    static func seal(_ identity: DeviceIdentity, role: String, transcript: Data, key: SymmetricKey) throws -> PairingMessage.Confirm {
+    static func seal(_ identity: DeviceIdentity, role: String, transcript: Data, key: SymmetricKey,
+                     grant: WorkspaceGrant? = nil, claim: MacClaim? = nil) throws -> PairingMessage.Confirm {
         let proof = IdentityProof(identity: identity.publicIdentity,
-                                  signature: try identity.signature(for: signedData(role: role, transcript: transcript)))
+                                  signature: try identity.signature(for: signedData(role: role, transcript: transcript)),
+                                  grant: grant, claim: claim)
         let box = try ChaChaPoly.seal(try JSONEncoder().encode(proof), using: key)
         return PairingMessage.Confirm(sealedIdentity: box.combined)
     }
 
-    static func open(_ confirm: PairingMessage.Confirm, role: String, transcript: Data, key: SymmetricKey) throws -> PublicIdentity {
+    static func open(_ confirm: PairingMessage.Confirm, role: String, transcript: Data, key: SymmetricKey) throws -> IdentityProof {
         guard let box = try? ChaChaPoly.SealedBox(combined: confirm.sealedIdentity),
               let plain = try? ChaChaPoly.open(box, using: key),
               let proof = try? JSONDecoder().decode(IdentityProof.self, from: plain),
               proof.identity.isValidSignature(proof.signature, for: signedData(role: role, transcript: transcript)) else {
             throw PairingError.invalidIdentity
         }
-        return proof.identity
+        return proof
     }
 }
 
@@ -149,16 +155,26 @@ public struct ConsolePairing {
         return (PairingMessage.Reveal(ephemeralKey: ownKey, nonce: nonce, codeProof: secrets.codeProof(code: digits)), secrets.words)
     }
 
-    /// Send this only after the person has confirmed the words match.
-    public func confirm() throws -> PairingMessage.Confirm {
+    /// Send this only after the person has confirmed the words match. A console signed in to an account passes its
+    /// workspace grant, so a Mac that speaks protocol version 2 pins the account rather than this console alone.
+    public func confirm(grant: WorkspaceGrant? = nil) throws -> PairingMessage.Confirm {
         guard let secrets else { throw PairingError.unexpectedMessage }
-        return try IdentityProof.seal(identity, role: "console", transcript: secrets.transcript, key: secrets.consoleToMac)
+        return try IdentityProof.seal(identity, role: "console", transcript: secrets.transcript, key: secrets.consoleToMac,
+                                      grant: grant)
     }
 
     /// The Mac's identity to pin, once its Confirm checks out.
     public func macIdentity(from confirm: PairingMessage.Confirm) throws -> PublicIdentity {
+        try macConfirmation(from: confirm).mac
+    }
+
+    /// The Mac's identity and, when it joined the workspace in the grant, its signed claim.
+    public func macConfirmation(from confirm: PairingMessage.Confirm) throws -> (mac: PublicIdentity, claim: MacClaim?) {
         guard let secrets else { throw PairingError.unexpectedMessage }
-        return try IdentityProof.open(confirm, role: "mac", transcript: secrets.transcript, key: secrets.macToConsole)
+        let proof = try IdentityProof.open(confirm, role: "mac", transcript: secrets.transcript, key: secrets.macToConsole)
+        // A claim must be the Mac's own, for a real signature; anything else is ignored rather than trusted.
+        let claim = proof.claim.flatMap { $0.isValid && $0.macKey == proof.identity.signingKey ? $0 : nil }
+        return (proof.identity, claim)
     }
 }
 
@@ -203,15 +219,23 @@ public struct MacPairing {
         return secrets.words
     }
 
-    /// Send this only after the person at this Mac has confirmed the words match.
-    public func confirm() throws -> PairingMessage.Confirm {
+    /// Send this only after the person at this Mac has confirmed the words match. `claim` is set when this Mac joined
+    /// the console's workspace.
+    public func confirm(claim: MacClaim? = nil) throws -> PairingMessage.Confirm {
         guard let secrets else { throw PairingError.unexpectedMessage }
-        return try IdentityProof.seal(identity, role: "mac", transcript: secrets.transcript, key: secrets.macToConsole)
+        return try IdentityProof.seal(identity, role: "mac", transcript: secrets.transcript, key: secrets.macToConsole,
+                                      claim: claim)
     }
 
     /// The console's identity to pin, once its Confirm checks out.
     public func consoleIdentity(from confirm: PairingMessage.Confirm) throws -> PublicIdentity {
+        try consoleConfirmation(from: confirm).console
+    }
+
+    /// The console's identity and, from a console signed in to an account, a consistent workspace grant.
+    public func consoleConfirmation(from confirm: PairingMessage.Confirm) throws -> (console: PublicIdentity, grant: WorkspaceGrant?) {
         guard let secrets else { throw PairingError.unexpectedMessage }
-        return try IdentityProof.open(confirm, role: "console", transcript: secrets.transcript, key: secrets.consoleToMac)
+        let proof = try IdentityProof.open(confirm, role: "console", transcript: secrets.transcript, key: secrets.consoleToMac)
+        return (proof.identity, proof.grant.flatMap { $0.isValid() ? $0 : nil })
     }
 }

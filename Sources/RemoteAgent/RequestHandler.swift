@@ -133,8 +133,9 @@ public struct RequestHandler: Sendable {
     private func read(_ request: Envelope, console: PairedConsole, settings: RemoteSettings) async throws -> Envelope {
         switch request.operation {
         case .capabilities:
-            return try request.response(Capabilities(agentVersion: agentVersion, device: readers.device(),
-                                                     operations: Operation.reads + Operation.actions,
+            return try request.response(Capabilities(protocolVersion: RemoteProtocolVersion.features, agentVersion: agentVersion,
+                                                     device: readers.device(),
+                                                     operations: Operation.reads + Operation.actions + Operation.workspace,
                                                      actionsAllowed: settings.allowActions && console.role.mayAct))
         case .deviceInfo: return try request.response(readers.device())
         case .cpuTopology: return try request.response(readers.cpuTopology())
