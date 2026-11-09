@@ -29,6 +29,8 @@ public protocol GPUReading: Sendable {
     func snapshot(previousClients: [GPUClient]?, interval: TimeInterval) async throws -> (GPUSnapshot, [GPUClient])
     /// Only the clients (for ModelPeek, which needs per-process GPU time but not the rest).
     func clients() async throws -> [GPUClient]
+    /// Only the GPUs: one `ioreg` read, no power sample. Cheap enough for the launcher ring.
+    func gpus() async throws -> [GPUInfo]
 }
 
 /// Reads `ioreg -r -d 2 -c IOAccelerator -a -w0` (read-only, no permission) and, on Apple silicon, the power counters.
@@ -38,12 +40,14 @@ public struct SystemGPUReader: GPUReading {
     private let runner: CommandRunning
     private let power: PowerSampling?
     private let hasNeuralEngine: Bool
+    private let deviceFacts: GPUDeviceFactsReading?
 
     public init(runner: CommandRunning = ShellCommand(timeout: 10), power: PowerSampling? = nil,
-                hasNeuralEngine: Bool = SystemGPUReader.isAppleSilicon) {
+                hasNeuralEngine: Bool = SystemGPUReader.isAppleSilicon, deviceFacts: GPUDeviceFactsReading? = nil) {
         self.runner = runner
         self.power = power
         self.hasNeuralEngine = hasNeuralEngine
+        self.deviceFacts = deviceFacts
     }
 
     private func read() async throws -> IORegGPUParser.Result {
@@ -65,11 +69,16 @@ public struct SystemGPUReader: GPUReading {
         let reading = power?.sample()
         let note: String?
         if let power { note = power.unavailableReason } else { note = "Power counters are not read on this Mac." }
+        let facts = deviceFacts?.facts() ?? []
+        // Metal and the I/O registry name the GPU the same way ("Apple M2 Pro"); fall back to the first device.
+        let device = facts.first { $0.name == result.gpus.first?.name } ?? facts.first
         return (GPUSnapshot(gpus: result.gpus, processes: processes, power: reading, powerNote: reading == nil ? note : nil,
-                            hasNeuralEngine: hasNeuralEngine), result.clients)
+                            hasNeuralEngine: hasNeuralEngine, device: device), result.clients)
     }
 
     public func clients() async throws -> [GPUClient] { try await read().clients }
+
+    public func gpus() async throws -> [GPUInfo] { try await read().gpus }
 
     /// Every Apple silicon Mac has a Neural Engine; Intel Macs have none.
     public static var isAppleSilicon: Bool {
