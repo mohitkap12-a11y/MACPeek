@@ -347,15 +347,35 @@ enum GPUPowerShared {
     static let sampler: PowerSampling? = nil
     #endif
 
-    /// Metal's facts (family, memory the GPU may use) do not change while the agent runs, so they are read once.
+    /// Metal's facts (family, memory the GPU may use) barely change, so they are re-read at most once a minute; that
+    /// still picks up an external GPU attached while the agent runs.
     #if canImport(Metal)
-    static let deviceFacts: GPUDeviceFactsReading? = FixedDeviceFacts(list: MetalDeviceFactsReader().facts())
+    static let deviceFacts: GPUDeviceFactsReading? = RefreshingDeviceFacts(reader: MetalDeviceFactsReader())
     #else
     static let deviceFacts: GPUDeviceFactsReading? = nil
     #endif
 }
 
-private struct FixedDeviceFacts: GPUDeviceFactsReading {
-    let list: [GPUDeviceFacts]
-    func facts() -> [GPUDeviceFacts] { list }
+/// Reuses a reader's facts for `lifetime` seconds before reading them again.
+final class RefreshingDeviceFacts: GPUDeviceFactsReading, @unchecked Sendable {
+    private let reader: GPUDeviceFactsReading
+    private let lifetime: TimeInterval
+    private let now: @Sendable () -> Date
+    private let lock = NSLock()
+    private var cached: (facts: [GPUDeviceFacts], at: Date)?
+
+    init(reader: GPUDeviceFactsReading, lifetime: TimeInterval = 60, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.reader = reader
+        self.lifetime = lifetime
+        self.now = now
+    }
+
+    func facts() -> [GPUDeviceFacts] {
+        lock.lock(); defer { lock.unlock() }
+        let date = now()
+        if let cached, date.timeIntervalSince(cached.at) < lifetime { return cached.facts }
+        let facts = reader.facts()
+        cached = (facts, date)
+        return facts
+    }
 }
