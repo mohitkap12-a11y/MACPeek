@@ -197,6 +197,7 @@ private struct OtherResolvers: View {
     }
 }
 /// Local overrides: `/etc/hosts` entries someone added and per-domain resolvers in `/etc/resolver/`.
+/// Split into small views so each body stays quick for the compiler to type-check.
 private struct OverridesCard: View {
     let overrides: DNSOverrides
 
@@ -207,37 +208,75 @@ private struct OverridesCard: View {
                 Spacer()
                 StatusBadge(text: overrides.hasOverrides ? "In effect" : "None", tone: overrides.hasOverrides ? .warning : .good)
             }
-            Text("/etc/hosts").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            if let note = overrides.hostsNote { Text(note).font(.caption).foregroundStyle(.orange) }
-            if overrides.customHostsEntries.isEmpty {
-                Text("Only the entries macOS ships with.").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(overrides.customHostsEntries) { entry in
-                HStack(alignment: .top) {
-                    Text(entry.address).font(.caption.monospaced()).frame(width: 120, alignment: .leading)
-                    Text(entry.names.joined(separator: " ")).font(.caption.monospaced()).textSelection(.enabled)
-                    Spacer()
-                    Text("line \(entry.line)").font(.caption2).foregroundStyle(.tertiary)
-                }
-            }
-            Text("/etc/resolver").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            if let note = overrides.resolverNote { Text(note).font(.caption).foregroundStyle(.orange) }
-            if overrides.resolverFiles.isEmpty {
-                Text("No per-domain resolvers.").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(overrides.resolverFiles) { file in
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("*.\(file.domain)").font(.caption.monospaced().weight(.medium))
-                    Text((file.nameservers.isEmpty ? "no nameserver" : file.nameservers.joined(separator: ", "))
-                         + (file.port.map { " · port \($0)" } ?? "")
-                         + (file.otherSettings.isEmpty ? "" : " · " + file.otherSettings.joined(separator: "; ")))
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-            }
+            HostsSection(entries: overrides.customHostsEntries, note: overrides.hostsNote)
+            ResolverSection(files: overrides.resolverFiles, note: overrides.resolverNote)
             Text("The system resolver checks /etc/hosts first, and sends names under a /etc/resolver domain to that file's servers. Command-line tools such as dig and nslookup ignore both.")
                 .font(.caption2).foregroundStyle(.tertiary)
         }
         .peekCard()
+    }
+}
+
+private struct HostsSection: View {
+    let entries: [HostsEntry]
+    let note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("/etc/hosts").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+            if entries.isEmpty {
+                Text("Only the entries macOS ships with.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(entries) { entry in HostsRow(entry: entry) }
+        }
+    }
+}
+
+private struct HostsRow: View {
+    let entry: HostsEntry
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(entry.address).font(.caption.monospaced()).frame(width: 120, alignment: .leading)
+            Text(entry.names.joined(separator: " ")).font(.caption.monospaced()).textSelection(.enabled)
+            Spacer()
+            Text("line \(entry.line)").font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct ResolverSection: View {
+    let files: [ResolverFile]
+    let note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("/etc/resolver").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+            if files.isEmpty {
+                Text("No per-domain resolvers.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(files) { file in ResolverRow(file: file) }
+        }
+    }
+}
+
+private struct ResolverRow: View {
+    let file: ResolverFile
+
+    private var detail: String {
+        var parts: [String] = [file.nameservers.isEmpty ? "no nameserver" : file.nameservers.joined(separator: ", ")]
+        if let port = file.port { parts.append("port \(port)") }
+        if !file.otherSettings.isEmpty { parts.append(file.otherSettings.joined(separator: "; ")) }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("*.\(file.domain)").font(.caption.monospaced().weight(.medium))
+            Text(detail).font(.caption2).foregroundStyle(.secondary)
+        }
     }
 }
 #endif
