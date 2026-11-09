@@ -1,16 +1,21 @@
 #if os(macOS)
 import Foundation
+import MacPeekCore
 import GPUPeekKit
 
-/// Observable state for GPUPeek. Reads the GPU statistics, its clients and (on Apple silicon) the power counters
-/// every `refreshInterval` seconds while the screen is open; per-process GPU time and power need two readings, so they
-/// appear from the second sample. History is "since opened" and is dropped when the screen is left.
+/// Observable state for GPUPeek. Reads the GPU statistics, its clients, Metal's facts and (on Apple silicon) the power
+/// counters every `refreshInterval` seconds while the screen is open; per-process GPU time and power need two readings, so
+/// they appear from the second sample. History is "since opened" and is dropped when the screen is left.
 @MainActor
 final class GPUStore: ObservableObject {
     @Published private(set) var snapshot: GPUSnapshot?
     @Published private(set) var error: String?
-    @Published private(set) var utilizationHistory = RecentValues()
+    /// GPU busy since opened, per GPU (keyed by `GPUInfo.id`), so a Mac with two GPUs keeps a history for each.
+    @Published private(set) var utilizationHistories: [String: RecentValues] = [:]
     @Published private(set) var neuralEngineHistory = RecentValues()
+    /// The highest Neural Engine power seen since the screen opened: the scale for its ring and chart line, since macOS
+    /// publishes no maximum.
+    @Published private(set) var neuralEnginePeakWatts = 0.0
 
     private let reader: GPUReading
     private let settings: AppSettings
@@ -23,6 +28,14 @@ final class GPUStore: ObservableObject {
         self.settings = settings
     }
 
+    /// The launcher ring: one `ioreg` read of the primary GPU. Never samples power, so the screen's power interval is not
+    /// disturbed. A driver that reports no utilization shows "–", never a made-up 0 %.
+    func launcherGauge() async -> LauncherGauge? {
+        guard let gpu = try? await reader.gpus().first else { return nil }
+        if let reading = GPUAssessment.gaugeReading(gpu) { return LauncherGauge(reading, tint: .accent) }
+        return LauncherGauge(fraction: 0, value: "–", caption: GPUAssessment.caption(gpu))
+    }
+
     func sample() async {
         let now = Date()
         let interval = previousDate.map { now.timeIntervalSince($0) } ?? 0
@@ -33,8 +46,14 @@ final class GPUStore: ObservableObject {
             previousClients = clients
             previousDate = now
             error = nil
-            if let utilization = result.primary?.deviceUtilization { utilizationHistory.append(utilization) }
-            if let watts = result.power?.neuralEngineWatts { neuralEngineHistory.append(watts) }
+            for gpu in result.gpus {
+                guard let utilization = gpu.deviceUtilization else { continue }
+                utilizationHistories[gpu.id, default: RecentValues()].append(utilization)
+            }
+            if let watts = result.power?.neuralEngineWatts {
+                neuralEngineHistory.append(watts)
+                neuralEnginePeakWatts = max(neuralEnginePeakWatts, watts)
+            }
         } catch {
             if Task.isCancelled { return }
             self.error = error.localizedDescription
@@ -59,8 +78,9 @@ final class GPUStore: ObservableObject {
         task = nil
         previousClients = nil
         previousDate = nil
-        utilizationHistory.removeAll()
+        utilizationHistories.removeAll()
         neuralEngineHistory.removeAll()
+        neuralEnginePeakWatts = 0
     }
 }
 #endif

@@ -4,6 +4,10 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [0.2.0] - Unreleased
 ### Added
+- **GPUPeek on the launcher**: a GPU ring tile between CPU and Memory (GPU busy, with GPU memory in use). With four
+  rings the launcher shows compact tiles in one row. The GPUPeek screen now follows CPUPeek's layout: rings for GPU
+  memory, GPU busy and the Neural Engine, a chart since opened, details including Metal's GPU family and the memory the
+  GPU may use, power bars and the processes using the GPU.
 - **ContainerPeek**: answers "Which containers and VMs are running, and what are they costing me?" Docker and Podman
   containers (with the Docker context: Docker Desktop, OrbStack, Colima, Rancher Desktop) with published ports, Compose
   project, CPU and memory; Start, Stop, Restart, Pause, Resume and Remove after re-checking the container (Remove never

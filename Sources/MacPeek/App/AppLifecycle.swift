@@ -88,7 +88,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             macOSRecord: PreferencesSoftwareUpdateRecord(), macOSChecker: SoftwareUpdateChecker()))
 
         // GPUPeek's power sampler subscribes to macOS's energy counters once; it is only sampled while GPUPeek is open.
-        let gpuReader = SystemGPUReader(power: IOReportPowerSampler())
+        let gpuReader = SystemGPUReader(power: IOReportPowerSampler(), deviceFacts: MetalDeviceFactsReader())
         let gpuStore = GPUStore(reader: gpuReader, settings: settings)
         let containerStore = ContainerStore(reader: SystemContainerReader(usage: processUsageReader),
                                             controller: SystemContainerController(), settings: settings)

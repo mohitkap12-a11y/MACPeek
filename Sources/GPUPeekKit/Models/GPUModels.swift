@@ -106,13 +106,17 @@ public struct GPUSnapshot: Equatable, Codable, Sendable {
     public let powerNote: String?
     /// Whether this Mac has a Neural Engine (every Apple silicon Mac does).
     public let hasNeuralEngine: Bool
+    /// Metal's facts about the primary GPU (family, memory the GPU may use), when Metal is available.
+    public let device: GPUDeviceFacts?
 
-    public init(gpus: [GPUInfo], processes: [GPUProcessUsage], power: PowerReading?, powerNote: String?, hasNeuralEngine: Bool) {
+    public init(gpus: [GPUInfo], processes: [GPUProcessUsage], power: PowerReading?, powerNote: String?, hasNeuralEngine: Bool,
+                device: GPUDeviceFacts? = nil) {
         self.gpus = gpus
         self.processes = processes
         self.power = power
         self.powerNote = powerNote
         self.hasNeuralEngine = hasNeuralEngine
+        self.device = device
     }
 
     public var primary: GPUInfo? { gpus.first }

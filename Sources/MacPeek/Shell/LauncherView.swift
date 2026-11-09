@@ -34,9 +34,11 @@ struct LauncherView: View {
                 ScrollView {
                     VStack(spacing: 10) {
                         if !registry.gaugeUtilities.isEmpty {
-                            HStack(spacing: 10) {
+                            // Four rings (CPU, GPU, Memory, Disk) share one row as compact tiles; three or fewer keep the full size.
+                            let compact = registry.gaugeUtilities.count >= 4
+                            HStack(spacing: compact ? 8 : 10) {
                                 ForEach(registry.gaugeUtilities) { info in
-                                    GaugeTile(info: info, gauge: registry.gauges[info.id]) { router.go(.utility(info.id)) }
+                                    GaugeTile(info: info, gauge: registry.gauges[info.id], compact: compact) { router.go(.utility(info.id)) }
                                 }
                             }
                         }
@@ -123,10 +125,12 @@ private struct HeaderButton: View {
     }
 }
 
-/// CPU, Memory or Disk: a ring with the reading, the name, and one line of context.
+/// CPU, GPU, Memory or Disk: a ring with the reading, the name, and one line of context.
 private struct GaugeTile: View {
     let info: UtilityInfo
     let gauge: LauncherGauge?
+    /// Four tiles in the 380 pt popover: a 54 pt ring and smaller text instead of 70 pt.
+    var compact = false
     let action: () -> Void
 
     private var tint: Color {
@@ -141,20 +145,23 @@ private struct GaugeTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                RingGauge(fraction: gauge?.fraction ?? 0, color: tint, lineWidth: 7) {
-                    Text(gauge?.value ?? "–").font(.system(size: 15, weight: .semibold)).monospacedDigit()
+            VStack(spacing: compact ? 5 : 6) {
+                RingGauge(fraction: gauge?.fraction ?? 0, color: tint, lineWidth: compact ? 6 : 7) {
+                    Text(gauge?.value ?? "–").font(.system(size: compact ? 13 : 15, weight: .semibold)).monospacedDigit()
                 }
-                .frame(width: 70, height: 70)
-                Text(title).font(.system(size: 14, weight: .medium))
+                .frame(width: compact ? 54 : 70, height: compact ? 54 : 70)
+                Text(title).font(.system(size: compact ? 12.5 : 14, weight: .medium))
                 Text(gauge?.caption ?? " ")
-                    .font(.system(size: 11.5, design: .monospaced))
+                    .font(.system(size: compact ? 9.5 : 11.5, design: .monospaced))
                     .foregroundStyle(PeekTheme.muted)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(compact ? 0.7 : 0.8)
             }
             .frame(maxWidth: .infinity)
-            .themedCard(radius: 14, padding: 12)
+            // Compact tiles are about 82 pt wide: little side padding, so a caption like "1.2 GB in use" fits.
+            .padding(.vertical, compact ? 10 : 12)
+            .padding(.horizontal, compact ? 3 : 12)
+            .themedCard(radius: 14, padding: 0)
             .contentShape(Rectangle())
         }
         .buttonStyle(TileButtonStyle())

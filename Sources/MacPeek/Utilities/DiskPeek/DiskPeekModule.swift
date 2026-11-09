@@ -13,7 +13,7 @@ final class DiskPeekModule: UtilityModule {
         self.store = store
     }
 
-    var gaugeOrder: Int? { 2 }
+    var gaugeOrder: Int? { 3 }
     func launcherGauge() async -> LauncherGauge? { await store.launcherGauge() }
     func didAppear() { store.startSampling() }
     func didDisappear() { store.stopSampling() }

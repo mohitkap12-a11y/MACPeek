@@ -71,6 +71,7 @@ final class ModelServiceTests: XCTestCase {
             (GPUSnapshot(gpus: [], processes: [], power: nil, powerNote: nil, hasNeuralEngine: false), list)
         }
         func clients() async throws -> [GPUClient] { list }
+        func gpus() async throws -> [GPUInfo] { [] }
     }
 
     private func runner() throws -> ScriptedRunner {

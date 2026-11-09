@@ -2,7 +2,8 @@
 import SwiftUI
 import MacPeekCore
 
-/// GPUPeek as a MacPeek utility: read-only. Samples only while its screen is visible.
+/// GPUPeek as a MacPeek utility: read-only. Samples only while its screen is visible; the launcher ring (second, after
+/// CPU) is one `ioreg` read, repeated only while the launcher is on screen.
 @MainActor
 final class GPUPeekModule: UtilityModule {
     let info = UtilityCatalog.gpuPeek
@@ -12,11 +13,8 @@ final class GPUPeekModule: UtilityModule {
         self.store = store
     }
 
-    func launcherSummary() async -> String? {
-        await store.sample()
-        guard !Task.isCancelled, store.error == nil else { return nil }
-        return store.snapshot?.summary
-    }
+    var gaugeOrder: Int? { 1 }
+    func launcherGauge() async -> LauncherGauge? { await store.launcherGauge() }
 
     func didAppear() { store.startSampling() }
     func didDisappear() { store.stopSampling() }

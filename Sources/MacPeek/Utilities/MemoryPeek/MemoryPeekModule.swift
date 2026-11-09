@@ -13,7 +13,7 @@ final class MemoryPeekModule: UtilityModule {
         self.store = store
     }
 
-    var gaugeOrder: Int? { 1 }
+    var gaugeOrder: Int? { 2 }
     func launcherGauge() async -> LauncherGauge? { await store.launcherGauge() }
     func didAppear() { store.startPolling() }
     func didDisappear() { store.stopPolling() }
