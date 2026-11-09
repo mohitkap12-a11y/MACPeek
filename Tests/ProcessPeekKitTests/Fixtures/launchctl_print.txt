@@ -1,0 +1,17 @@
+gui/501/homebrew.mxcl.postgresql@16 = {
+	active count = 1
+	path = /Users/me/Library/LaunchAgents/homebrew.mxcl.postgresql@16.plist
+	type = LaunchAgent
+	state = running
+
+	program = /opt/homebrew/opt/postgresql@16/bin/postgres
+	arguments = {
+		/opt/homebrew/opt/postgresql@16/bin/postgres
+		-D
+		/opt/homebrew/var/postgresql@16
+	}
+
+	pid = 5120
+	immediate reason = speculative
+	properties = runatload | keepalive | inferred program
+}

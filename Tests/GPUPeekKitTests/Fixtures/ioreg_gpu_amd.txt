@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>IOClass</key>
+		<string>AMDRadeonX6000_AMDNavi14GraphicsAccelerator</string>
+		<key>PerformanceStatistics</key>
+		<dict>
+			<key>Device Utilization %</key>
+			<integer>4</integer>
+			<key>vramFreeBytes</key>
+			<integer>3221225472</integer>
+			<key>vramUsedBytes</key>
+			<integer>1073741824</integer>
+		</dict>
+	</dict>
+</array>
+</plist>

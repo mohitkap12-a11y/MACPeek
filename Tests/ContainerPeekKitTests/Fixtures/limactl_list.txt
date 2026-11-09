@@ -1,0 +1,2 @@
+{"name":"default","hostname":"lima-default","status":"Running","dir":"/Users/me/.lima/default","vmType":"vz","arch":"aarch64","cpuType":"","cpus":4,"memory":4294967296,"disk":107374182400,"sshLocalPort":60022}
+{"name":"k8s","status":"Stopped","vmType":"qemu","arch":"x86_64","cpus":2,"memory":2147483648,"disk":53687091200}

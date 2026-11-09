@@ -38,3 +38,11 @@ Reads when the screen opens, then every few seconds (at least 3 s, following the
 
 ## Verified against
 A Mac mini (Mac14,3) with three hubs and a mouse. Fixtures: `Tests/USBPeekKitTests/Fixtures/`.
+
+## Bluetooth devices and batteries
+USBPeek also lists **Bluetooth** devices from `system_profiler SPBluetoothDataType -json`: connected devices with their type
+and the battery levels they report (one level, or left, right and case for AirPods), and paired devices that are not
+connected. A level at or below 20 % is highlighted. Device addresses are never read into MacPeek's model. This is not a
+Bluetooth connection, so macOS does not ask for Bluetooth access. It is read once per visit and on refresh (system_profiler
+takes a second or two), not on every poll. Not yet verified on a Mac with the current macOS; the fixture follows the
+documented JSON keys (`device_batteryLevelMain`, `…Left`, `…Right`, `…Case`).

@@ -47,3 +47,18 @@ Reads when the screen opens and on ⌘R. There is no polling and no launcher sum
 ## Verified against
 A real `ps` capture from a Mac mini (Mac14,3): `Tests/ProcessPeekKitTests/Fixtures/ps_sample.txt` (a 41-row slice, including
 paths with spaces, a login shell `-zsh` and a parent with several children).
+
+## Where it came from, what it has open, and whether ending it is safe
+Opening a process now also shows:
+- **The whole parent chain**, nearest first, each one clickable.
+- **How it was started**, from `launchctl list` (your user's launchd domain): the launchd job it is, the app it is (apps opened
+  from the Dock or Finder appear as `application.<bundle id>…`), or the nearest ancestor that is one. For a launchd job,
+  `launchctl print gui/<uid>/<label>` adds its property list path and whether launchd **keeps it alive** (it would start again
+  if ended). A process whose parent is launchd but which is not in your domain is labelled as a system or XPC service.
+- **Open files**, on request (`lsof -n -P -w -p <pid> -F ftn`): working directory, binary, files, sockets and pipes, up to 300.
+  macOS shows these only for your own processes.
+- **Safe to end?**: "Probably safe", "Check before ending" or "Avoid", with the reasons (another user's or a core process,
+  a session process, child processes, an app that should be quit from the app, a kept-alive launchd job). This is
+  inference from what MacPeek can see and is labelled so; the Kill button and its safety checks are unchanged.
+launchd job labels are passed to `launchctl print` only if they cannot be read as an option (no leading `-`, no `/` or
+spaces). MacPeek never loads, unloads or changes a launchd job.

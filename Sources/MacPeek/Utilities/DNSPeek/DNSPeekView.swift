@@ -25,6 +25,7 @@ struct DNSPeekView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ServersCard(configuration: configuration)
                     LookupCard(servers: configuration.activeServers)
+                    if let overrides = store.overrides { OverridesCard(overrides: overrides) }
                     OtherResolvers(configuration: configuration)
                 }
                 .padding(12)
@@ -114,6 +115,9 @@ private struct LookupCard: View {
             .controlSize(.small)
             Text("Sends DNS queries for this name to your resolver and to each server above. Nothing else is sent.")
                 .font(.caption2).foregroundStyle(.tertiary)
+            ForEach(store.lookupExplanation, id: \.self) { line in
+                Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+            }
 
             if store.isLookingUp { ProgressView().controlSize(.small) }
             if let error = store.lookupError { Text(error).font(.caption).foregroundStyle(.orange) }
@@ -189,6 +193,89 @@ private struct OtherResolvers: View {
                 .padding(.top, 4)
             }
             .font(.caption)
+        }
+    }
+}
+/// Local overrides: `/etc/hosts` entries someone added and per-domain resolvers in `/etc/resolver/`.
+/// Split into small views so each body stays quick for the compiler to type-check.
+private struct OverridesCard: View {
+    let overrides: DNSOverrides
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Local overrides").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                StatusBadge(text: overrides.hasOverrides ? "In effect" : "None", tone: overrides.hasOverrides ? .warning : .good)
+            }
+            HostsSection(entries: overrides.customHostsEntries, note: overrides.hostsNote)
+            ResolverSection(files: overrides.resolverFiles, note: overrides.resolverNote)
+            Text("The system resolver checks /etc/hosts first, and sends names under a /etc/resolver domain to that file's servers. Command-line tools such as dig and nslookup ignore both.")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+        .peekCard()
+    }
+}
+
+private struct HostsSection: View {
+    let entries: [HostsEntry]
+    let note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("/etc/hosts").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+            if entries.isEmpty {
+                Text("Only the entries macOS ships with.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(entries) { entry in HostsRow(entry: entry) }
+        }
+    }
+}
+
+private struct HostsRow: View {
+    let entry: HostsEntry
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Text(entry.address).font(.caption.monospaced()).frame(width: 120, alignment: .leading)
+            Text(entry.names.joined(separator: " ")).font(.caption.monospaced()).textSelection(.enabled)
+            Spacer()
+            Text("line \(entry.line)").font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct ResolverSection: View {
+    let files: [ResolverFile]
+    let note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("/etc/resolver").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+            if files.isEmpty {
+                Text("No per-domain resolvers.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(files) { file in ResolverRow(file: file) }
+        }
+    }
+}
+
+private struct ResolverRow: View {
+    let file: ResolverFile
+
+    private var detail: String {
+        var parts: [String] = [file.nameservers.isEmpty ? "no nameserver" : file.nameservers.joined(separator: ", ")]
+        if let port = file.port { parts.append("port \(port)") }
+        if !file.otherSettings.isEmpty { parts.append(file.otherSettings.joined(separator: "; ")) }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("*.\(file.domain)").font(.caption.monospaced().weight(.medium))
+            Text(detail).font(.caption2).foregroundStyle(.secondary)
         }
     }
 }

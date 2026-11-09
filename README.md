@@ -29,6 +29,9 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 | **DNSPeek** | Which DNS servers is my Mac using, and do they respond? | ✅ Available |
 | **SoundPeek** | Why is my audio going to the wrong place? | ✅ Available |
 | **UpdatePeek** | What updates are available? | ✅ Available |
+| **GPUPeek** | How busy are my GPU and Neural Engine, and who is using them? | ✅ Available |
+| **ContainerPeek** | Which containers and VMs are running, and what are they costing me? | ✅ Available |
+| **ModelPeek** | Which local LLMs are loaded, and how much memory and GPU are they using? | ✅ Available |
 
 Open MacPeek's menu-bar icon to see the launcher. **Manage utilities** (or Settings → Manage utilities) lists
 every utility with a description, what it reads, what access it needs, and an on/off switch. A utility that
@@ -41,7 +44,7 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
 - Utilities refresh only while their screen is open
-- No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks). Remote management, for the separate MacPeek Remote console, is off unless you turn it on
+- No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks). ModelPeek asks Ollama's and LM Studio's APIs on 127.0.0.1 while they run, which never leaves your Mac. Remote management, for the separate MacPeek Remote console, is off unless you turn it on
 
 ## Install
 Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
@@ -98,8 +101,8 @@ you can read in Settings. A menu-bar dot shows whenever Remote management is on.
 part of this release.
 
 ## Roadmap
-Fourteen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,
-EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+Seventeen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,
+EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek, GPUPeek, ContainerPeek, ModelPeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
 ## Contributing / License

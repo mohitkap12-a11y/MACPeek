@@ -155,10 +155,13 @@ private struct ProcessDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             KeyValueRows(rows: rows)
             relation
+            originRow
             pathRow
             commandLine
             ports
             children
+            openFilesSection
+            adviceSection
             capabilityLabel
             actions
         }
@@ -209,18 +212,77 @@ private struct ProcessDetailView: View {
         }
     }
 
+    /// The whole parent chain, nearest first: "zsh (PID 4510) ← login ← Terminal ← launchd".
     @ViewBuilder private var relation: some View {
         if let snapshot = store.snapshot {
             let chain = snapshot.ancestors(of: entry)
-            if let parent = chain.first {
-                HStack(spacing: 4) {
-                    Text("Parent").font(.caption).foregroundStyle(.secondary)
-                    Button("\(parent.name) (PID \(parent.pid))") { store.jump(to: parent.pid) }
-                        .buttonStyle(.link)
-                }
-                .font(.caption)
-            } else {
+            if chain.isEmpty {
                 Text("No parent process (PID \(entry.ppid))").font(.caption).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chain.count == 1 ? "Parent" : "Started by (nearest first)").font(.caption).foregroundStyle(.secondary)
+                    ForEach(chain.prefix(10)) { ancestor in
+                        Button("\(ancestor.name) (PID \(ancestor.pid))") { store.jump(to: ancestor.pid) }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var originRow: some View {
+        if let origin = store.origin {
+            VStack(alignment: .leading, spacing: 2) {
+                Label(origin.summary, systemImage: "arrow.triangle.branch").font(.caption)
+                if let path = origin.details?.plistPath {
+                    Text(path).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                if origin.details?.keepAlive == true {
+                    Text("launchd keeps this job alive: ending the process starts it again.").font(.caption2).foregroundStyle(.orange)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var openFilesSection: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if store.openFilesLoading {
+                HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Listing open files…").font(.caption).foregroundStyle(.secondary) }
+            } else if let report = store.openFiles, report.pid == entry.pid {
+                Text("Open files (\(report.files.count)\(report.truncated ? "+" : ""))").font(.caption).foregroundStyle(.secondary)
+                if let note = report.note { Text(note).font(.caption) }
+                if let cwd = report.workingDirectory {
+                    Text("Working directory: \(cwd)").font(.caption.monospaced()).textSelection(.enabled).lineLimit(2)
+                }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 1) {
+                        ForEach(report.files.filter { $0.descriptor != "cwd" }) { file in
+                            Text("\(file.descriptor) \(file.type) \(file.name)")
+                                .font(.system(size: 10.5, design: .monospaced)).lineLimit(1).truncationMode(.middle)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 140)
+            } else {
+                Button("Show open files") { store.loadOpenFiles(for: entry) }.controlSize(.small)
+            }
+        }
+    }
+
+    @ViewBuilder private var adviceSection: some View {
+        if let advice = store.killAdvice(for: entry) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text("Safe to end?").font(.caption).foregroundStyle(.secondary)
+                    StatusBadge(text: advice.headline, tone: advice.level == .likelySafe ? .good : (advice.level == .caution ? .warning : .neutral))
+                }
+                ForEach(advice.reasons, id: \.self) { reason in
+                    Text("• " + reason).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Text("Inference from what MacPeek can see, not a guarantee.").font(.caption2).foregroundStyle(.tertiary)
             }
         }
     }

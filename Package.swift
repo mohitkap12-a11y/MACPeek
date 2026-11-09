@@ -57,6 +57,9 @@ let package = Package(
         .library(name: "UpdatePeekKit", targets: ["UpdatePeekKit"]),
         .library(name: "MemoryPeekKit", targets: ["MemoryPeekKit"]),
         .library(name: "CPUPeekKit", targets: ["CPUPeekKit"]),
+        .library(name: "ContainerPeekKit", targets: ["ContainerPeekKit"]),
+        .library(name: "GPUPeekKit", targets: ["GPUPeekKit"]),
+        .library(name: "ModelPeekKit", targets: ["ModelPeekKit"]),
         .library(name: "RemoteCrypto", targets: ["RemoteCrypto"]),
         .library(name: "RemoteProtocol", targets: ["RemoteProtocol"]),
         .library(name: "RemoteAgent", targets: ["RemoteAgent"]),
@@ -78,13 +81,17 @@ let package = Package(
         .target(name: "UpdatePeekKit", dependencies: ["MacPeekCore"], path: "Sources/UpdatePeekKit"),
         .target(name: "MemoryPeekKit", dependencies: ["MacPeekCore"], path: "Sources/MemoryPeekKit"),
         .target(name: "CPUPeekKit", dependencies: ["MacPeekCore"], path: "Sources/CPUPeekKit"),
+        .target(name: "ContainerPeekKit", dependencies: ["MacPeekCore"], path: "Sources/ContainerPeekKit"),
+        .target(name: "GPUPeekKit", dependencies: ["MacPeekCore"], path: "Sources/GPUPeekKit"),
+        .target(name: "ModelPeekKit", dependencies: ["MacPeekCore", "GPUPeekKit"], path: "Sources/ModelPeekKit"),
         .target(name: "RemoteCrypto", dependencies: cryptoTargetDependencies, path: "Sources/RemoteCrypto"),
-        .target(name: "RemoteProtocol", dependencies: ["RemoteCrypto", "MacPeekCore", "PortPeekKit", "ProcessPeekKit"],
+        .target(name: "RemoteProtocol", dependencies: ["RemoteCrypto", "MacPeekCore", "PortPeekKit", "ProcessPeekKit", "ContainerPeekKit"],
                 path: "Sources/RemoteProtocol"),
         .target(
             name: "RemoteAgent",
             dependencies: ["RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit", "DiskPeekKit",
-                           "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit"],
+                           "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit", "USBPeekKit",
+                           "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit"],
             path: "Sources/RemoteAgent"
         ),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
@@ -92,7 +99,8 @@ let package = Package(
             name: "MacPeek",
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
                            "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
-                           "SoundPeekKit", "UpdatePeekKit", "MemoryPeekKit", "CPUPeekKit", "RemoteAgent", "RemoteCrypto",
+                           "SoundPeekKit", "UpdatePeekKit", "MemoryPeekKit", "CPUPeekKit", "ContainerPeekKit", "GPUPeekKit",
+                           "ModelPeekKit", "RemoteAgent", "RemoteCrypto",
                            "RemoteProtocol"] + sparkleTargetDependencies,
             path: "Sources/MacPeek"
         ),
@@ -151,13 +159,32 @@ let package = Package(
         ),
         .testTarget(name: "SoundPeekKitTests", dependencies: ["SoundPeekKit", "MacPeekCore"], path: "Tests/SoundPeekKitTests"),
         .testTarget(name: "UpdatePeekKitTests", dependencies: ["UpdatePeekKit", "MacPeekCore"], path: "Tests/UpdatePeekKitTests"),
+        .testTarget(
+            name: "ContainerPeekKitTests",
+            dependencies: ["ContainerPeekKit", "MacPeekCore"],
+            path: "Tests/ContainerPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "GPUPeekKitTests",
+            dependencies: ["GPUPeekKit", "MacPeekCore"],
+            path: "Tests/GPUPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "ModelPeekKitTests",
+            dependencies: ["ModelPeekKit", "GPUPeekKit", "MacPeekCore"],
+            path: "Tests/ModelPeekKitTests",
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "RemoteCryptoTests", dependencies: ["RemoteCrypto"], path: "Tests/RemoteCryptoTests"),
         .testTarget(name: "RemoteProtocolTests", dependencies: ["RemoteProtocol", "RemoteCrypto", "MacPeekCore", "PortPeekKit",
                                                        "ProcessPeekKit"], path: "Tests/RemoteProtocolTests"),
         .testTarget(
             name: "RemoteAgentTests",
             dependencies: ["RemoteAgent", "RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit",
-                           "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit"],
+                           "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit",
+                           "USBPeekKit", "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit"],
             path: "Tests/RemoteAgentTests"
         ),
     ]

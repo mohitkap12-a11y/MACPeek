@@ -21,7 +21,7 @@ struct USBPeekView: View {
         if let error = store.error, store.snapshot == nil {
             ErrorState(message: error, retryTitle: "Try again") { store.refresh() }
         } else if let snapshot = store.snapshot {
-            if snapshot.deviceCount == 0 && snapshot.thunderboltPorts.isEmpty {
+            if snapshot.deviceCount == 0 && snapshot.thunderboltPorts.isEmpty && (store.bluetooth?.devices.isEmpty ?? true) {
                 EmptyState(symbol: "cable.connector", title: "Nothing connected",
                            message: "No USB devices were reported by macOS.")
             } else {
@@ -59,6 +59,25 @@ struct USBPeekView: View {
                 .padding(.horizontal, 12).padding(.vertical, 6)
         } else {
             ForEach(snapshot.thunderboltPorts) { port in ThunderboltPortRow(port: port) }
+        }
+
+        SectionHeader(title: "Bluetooth", detail: store.bluetooth?.poweredOn == false ? "Off" : nil)
+        if let error = store.bluetoothError, store.bluetooth == nil {
+            Text(error).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.vertical, 6)
+        } else if let report = store.bluetooth {
+            if report.devices.isEmpty {
+                Text("No Bluetooth devices are paired.").font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+            }
+            ForEach(report.connected) { device in BluetoothRow(device: device) }
+            if !report.paired.isEmpty {
+                Text("Paired, not connected: " + report.paired.map(\.name).joined(separator: ", "))
+                    .font(.caption).foregroundStyle(.tertiary).lineLimit(3)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+            }
+        } else {
+            HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Reading Bluetooth devices…").font(.caption).foregroundStyle(.secondary) }
+                .padding(.horizontal, 12).padding(.vertical, 6)
         }
     }
 
@@ -181,6 +200,39 @@ private struct ThunderboltPortRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .accessibilityElement(children: .combine)
+    }
+}
+/// A connected Bluetooth device with its battery levels, as the device reports them through macOS.
+private struct BluetoothRow: View {
+    let device: BluetoothDevice
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol).frame(width: 18).foregroundStyle(.secondary).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(device.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text(device.kind ?? "Bluetooth device").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            if let battery = device.batteryLabel {
+                StatusBadge(text: battery, tone: (device.lowestBattery ?? 100) <= 20 ? .warning : .neutral)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var symbol: String {
+        switch device.kind?.lowercased() ?? "" {
+        case let kind where kind.contains("headphone") || kind.contains("headset"): return "headphones"
+        case let kind where kind.contains("keyboard"): return "keyboard"
+        case let kind where kind.contains("mouse"): return "computermouse"
+        case let kind where kind.contains("trackpad"): return "rectangle.and.hand.point.up.left"
+        case let kind where kind.contains("speaker"): return "hifispeaker"
+        case let kind where kind.contains("gamepad") || kind.contains("game"): return "gamecontroller"
+        default: return "dot.radiowaves.left.and.right"
+        }
     }
 }
 #endif

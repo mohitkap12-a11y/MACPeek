@@ -1,0 +1,12 @@
+    1     0 /sbin/launchd
+  612     1 /Applications/Ollama.app/Contents/MacOS/Ollama
+  640   612 /Applications/Ollama.app/Contents/Resources/ollama
+ 8120   640 /Applications/Ollama.app/Contents/Resources/ollama
+  701     1 /Applications/LM Studio.app/Contents/MacOS/LM Studio
+  702   701 /Applications/LM Studio.app/Contents/Frameworks/LM Studio Helper.app/Contents/MacOS/LM Studio Helper
+  930   701 /Users/me/.lmstudio/extensions/backends/llama.cpp-mac-arm64-apple-metal-advsimd-1.50.2/llmworker
+ 1001   999 /opt/homebrew/Cellar/python@3.12/3.12.7/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python
+ 1100   999 /opt/homebrew/bin/llama-server
+ 1200   999 /Users/me/bin/mistral-7b.llamafile
+ 1300   999 /usr/bin/python3
+ 1400   999 /bin/zsh

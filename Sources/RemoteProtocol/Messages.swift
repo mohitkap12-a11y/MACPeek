@@ -2,6 +2,7 @@ import Foundation
 import MacPeekCore
 import PortPeekKit
 import ProcessPeekKit
+import ContainerPeekKit
 import RemoteCrypto
 
 /// What a MacPeek Remote console and a Mac's agent say to each other. Version 2 (accounts) only adds: the envelope
@@ -36,7 +37,25 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let dnsConfiguration: Operation = "dns.configuration"
     /// Asks one of the Mac's own DNS servers for a name, as DNSPeek's "Test" does.
     public static let dnsProbe: Operation = "dns.probe"
+    /// Proxy, VPN, Tailscale and remembered Wi-Fi networks (NetPeek).
+    public static let networkExtras: Operation = "network.extras"
+    /// `/etc/hosts` and `/etc/resolver/*` (DNSPeek).
+    public static let dnsOverrides: Operation = "dns.overrides"
+    /// Bluetooth devices and battery levels (USBPeek).
+    public static let bluetooth: Operation = "bluetooth.devices"
+    /// How a process was started and whether ending it looks safe (ProcessPeek). Body: `ProcessRequest`.
+    public static let processOrigin: Operation = "processes.origin"
+    /// A process's open files (ProcessPeek). Body: `ProcessRequest`.
+    public static let processOpenFiles: Operation = "processes.openFiles"
+    /// Containers, VMs and hypervisor processes (ContainerPeek).
+    public static let containers: Operation = "containers.snapshot"
+    /// GPU load and memory, GPU clients, and CPU/GPU/Neural Engine power (GPUPeek).
+    public static let gpu: Operation = "gpu.snapshot"
+    /// Local LLM runners and their loaded models (ModelPeek).
+    public static let models: Operation = "models.snapshot"
     public static let freePort: Operation = "ports.free"
+    /// Starts, stops, restarts, pauses, resumes or removes one container. Body: `ContainerActionRequest`.
+    public static let containerAction: Operation = "containers.action"
     public static let quitProcess: Operation = "processes.quit"
     /// Which workspace (account) this Mac belongs to, its revocation list number and a fresh claim.
     public static let workspaceStatus: Operation = "workspace.status"
@@ -47,8 +66,9 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
 
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
-                                            .dnsConfiguration, .dnsProbe]
-    public static let actions: [Operation] = [.freePort, .quitProcess]
+                                            .dnsConfiguration, .dnsProbe, .networkExtras, .dnsOverrides, .bluetooth,
+                                            .processOrigin, .processOpenFiles, .containers, .gpu, .models]
+    public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceAdopt, .workspaceRevocations]
 
@@ -191,6 +211,49 @@ public struct QuitProcessRequest: Equatable, Codable, Sendable {
     public init(process: ProcessEntry, force: Bool = false) {
         self.process = process
         self.force = force
+    }
+}
+
+/// `processes.origin` and `processes.openFiles`: the process as the console saw it. The Mac answers only while that PID
+/// still belongs to the same process.
+public struct ProcessRequest: Equatable, Codable, Sendable {
+    public let process: ProcessEntry
+
+    public init(process: ProcessEntry) {
+        self.process = process
+    }
+}
+
+/// The answer to `processes.origin`.
+public struct ProcessOriginReport: Equatable, Codable, Sendable {
+    public let origin: ProcessOrigin
+    public let advice: KillAdvice
+
+    public init(origin: ProcessOrigin, advice: KillAdvice) {
+        self.origin = origin
+        self.advice = advice
+    }
+}
+
+/// `containers.action`: the container as the console saw it. The Mac re-reads it and refuses if it is gone, renamed or
+/// in a state where the action does not apply.
+public struct ContainerActionRequest: Equatable, Codable, Sendable {
+    public let action: ContainerAction
+    public let container: ContainerInfo
+    public let engine: ContainerEngineKind
+
+    public init(action: ContainerAction, container: ContainerInfo, engine: ContainerEngineKind) {
+        self.action = action
+        self.container = container
+        self.engine = engine
+    }
+}
+
+public struct ContainerActionResponse: Equatable, Codable, Sendable {
+    public let result: ContainerActionResult
+
+    public init(result: ContainerActionResult) {
+        self.result = result
     }
 }
 

@@ -1,0 +1,1 @@
+[{"Disk":50,"Name":"sequoia-base","Running":true,"Size":24,"Source":"local","State":"running"},{"Disk":50,"Name":"ghcr.io/cirruslabs/macos-sonoma-base:latest","Running":false,"Size":22,"Source":"oci","State":"stopped"}]

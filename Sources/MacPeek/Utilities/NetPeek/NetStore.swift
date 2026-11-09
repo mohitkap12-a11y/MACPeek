@@ -14,8 +14,13 @@ final class NetStore: ObservableObject {
     @Published private(set) var checks: NetworkChecks?
     @Published private(set) var isChecking = false
     @Published private(set) var checksError: String?
+    /// Proxy, VPN, Tailscale and remembered Wi-Fi networks: read once per visit and on refresh.
+    @Published private(set) var extras: NetExtras?
+    @Published private(set) var isLoadingExtras = false
 
     private let reader: NetworkReading
+    private let extrasReader: NetworkExtrasReading?
+    private var extrasTask: Task<Void, Never>?
     private let settings: AppSettings
     private var pollTask: Task<Void, Never>?
     private var wifiTask: Task<Void, Never>?
@@ -24,9 +29,30 @@ final class NetStore: ObservableObject {
     /// Each read gets a number; only the newest read may publish, so a slow earlier read cannot overwrite a later one.
     private var readGeneration = 0
 
-    init(reader: NetworkReading, settings: AppSettings) {
+    init(reader: NetworkReading, extrasReader: NetworkExtrasReading? = nil, settings: AppSettings) {
         self.reader = reader
+        self.extrasReader = extrasReader
         self.settings = settings
+    }
+
+    /// Reads proxy, VPN and Tailscale state, and remembered Wi-Fi networks when the Mac has Wi-Fi.
+    func reloadExtras() {
+        guard let extrasReader else { return }
+        extrasTask?.cancel()
+        isLoadingExtras = true
+        let wifi = ([snapshot?.primary].compactMap { $0 } + (snapshot?.otherInterfaces ?? [])).first { $0.isWiFi }?.name
+        extrasTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if !Task.isCancelled { self.isLoadingExtras = false } }
+            do {
+                let result = try await extrasReader.extras(wifiInterface: wifi)
+                guard !Task.isCancelled else { return }
+                self.extras = result
+            } catch {
+                if Task.isCancelled { return }
+                Log.netPeek.error("extras failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
     var headline: String? { snapshot.map { NetworkAssessment.headline(snapshot: $0, checks: checks) } }
@@ -68,9 +94,11 @@ final class NetStore: ObservableObject {
     func startPolling() {
         stopPolling()
         pollTask = Task { [weak self] in
+            var first = true
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh()
+                if first { first = false; self.reloadExtras() }
                 let seconds = max(self.settings.refreshInterval, 5)
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             }
@@ -82,6 +110,9 @@ final class NetStore: ObservableObject {
         pollTask?.cancel()
         wifiTask?.cancel()
         checksTask?.cancel()
+        extrasTask?.cancel()
+        extrasTask = nil
+        isLoadingExtras = false
         pollTask = nil
         wifiTask = nil
         checksTask = nil

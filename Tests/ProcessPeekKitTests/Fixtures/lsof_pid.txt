@@ -1,0 +1,13 @@
+p5120
+fcwd
+tDIR
+n/opt/homebrew/var/postgresql@16
+ftxt
+tREG
+n/opt/homebrew/Cellar/postgresql@16/16.4/bin/postgres
+f7u
+tIPv4
+n127.0.0.1:5432
+f8u
+tunix
+n/tmp/.s.PGSQL.5432
