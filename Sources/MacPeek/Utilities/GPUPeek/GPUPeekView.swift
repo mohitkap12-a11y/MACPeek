@@ -7,24 +7,40 @@ import GPUPeekKit
 /// details, power and the processes using the GPU. Sampled while this screen is open.
 struct GPUPeekView: View {
     @EnvironmentObject private var store: GPUStore
+    /// Which GPU is shown on a Mac with more than one (an Intel Mac with two GPUs, or an external GPU).
+    @State private var selectedID: String?
 
     var body: some View {
         VStack(spacing: 0) {
+            if let error = store.error, store.snapshot != nil {
+                BannerView(banner: Banner(kind: .error, text: "Couldn't refresh: \(error) Showing the last reading."))
+            }
             content
         }
         .background(PeekTheme.ground)
+    }
+
+    private func selected(in snapshot: GPUSnapshot) -> GPUInfo? {
+        snapshot.gpus.first { $0.id == selectedID } ?? snapshot.primary
+    }
+
+    /// Metal's facts for `gpu`: matched by name, so a second GPU never shows the first one's limits.
+    private func facts(for gpu: GPUInfo, in snapshot: GPUSnapshot) -> GPUDeviceFacts? {
+        guard let device = snapshot.device else { return nil }
+        return device.name == gpu.name || (snapshot.gpus.count == 1) ? device : nil
     }
 
     @ViewBuilder private var content: some View {
         if let error = store.error, store.snapshot == nil {
             ErrorState(message: error, retryTitle: "Try again") { store.startSampling() }
         } else if let snapshot = store.snapshot {
-            if let gpu = snapshot.primary {
+            if let gpu = selected(in: snapshot) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        GPURingsRow(gpu: gpu, snapshot: snapshot)
-                        GPUHistorySection()
-                        GPUDetailsSection(gpu: gpu, facts: snapshot.device)
+                        if snapshot.gpus.count > 1 { GPUPicker(gpus: snapshot.gpus, selectedID: $selectedID, current: gpu.id) }
+                        GPURingsRow(gpu: gpu, snapshot: snapshot, facts: facts(for: gpu, in: snapshot))
+                        GPUHistorySection(gpuID: gpu.id)
+                        GPUDetailsSection(gpu: gpu, facts: facts(for: gpu, in: snapshot))
                         GPUPowerSection(snapshot: snapshot)
                         GPUProcessesSection(processes: snapshot.processes)
                     }
@@ -44,11 +60,27 @@ struct GPUPeekView: View {
     }
 }
 
+/// A segmented choice between GPUs, shown only when macOS lists more than one.
+private struct GPUPicker: View {
+    let gpus: [GPUInfo]
+    @Binding var selectedID: String?
+    let current: String
+
+    var body: some View {
+        Picker("GPU", selection: Binding(get: { selectedID ?? current }, set: { selectedID = $0 })) {
+            ForEach(gpus) { gpu in Text(gpu.name).tag(gpu.id) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+    }
+}
+
 /// GPU memory (left), GPU busy (centre) and the Neural Engine (right), as CPUPeek shows thermal state, CPU and load.
 private struct GPURingsRow: View {
     @EnvironmentObject private var store: GPUStore
     let gpu: GPUInfo
     let snapshot: GPUSnapshot
+    let facts: GPUDeviceFacts?
 
     private var busyColor: Color {
         guard let utilization = gpu.deviceUtilization else { return PeekTheme.muted }
@@ -56,13 +88,13 @@ private struct GPURingsRow: View {
         return utilization >= 70 ? PeekTheme.amber : PeekTheme.accent
     }
 
-    private var memoryFraction: Double? { GPUAssessment.memoryFraction(gpu, facts: snapshot.device) }
+    private var memoryFraction: Double? { GPUAssessment.memoryFraction(gpu, facts: facts) }
     private var memoryValue: String {
         if let used = gpu.memoryInUseBytes ?? gpu.vramUsedBytes { return ByteCountText.memory(used) }
         return "–"
     }
     private var memoryCaption: String {
-        if let limit = snapshot.device?.recommendedMaxWorkingSetBytes, gpu.memoryInUseBytes != nil {
+        if let limit = facts?.recommendedMaxWorkingSetBytes, gpu.memoryInUseBytes != nil {
             return "of \(ByteCountText.memory(limit))"
         }
         if let total = gpu.vramTotalBytes { return "of \(ByteCountText.memory(total)) VRAM" }
@@ -149,6 +181,9 @@ private struct SideRing: View {
 
 private struct GPUHistorySection: View {
     @EnvironmentObject private var store: GPUStore
+    let gpuID: String
+
+    private var busy: [Double] { store.utilizationHistories[gpuID]?.values ?? [] }
 
     private var aneNormalized: [Double] {
         let peak = store.neuralEnginePeakWatts
@@ -156,11 +191,11 @@ private struct GPUHistorySection: View {
     }
 
     var body: some View {
-        if store.utilizationHistory.values.count > 1 || aneNormalized.count > 1 {
+        if busy.count > 1 || aneNormalized.count > 1 {
             VStack(alignment: .leading, spacing: 8) {
                 SectionLabel(text: "Since opened")
                 VStack(alignment: .leading, spacing: 6) {
-                    HistoryChart(series: [.init(values: store.utilizationHistory.values, color: PeekTheme.accent),
+                    HistoryChart(series: [.init(values: busy, color: PeekTheme.accent),
                                           .init(values: aneNormalized, color: PeekTheme.teal, filled: false)],
                                  maximum: 100)
                         .frame(height: 64)

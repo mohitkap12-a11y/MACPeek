@@ -10,7 +10,8 @@ import GPUPeekKit
 final class GPUStore: ObservableObject {
     @Published private(set) var snapshot: GPUSnapshot?
     @Published private(set) var error: String?
-    @Published private(set) var utilizationHistory = RecentValues()
+    /// GPU busy since opened, per GPU (keyed by `GPUInfo.id`), so a Mac with two GPUs keeps a history for each.
+    @Published private(set) var utilizationHistories: [String: RecentValues] = [:]
     @Published private(set) var neuralEngineHistory = RecentValues()
     /// The highest Neural Engine power seen since the screen opened: the scale for its ring and chart line, since macOS
     /// publishes no maximum.
@@ -45,7 +46,10 @@ final class GPUStore: ObservableObject {
             previousClients = clients
             previousDate = now
             error = nil
-            if let utilization = result.primary?.deviceUtilization { utilizationHistory.append(utilization) }
+            for gpu in result.gpus {
+                guard let utilization = gpu.deviceUtilization else { continue }
+                utilizationHistories[gpu.id, default: RecentValues()].append(utilization)
+            }
             if let watts = result.power?.neuralEngineWatts {
                 neuralEngineHistory.append(watts)
                 neuralEnginePeakWatts = max(neuralEnginePeakWatts, watts)
@@ -74,7 +78,7 @@ final class GPUStore: ObservableObject {
         task = nil
         previousClients = nil
         previousDate = nil
-        utilizationHistory.removeAll()
+        utilizationHistories.removeAll()
         neuralEngineHistory.removeAll()
         neuralEnginePeakWatts = 0
     }
