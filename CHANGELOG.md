@@ -4,6 +4,29 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [0.2.0] - Unreleased
 ### Added
+- **ContainerPeek**: answers "Which containers and VMs are running, and what are they costing me?" Docker and Podman
+  containers (with the Docker context: Docker Desktop, OrbStack, Colima, Rancher Desktop) with published ports, Compose
+  project, CPU and memory; Start, Stop, Restart, Pause, Resume and Remove after re-checking the container (Remove never
+  deletes volumes or images); the last 200 log lines on request; Lima, Colima, Tart and Parallels VMs; and the hypervisor
+  processes on the Mac with their CPU and memory. See [docs/utilities/containerpeek.md](docs/utilities/containerpeek.md).
+- **GPUPeek**: GPU load, renderer/tiler use and GPU memory as the driver reports them, processes using the GPU with their
+  share of GPU time, and on Apple silicon the CPU, GPU and Neural Engine power from macOS's energy counters (IOReport,
+  loaded only if present). macOS reports no Neural Engine utilization without administrator rights, so its power is shown
+  and labelled as such. See [docs/utilities/gpupeek.md](docs/utilities/gpupeek.md).
+- **ModelPeek**: Ollama, LM Studio, MLX, llama.cpp and llamafile runners, the models they have loaded (from Ollama's and
+  LM Studio's APIs on 127.0.0.1, or the runner's model argument), and the memory, CPU and GPU each runner uses. Command
+  lines are never kept beyond the model argument. See [docs/utilities/modelpeek.md](docs/utilities/modelpeek.md).
+- **NetPeek**: system proxy settings, VPN services and their status, Tailscale state (exit node, peers, health) and
+  remembered Wi-Fi networks, with plain-language notes on how each can change what works.
+- **DNSPeek**: `/etc/hosts` entries and `/etc/resolver/*` files, and a note next to a lookup when one of them applies to
+  the name.
+- **USBPeek**: Bluetooth devices with their battery levels (left, right and case for AirPods), low batteries highlighted.
+- **ProcessPeek**: the full parent chain, the launchd job or app that started a process (and whether launchd keeps it
+  alive), its open files on request, and a "Safe to end?" assessment with reasons.
+- **Remote management**: `network.extras`, `dns.overrides`, `bluetooth.devices`, `processes.origin`,
+  `processes.openFiles`, `containers.snapshot`, `gpu.snapshot`, `models.snapshot` and the `containers.action` action
+  (gated like the other actions). See [docs/remote.md](docs/remote.md).
+- Shared `LooseJSON`, `ExecutableLocator` and `ByteSizeText` (MacPeekCore) for reading other tools' JSON and sizes.
 - **MemoryPeek**: answers "Is my Mac actually running out of memory?" It leads with memory pressure (Normal, Warning,
   Critical) and a plain-language reading, then shows how memory is split (app memory, wired, compressed, cached files, free),
   how much has been moved to disk (swap), and the 15 processes with the largest memory footprint (the figure Activity Monitor

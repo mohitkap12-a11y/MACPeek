@@ -15,16 +15,23 @@ final class DNSStore: ObservableObject {
     @Published private(set) var lookup: SystemLookup?
     @Published private(set) var probes: [ServerProbe] = []
     @Published private(set) var lookupError: String?
+    /// `/etc/hosts` and `/etc/resolver/*`, read with the configuration.
+    @Published private(set) var overrides: DNSOverrides?
 
     private let reader: DNSReading
+    private let overridesReader: DNSOverridesReading?
     private var loadTask: Task<Void, Never>?
     private var lookupTask: Task<Void, Never>?
     /// Bumped whenever the configuration changes, so a lookup against the old server list cannot show up under the new one.
     private var configGeneration = 0
 
-    init(reader: DNSReading) {
+    init(reader: DNSReading, overridesReader: DNSOverridesReading? = nil) {
         self.reader = reader
+        self.overridesReader = overridesReader
     }
+
+    /// Overrides that apply to the name in the lookup field.
+    var lookupExplanation: [String] { overrides?.explain(name: lookupName) ?? [] }
 
     func refresh() {
         loadTask?.cancel()
@@ -58,6 +65,10 @@ final class DNSStore: ObservableObject {
         do {
             let result = try await reader.configuration()
             guard !Task.isCancelled else { return }
+            if let overridesReader {
+                // Two small local files: read off the main thread, but no need for a task of their own.
+                overrides = await Task.detached(priority: .utility) { overridesReader.overrides() }.value
+            }
             if let old = configuration, old.activeServers != result.activeServers {
                 configGeneration += 1
                 lookupTask?.cancel()

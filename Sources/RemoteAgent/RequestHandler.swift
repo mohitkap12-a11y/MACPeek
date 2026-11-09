@@ -8,6 +8,10 @@ import PortPeekKit
 import ProcessPeekKit
 import SleepPeekKit
 import DNSPeekKit
+import USBPeekKit
+import ContainerPeekKit
+import GPUPeekKit
+import ModelPeekKit
 import RemoteProtocol
 
 /// Where the agent's answers come from. `system()` uses the same readers as MacPeek's own utilities; tests pass fakes.
@@ -25,6 +29,14 @@ public struct AgentReaders: Sendable {
     public var sleep: @Sendable () async throws -> SleepSnapshot
     public var dnsConfiguration: @Sendable () async throws -> DNSConfiguration
     public var dnsProbe: @Sendable (_ server: String, _ name: String) async throws -> ServerProbe
+    public var networkExtras: @Sendable () async throws -> NetExtras
+    public var dnsOverrides: @Sendable () async throws -> DNSOverrides
+    public var bluetooth: @Sendable () async throws -> BluetoothReport
+    public var processOrigin: @Sendable (_ process: ProcessEntry, _ snapshot: ProcessSnapshot) async throws -> ProcessOrigin
+    public var openFiles: @Sendable (_ process: ProcessEntry) async throws -> OpenFilesReport
+    public var containers: @Sendable () async throws -> ContainerSnapshot
+    public var gpu: @Sendable () async throws -> GPUSnapshot
+    public var models: @Sendable () async throws -> ModelSnapshot
 
     public init(device: @escaping @Sendable () -> DeviceInfo, cpuTopology: @escaping @Sendable () -> CPUTopology,
                 cpuSnapshot: @escaping @Sendable () throws -> CPUSnapshot, memory: @escaping @Sendable () throws -> MemoryStats,
@@ -40,7 +52,19 @@ public struct AgentReaders: Sendable {
                 },
                 dnsProbe: @escaping @Sendable (String, String) async throws -> ServerProbe = { _, _ in
                     throw RemoteError(.unavailable, "DNS is not available here.")
-                }) {
+                },
+                networkExtras: @escaping @Sendable () async throws -> NetExtras = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                dnsOverrides: @escaping @Sendable () async throws -> DNSOverrides = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                bluetooth: @escaping @Sendable () async throws -> BluetoothReport = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                processOrigin: @escaping @Sendable (ProcessEntry, ProcessSnapshot) async throws -> ProcessOrigin = { _, _ in
+                    throw RemoteError(.unavailable, "This Mac does not report that.")
+                },
+                openFiles: @escaping @Sendable (ProcessEntry) async throws -> OpenFilesReport = { _ in
+                    throw RemoteError(.unavailable, "This Mac does not report that.")
+                },
+                containers: @escaping @Sendable () async throws -> ContainerSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                gpu: @escaping @Sendable () async throws -> GPUSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                models: @escaping @Sendable () async throws -> ModelSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") }) {
         self.device = device
         self.cpuTopology = cpuTopology
         self.cpuSnapshot = cpuSnapshot
@@ -54,6 +78,14 @@ public struct AgentReaders: Sendable {
         self.sleep = sleep
         self.dnsConfiguration = dnsConfiguration
         self.dnsProbe = dnsProbe
+        self.networkExtras = networkExtras
+        self.dnsOverrides = dnsOverrides
+        self.bluetooth = bluetooth
+        self.processOrigin = processOrigin
+        self.openFiles = openFiles
+        self.containers = containers
+        self.gpu = gpu
+        self.models = models
     }
 
     public static func system() -> AgentReaders {
@@ -61,13 +93,30 @@ public struct AgentReaders: Sendable {
         let volumes = SystemVolumeCapacityReader(), counters = SystemInterfaceCountersReader(), network = SystemNetworkReader()
         let ports = PortService(), processes = PSProcessLister(), sleep = PMSetSleepReader(), device = SystemDeviceInfoReader()
         let dns = SystemDNSReader()
+        let overrides = FileDNSOverridesReader(), bluetooth = SystemBluetoothReader(), insight = SystemProcessInsightReader()
+        let containers = IntervalSampler<ProcessUsageSnapshot?, ContainerSnapshot>(initial: nil) { previous, interval in
+            try await SystemContainerReader(usage: usage).snapshot(previous: previous, interval: interval)
+        }
+        let gpu = IntervalSampler<[GPUClient]?, GPUSnapshot>(initial: nil) { previous, interval in
+            try await SystemGPUReader(power: GPUPowerShared.sampler).snapshot(previousClients: previous, interval: interval)
+        }
+        let models = IntervalSampler<ModelSamplingState?, ModelSnapshot>(initial: nil) { previous, _ in
+            let (snapshot, state) = try await SystemModelReader(usage: usage, gpu: SystemGPUReader()).snapshot(previous: previous)
+            return (snapshot, state)
+        }
         return AgentReaders(device: { device.read() }, cpuTopology: { cpu.topology() }, cpuSnapshot: { try cpu.snapshot() },
                             memory: { try memory.read() }, processUsage: { try usage.read(isCancelled: { false }) },
                             volumes: { try volumes.read() }, networkCounters: { try counters.read() },
                             networkSnapshot: { try await network.snapshot() }, ports: { try await ports.scan() },
                             processes: { try await processes.snapshot() }, sleep: { try await sleep.snapshot() },
                             dnsConfiguration: { try await dns.configuration() },
-                            dnsProbe: { server, name in try await dns.probe(server: server, name: name) })
+                            dnsProbe: { server, name in try await dns.probe(server: server, name: name) },
+                            networkExtras: { try await network.extras(wifiInterface: try? await network.snapshot().primary.flatMap { $0.isWiFi ? $0.name : nil }) },
+                            dnsOverrides: { overrides.overrides() }, bluetooth: { try await bluetooth.bluetooth() },
+                            processOrigin: { entry, snapshot in await insight.origin(of: entry, in: snapshot) },
+                            openFiles: { entry in try await insight.openFiles(of: entry, limit: 300) },
+                            containers: { try await containers.read() }, gpu: { try await gpu.read() },
+                            models: { try await models.read() })
     }
 }
 
@@ -76,18 +125,27 @@ public struct AgentReaders: Sendable {
 public struct AgentActions: Sendable {
     public var freePort: @Sendable (PortInfo, _ force: Bool) async -> TerminationResult
     public var quitProcess: @Sendable (ProcessEntry, _ force: Bool) async -> TerminationResult
+    public var containerAction: @Sendable (ContainerAction, ContainerInfo, ContainerEngineKind) async -> ContainerActionResult
 
     public init(freePort: @escaping @Sendable (PortInfo, Bool) async -> TerminationResult,
-                quitProcess: @escaping @Sendable (ProcessEntry, Bool) async -> TerminationResult) {
+                quitProcess: @escaping @Sendable (ProcessEntry, Bool) async -> TerminationResult,
+                containerAction: @escaping @Sendable (ContainerAction, ContainerInfo, ContainerEngineKind) async -> ContainerActionResult = { _, _, _ in
+                    .failed("This Mac does not manage containers.")
+                }) {
         self.freePort = freePort
         self.quitProcess = quitProcess
+        self.containerAction = containerAction
     }
 
     public static func system() -> AgentActions {
         let kill = KillService(discovery: LsofPortDiscovery()), terminator = ProcessTerminator()
+        let containers = SystemContainerController()
         return AgentActions(freePort: { port, force in force ? await kill.forceTerminate(port) : await kill.terminate(port) },
                             quitProcess: { entry, force in
                                 force ? await terminator.forceTerminate(entry) : await terminator.terminate(entry)
+                            },
+                            containerAction: { action, container, engine in
+                                await containers.perform(action, on: container, engine: engine)
                             })
     }
 }
@@ -158,6 +216,24 @@ public struct RequestHandler: Sendable {
                 throw RemoteError(.notPermitted, "This Mac only tests the DNS servers it is configured to use.")
             }
             return try request.response(try await readers.dnsProbe(body.server, body.name))
+        case .networkExtras: return try request.response(try await readers.networkExtras())
+        case .dnsOverrides: return try request.response(try await readers.dnsOverrides())
+        case .bluetooth: return try request.response(try await readers.bluetooth())
+        case .containers: return try request.response(try await readers.containers())
+        case .gpu: return try request.response(try await readers.gpu())
+        case .models: return try request.response(try await readers.models())
+        case .processOrigin, .processOpenFiles:
+            let body = try request.body(ProcessRequest.self)
+            // Answer only about the process the console saw: the PID must still belong to it (same start time).
+            let snapshot = try await readers.processes()
+            guard let current = snapshot.entry(pid: body.process.pid),
+                  PSProcessLister.sameProcess(current.startTime, body.process.startTime) else {
+                throw RemoteError(.unavailable, "That process has exited, or its PID now belongs to a different process.")
+            }
+            if request.operation == .processOpenFiles { return try request.response(try await readers.openFiles(current)) }
+            let origin = try await readers.processOrigin(current, snapshot)
+            let advice = KillAdvice.assess(entry: current, snapshot: snapshot, origin: origin, currentUID: Int(getuid()))
+            return try request.response(ProcessOriginReport(origin: origin, advice: advice))
         default:
             throw RemoteError(.unknownOperation, "This Mac does not know \(request.operation.rawValue).")
         }
@@ -183,6 +259,24 @@ public struct RequestHandler: Sendable {
                 }
                 let result = await actions.quitProcess(body.process, body.force)
                 return (try request.response(ActionResult(result: result)), ActionRecord(event: event, outcome: Self.outcome(result)))
+            case .containerAction:
+                let body = try request.body(ContainerActionRequest.self)
+                event = "\(body.action.title) container \(body.container.name) (\(body.engine.displayName))"
+                if let refusal = refusal(console: console, settings: settings) {
+                    return (request.failure(refusal), ActionRecord(event: event, outcome: "Refused: \(refusal.message)"))
+                }
+                guard ContainerID.isValid(body.container.id) else {
+                    return (request.failure(RemoteError(.invalidPayload, "That is not a container ID.")),
+                            ActionRecord(event: event, outcome: "Refused: not a container ID"))
+                }
+                let result = await actions.containerAction(body.action, body.container, body.engine)
+                let outcome: String
+                switch result {
+                case .done: outcome = "Done"
+                case .changed(let reason): outcome = "Refused: \(reason)"
+                case .failed(let reason): outcome = "Failed: \(reason)"
+                }
+                return (try request.response(ContainerActionResponse(result: result)), ActionRecord(event: event, outcome: outcome))
             default:
                 return (request.failure(RemoteError(.unknownOperation, "This Mac does not know \(request.operation.rawValue).")), nil)
             }
@@ -210,4 +304,46 @@ public struct RequestHandler: Sendable {
         case .failed(let message): return "Failed: \(message)"
         }
     }
+}
+
+/// Keeps the previous reading's counters between requests, so a rate (CPU, GPU time, power) can be computed over the
+/// interval since the last request from any console.
+final class IntervalSampler<State: Sendable, Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var state: State
+    private var last: Date?
+    private let reading: @Sendable (State, TimeInterval) async throws -> (Value, State)
+
+    init(initial: State, reading: @escaping @Sendable (State, TimeInterval) async throws -> (Value, State)) {
+        self.state = initial
+        self.reading = reading
+    }
+
+    func read() async throws -> Value {
+        let now = Date()
+        let (previous, interval) = snapshotState(now: now)
+        let (value, next) = try await reading(previous, interval)
+        store(next, at: now)
+        return value
+    }
+
+    private func snapshotState(now: Date) -> (State, TimeInterval) {
+        lock.lock(); defer { lock.unlock() }
+        return (state, last.map { now.timeIntervalSince($0) } ?? 0)
+    }
+
+    private func store(_ next: State, at date: Date) {
+        lock.lock(); defer { lock.unlock() }
+        state = next
+        last = date
+    }
+}
+
+/// One power sampler for the agent, created on first use (it subscribes to macOS's energy counters).
+enum GPUPowerShared {
+    #if canImport(Darwin)
+    static let sampler: PowerSampling? = IOReportPowerSampler()
+    #else
+    static let sampler: PowerSampling? = nil
+    #endif
 }

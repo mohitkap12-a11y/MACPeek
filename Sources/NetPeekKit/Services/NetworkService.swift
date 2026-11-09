@@ -35,6 +35,9 @@ public struct SystemNetworkReader: NetworkReading {
         self.dns = dns
     }
 
+    /// The runner, for the extras reader in the same module.
+    var extrasRunner: CommandRunning { runner }
+
     /// Runs a command; a failure to run it is nil, but cancellation always propagates.
     private func attempt(_ executable: String, _ arguments: [String]) async throws -> CommandOutput? {
         do { return try await runner.run(executable, arguments) }

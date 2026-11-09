@@ -72,8 +72,17 @@ changed, replayed, dropped or reordered frame fails to open and ends the connect
 Inside a sealed frame is an `Envelope` (`version`, `id`, `kind`, `operation`, JSON `payload`). Reads return the Kits'
 own models: `agent.capabilities`, `device.info`, `cpu.topology`, `cpu.snapshot`, `memory.stats`, `process.usage`,
 `disk.volumes`, `network.counters`, `network.snapshot`, `ports.list`, `processes.list`, `sleep.snapshot`,
-`dns.configuration` and `dns.probe` (only to a server in the Mac's own DNS configuration, for a valid host name). Actions are
-`ports.free` and `processes.quit`; they carry the row the console saw, which the Mac re-validates before signalling.
+`dns.configuration` and `dns.probe` (only to a server in the Mac's own DNS configuration, for a valid host name),
+`network.extras` (proxy, VPN, Tailscale, remembered Wi-Fi networks), `dns.overrides` (`/etc/hosts`, `/etc/resolver`),
+`bluetooth.devices` (devices and battery levels, never addresses), `processes.origin` and `processes.openFiles` (both carry the
+process the console saw and are answered only while that PID still belongs to it, same start time), `containers.snapshot`,
+`gpu.snapshot` and `models.snapshot`. Container logs are not offered remotely. Actions are `ports.free`, `processes.quit` and
+`containers.action` (start, stop, restart, pause, resume or remove one container; the container ID must be 12–64 hex
+characters and the Mac re-lists it and refuses if it is gone, renamed or in the wrong state); they carry the row the console
+saw, which the Mac re-validates before acting, and need a view-and-act pairing with "Allow actions" on.
+Readings that need two samples (GPU time, power, container-VM and runner CPU) are kept by the agent between requests, so a
+rate covers the interval since the previous request from any console. A console checks `agent.capabilities` before using
+an operation, so older Macs simply do not show the newer Peeks.
 The console's pairing and role are looked up again for every request, so revoking or changing a role applies at once.
 Errors: `unsupportedVersion`, `unknownOperation`, `invalidPayload`, `notPermitted`, `actionsDisabled`, `unavailable`.
 

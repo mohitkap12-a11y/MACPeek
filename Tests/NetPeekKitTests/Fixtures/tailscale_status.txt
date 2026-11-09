@@ -1,0 +1,14 @@
+{
+  "Version": "1.76.1-t1234567-g89abcdef",
+  "BackendState": "Running",
+  "TailscaleIPs": ["100.101.102.103", "fd7a:115c:a1e0::1"],
+  "Self": {"ID": "n1", "HostName": "studio", "DNSName": "studio.tail1234.ts.net.", "OS": "macOS", "TailscaleIPs": ["100.101.102.103", "fd7a:115c:a1e0::1"], "Online": true, "ExitNode": false},
+  "Health": ["Some peers are advertising routes but --accept-routes is false"],
+  "MagicDNSSuffix": "tail1234.ts.net",
+  "CurrentTailnet": {"Name": "me@example.com", "MagicDNSSuffix": "tail1234.ts.net", "MagicDNSEnabled": true},
+  "Peer": {
+    "nodekey:aaa": {"HostName": "nas", "DNSName": "nas.tail1234.ts.net.", "Online": true, "ExitNode": true},
+    "nodekey:bbb": {"HostName": "phone", "DNSName": "phone.tail1234.ts.net.", "Online": false, "ExitNode": false},
+    "nodekey:ccc": {"HostName": "laptop", "DNSName": "laptop.tail1234.ts.net.", "Online": true, "ExitNode": false}
+  }
+}

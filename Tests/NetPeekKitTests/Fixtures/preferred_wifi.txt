@@ -1,0 +1,4 @@
+Preferred networks on en0:
+	Home 5G
+	Office Guest
+	Cafe

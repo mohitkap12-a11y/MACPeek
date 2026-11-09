@@ -112,6 +112,38 @@ rm -f "$tmp"
 # PortPeek reference (live listeners on this Mac; compare with the committed fixtures)
 capsh lsof_listen 'lsof -nP +c 0 -iTCP -sTCP:LISTEN -iUDP -FpcLftPnT | head -n 400'
 
+# GPUPeek: GPUs and their clients (property list), and a short powermetrics-free check that IOReport exists.
+cap ioreg_gpu ioreg -r -d 2 -c IOAccelerator -a -w0
+capsh ioreport_present 'ls -l /usr/lib/libIOReport.dylib 2>&1; sysctl hw.optional.arm64'
+
+# ContainerPeek: only the tools you have installed; container names and images appear in the output.
+for tool in docker podman limactl colima tart prlctl; do
+  for dir in /opt/homebrew/bin /usr/local/bin; do
+    [ -x "$dir/$tool" ] && echo "found $dir/$tool"
+  done
+done > "$OUT/container_tools.txt" 2>&1
+command -v docker >/dev/null && { cap docker_ps docker ps --all --no-trunc --format '{{json .}}'; cap docker_stats docker stats --no-stream --no-trunc --format '{{json .}}'; cap docker_context docker context show; }
+command -v podman >/dev/null && { cap podman_ps podman ps --all --format json; cap podman_stats podman stats --no-stream --format json; }
+command -v limactl >/dev/null && cap limactl_list limactl list --json
+command -v colima >/dev/null && cap colima_list colima list --json
+command -v tart >/dev/null && cap tart_list tart list --format json
+command -v prlctl >/dev/null && cap prlctl_list prlctl list --all --json
+
+# ModelPeek: runner process NAMES only, and the runners' own local APIs (model names only).
+capsh model_runner_names "ps -axo pid=,ppid=,comm= | grep -Ei 'ollama|lm studio|lmstudio|llama|mlx' | grep -v grep"
+capsh ollama_ps 'curl -s --max-time 2 http://127.0.0.1:11434/api/ps'
+capsh lmstudio_models 'curl -s --max-time 2 http://127.0.0.1:1234/api/v0/models'
+
+# NetPeek extras / DNSPeek overrides / USBPeek Bluetooth / ProcessPeek launchd
+cap scutil_proxy scutil --proxy
+cap scutil_nc scutil --nc list
+capsh tailscale_status '(/Applications/Tailscale.app/Contents/MacOS/Tailscale status --json || tailscale status --json) 2>&1 | head -c 20000'
+capsh wifi_preferred 'networksetup -listpreferredwirelessnetworks "$(networksetup -listallhardwareports | awk "/Wi-Fi/{getline; print \$2}")"'
+cap etc_hosts cat /etc/hosts
+capsh etc_resolver 'for f in /etc/resolver/*; do echo "== $f"; cat "$f"; done'
+cap bluetooth system_profiler SPBluetoothDataType -json
+capsh launchctl_list 'launchctl list | head -n 80'
+
 {
   echo "MacPeek fixtures captured $(date -u +%FT%TZ)"
   for f in "$OUT"/*.txt; do

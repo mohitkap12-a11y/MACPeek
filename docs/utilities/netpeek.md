@@ -43,3 +43,19 @@ button, and the results are discarded when you leave the screen. Everything hand
 ## Verified against
 A Mac mini (Mac14,3) on Wi-Fi. Fixtures: `Tests/NetPeekKitTests/Fixtures/` (route, nwi, hardware ports, ping, Wi-Fi profiler, with
 the IPv6 address replaced). Ethernet, VPN and offline captures were not available; offline is covered by a synthetic `scutil --nwi`.
+
+## Proxy, VPN, Tailscale and Wi-Fi history
+Read once when NetPeek opens and on refresh, because they are the usual reason something "works in the browser but not in
+Terminal" (or the other way round):
+- **System proxy** (`scutil --proxy`): HTTP, HTTPS and SOCKS proxies, a PAC file, auto-discovery (WPAD) and the bypass
+  list. Only the global settings are read; per-interface (`__SCOPED__`) entries are ignored. NetPeek points out that most
+  command-line tools ignore the system proxy and use `HTTP_PROXY`/`HTTPS_PROXY` instead.
+- **VPN services** (`scutil --nc list`): every VPN macOS knows, including Network Extension VPNs (WireGuard, Tailscale,
+  corporate clients), with macOS's status for each.
+- **Tailscale** (`tailscale status --json`, from Homebrew or the app's own CLI in `Tailscale.app/Contents/MacOS/Tailscale`):
+  state, this Mac's tailnet name and address, peers online, the exit node in use and Tailscale's own health warnings.
+- **Remembered Wi-Fi networks** (`networksetup -listpreferredwirelessnetworks <Wi-Fi interface>`), most preferred first.
+  macOS keeps join dates in a file only administrators can read, so they are not shown.
+All read-only; nothing is changed and no network request is made. The interface name passed to networksetup must look like
+a BSD interface name (`en0`), so nothing else can become an argument. Not yet verified on a Mac: the fixtures for these
+parsers were written from the documented formats and `scripts/capture-fixtures.sh` now captures the real output.

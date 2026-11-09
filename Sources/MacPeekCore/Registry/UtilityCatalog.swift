@@ -128,10 +128,41 @@ public enum UtilityCatalog {
         permissions: ["None. macOS and Homebrew updates are never installed from MacPeek, and npm is never run with elevated rights."]
     )
 
+    public static let containerPeek = UtilityInfo(
+        id: "containerpeek", name: "ContainerPeek", question: "Which containers and VMs are running, and what are they costing me?",
+        tagline: "See your containers and VMs, their ports and what they use.",
+        summary: "Lists Docker and Podman containers with their published ports, Compose project, CPU and memory, and lets you start, stop, restart, pause or remove one after checking it is still the same container. It also lists Lima, Colima, Tart and Parallels virtual machines, and the hypervisor processes running on your Mac with the CPU and memory macOS counts for them.",
+        icon: "shippingbox", category: .developer, availability: .available,
+        reads: ["Containers and their resource use from the docker and podman tools you have installed (ps and stats), only while ContainerPeek is open",
+                "Virtual machines from limactl, colima, tart and prlctl when installed, only while ContainerPeek is open",
+                "CPU time and memory of hypervisor processes your user can inspect (libproc), only while ContainerPeek is open",
+                "A container's last log lines only when you ask for them"],
+        permissions: ["None. Actions run the engine's own start, stop, restart, pause, unpause or rm command as your user, after you confirm; rm never removes volumes or images."]
+    )
+    public static let gpuPeek = UtilityInfo(
+        id: "gpupeek", name: "GPUPeek", question: "How busy are my GPU and Neural Engine, and who is using them?",
+        tagline: "See GPU load, GPU memory and Neural Engine activity.",
+        summary: "Shows how busy the GPU is and how much memory it is using, as its driver reports it, which processes have the GPU open and how much GPU time each used, and on Apple silicon the power the CPU, GPU and Neural Engine draw. macOS reports no Neural Engine utilization to apps, so its power draw is shown instead, labelled as such.",
+        icon: "cpu.fill", category: .everyday, availability: .available,
+        reads: ["GPU statistics and GPU clients from the I/O registry (ioreg), only while GPUPeek is open",
+                "On Apple silicon, macOS's energy counters (IOReport, an undocumented interface loaded only if present), only while GPUPeek is open"],
+        permissions: ["None. No administrator rights are needed or asked for."]
+    )
+    public static let modelPeek = UtilityInfo(
+        id: "modelpeek", name: "ModelPeek", question: "Which local LLMs are loaded, and how much memory and GPU are they using?",
+        tagline: "See your local LLM runners and the models they have loaded.",
+        summary: "Finds Ollama, LM Studio, MLX, llama.cpp and llamafile processes, shows which models they have loaded, and how much memory, CPU and GPU each runner uses. Loaded models come from the runner's own local API where it has one (Ollama, LM Studio) and from its command line otherwise.",
+        icon: "brain", category: .developer, availability: .available,
+        reads: ["The process list (ps), only while ModelPeek is open; of a runner's command line only the model argument is used, never shown or stored",
+                "Memory and CPU time of runner processes your user can inspect (libproc), and their GPU time (ioreg)",
+                "Ollama's and LM Studio's local APIs on 127.0.0.1 (ports 11434 and 1234) while their processes run; nothing leaves your Mac"],
+        permissions: ["None"]
+    )
+
     public static let all: [UtilityInfo] = [
         portPeek, displayPeek, usbPeek, netPeek, batteryPeek, sleepPeek, memoryPeek, cpuPeek,
         fileLockPeek, processPeek, diskPeek, envPeek, dnsPeek,
-        soundPeek, updatePeek,
+        soundPeek, updatePeek, gpuPeek, containerPeek, modelPeek,
     ]
 
     public static func info(for id: String) -> UtilityInfo? { all.first { $0.id == id } }

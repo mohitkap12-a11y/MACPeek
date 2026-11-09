@@ -29,3 +29,13 @@ when you leave the screen.
 ## Verified against
 A Mac mini (Mac14,3) on Wi-Fi: `Tests/DNSPeekKitTests/Fixtures/` (`scutil --dns` with seven default resolvers, six of them mDNS, and
 one scoped; `dscacheutil` with IPv4 and IPv6 answers). Per-domain resolvers and search domains are covered by a synthetic test.
+
+## Local overrides: /etc/hosts and /etc/resolver
+The usual answer to "why does this domain resolve to the wrong address?". DNSPeek reads both files directly (they are
+world-readable) with the configuration and lists:
+- **/etc/hosts** entries someone added (the localhost and broadcasthost entries macOS ships with are not counted), with
+  their line numbers.
+- **/etc/resolver/** files: the domain each one covers, its nameservers and port, and any other settings.
+When the name in the lookup field is covered by either, DNSPeek says so next to the lookup ("/etc/hosts line 12 maps
+api.example.com to 127.0.0.1"). It also notes that `dig` and `nslookup` ignore both files while apps do not. DNSPeek never
+edits either file.

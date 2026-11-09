@@ -35,9 +35,9 @@ final class EnvelopeTests: XCTestCase {
     }
 
     func testUnknownOperationsStillDecode() throws {
-        let envelope = Envelope.request("gpu.snapshot", id: "x")
+        let envelope = Envelope.request("battery.snapshot", id: "x")
         let decoded = try JSONDecoder().decode(Envelope.self, from: try JSONEncoder().encode(envelope))
-        XCTAssertEqual(decoded.operation.rawValue, "gpu.snapshot")
+        XCTAssertEqual(decoded.operation.rawValue, "battery.snapshot")
         XCTAssertFalse(Operation.reads.contains(decoded.operation))
     }
 }

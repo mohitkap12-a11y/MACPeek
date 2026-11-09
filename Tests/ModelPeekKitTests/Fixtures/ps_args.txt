@@ -1,0 +1,12 @@
+    1 /sbin/launchd
+  612 /Applications/Ollama.app/Contents/MacOS/Ollama
+  640 /Applications/Ollama.app/Contents/Resources/ollama serve
+ 8120 /Applications/Ollama.app/Contents/Resources/ollama runner --model /Users/me/.ollama/models/blobs/sha256-6a0746a1ec1aef3e7ec53868f220ff6e389f6f8ef87a01d77c96807de94ca2aa --ctx-size 8192 --port 53211
+  701 /Applications/LM Studio.app/Contents/MacOS/LM Studio
+  702 /Applications/LM Studio.app/Contents/Frameworks/LM Studio Helper.app/Contents/MacOS/LM Studio Helper --type=renderer
+  930 /Users/me/.lmstudio/extensions/backends/llama.cpp-mac-arm64-apple-metal-advsimd-1.50.2/llmworker
+ 1001 /opt/homebrew/opt/python@3.12/bin/python3.12 -m mlx_lm.server --model mlx-community/Qwen2.5-7B-Instruct-4bit --port 8080
+ 1100 /opt/homebrew/bin/llama-server -m /Users/me/models/gemma-3-4b-it-Q4_K_M.gguf --port 8081 --api-key sk-secret
+ 1200 /Users/me/bin/mistral-7b.llamafile --server
+ 1300 /usr/bin/python3 manage.py runserver
+ 1400 -zsh

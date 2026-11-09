@@ -1,0 +1,6 @@
+PID	Status	Label
+-	0	com.apple.SafariHistoryServiceAgent
+812	0	com.apple.Finder
+4410	0	application.com.apple.Terminal.1234567.1234570
+5120	0	homebrew.mxcl.postgresql@16
+-	78	com.example.broken-agent

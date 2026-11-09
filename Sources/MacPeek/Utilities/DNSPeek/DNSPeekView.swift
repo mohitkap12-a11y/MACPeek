@@ -25,6 +25,7 @@ struct DNSPeekView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     ServersCard(configuration: configuration)
                     LookupCard(servers: configuration.activeServers)
+                    if let overrides = store.overrides { OverridesCard(overrides: overrides) }
                     OtherResolvers(configuration: configuration)
                 }
                 .padding(12)
@@ -114,6 +115,9 @@ private struct LookupCard: View {
             .controlSize(.small)
             Text("Sends DNS queries for this name to your resolver and to each server above. Nothing else is sent.")
                 .font(.caption2).foregroundStyle(.tertiary)
+            ForEach(store.lookupExplanation, id: \.self) { line in
+                Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+            }
 
             if store.isLookingUp { ProgressView().controlSize(.small) }
             if let error = store.lookupError { Text(error).font(.caption).foregroundStyle(.orange) }
@@ -190,6 +194,50 @@ private struct OtherResolvers: View {
             }
             .font(.caption)
         }
+    }
+}
+/// Local overrides: `/etc/hosts` entries someone added and per-domain resolvers in `/etc/resolver/`.
+private struct OverridesCard: View {
+    let overrides: DNSOverrides
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Local overrides").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                StatusBadge(text: overrides.hasOverrides ? "In effect" : "None", tone: overrides.hasOverrides ? .warning : .good)
+            }
+            Text("/etc/hosts").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note = overrides.hostsNote { Text(note).font(.caption).foregroundStyle(.orange) }
+            if overrides.customHostsEntries.isEmpty {
+                Text("Only the entries macOS ships with.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(overrides.customHostsEntries) { entry in
+                HStack(alignment: .top) {
+                    Text(entry.address).font(.caption.monospaced()).frame(width: 120, alignment: .leading)
+                    Text(entry.names.joined(separator: " ")).font(.caption.monospaced()).textSelection(.enabled)
+                    Spacer()
+                    Text("line \(entry.line)").font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            Text("/etc/resolver").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            if let note = overrides.resolverNote { Text(note).font(.caption).foregroundStyle(.orange) }
+            if overrides.resolverFiles.isEmpty {
+                Text("No per-domain resolvers.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(overrides.resolverFiles) { file in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("*.\(file.domain)").font(.caption.monospaced().weight(.medium))
+                    Text((file.nameservers.isEmpty ? "no nameserver" : file.nameservers.joined(separator: ", "))
+                         + (file.port.map { " · port \($0)" } ?? "")
+                         + (file.otherSettings.isEmpty ? "" : " · " + file.otherSettings.joined(separator: "; ")))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            Text("The system resolver checks /etc/hosts first, and sends names under a /etc/resolver domain to that file's servers. Command-line tools such as dig and nslookup ignore both.")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+        .peekCard()
     }
 }
 #endif

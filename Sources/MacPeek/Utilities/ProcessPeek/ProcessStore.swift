@@ -22,8 +22,16 @@ final class ProcessStore: ObservableObject {
     /// Set when SIGTERM did not stop the process: the UI then offers an explicit force kill of exactly this process.
     @Published private(set) var forceCandidate: ProcessEntry?
     @Published private(set) var banner: Banner?
+    /// How the opened process was started (its launchd job or app), read when it is opened.
+    @Published private(set) var origin: ProcessOrigin?
+    /// Its open files, read only when the person asks.
+    @Published private(set) var openFiles: OpenFilesReport?
+    @Published private(set) var openFilesLoading = false
 
     private let lister: ProcessListing
+    private let insight: ProcessInsightReading?
+    private var insightTask: Task<Void, Never>?
+    private var originTask: Task<Void, Never>?
     private let terminator: ProcessTerminator
     private let permissions: PermissionService
     private let settings: AppSettings
@@ -37,9 +45,10 @@ final class ProcessStore: ObservableObject {
     /// True only while the ProcessPeek screen is on screen: nothing reads the process table in the background.
     private var isActive = false
 
-    init(lister: ProcessListing, terminator: ProcessTerminator, permissions: PermissionService,
+    init(lister: ProcessListing, insight: ProcessInsightReading? = nil, terminator: ProcessTerminator, permissions: PermissionService,
          settings: AppSettings, notifier: NotificationService) {
         self.lister = lister
+        self.insight = insight
         self.terminator = terminator
         self.permissions = permissions
         self.settings = settings
@@ -130,12 +139,51 @@ final class ProcessStore: ObservableObject {
 
     func select(_ pid: Int?) {
         detailsTask?.cancel()
+        insightTask?.cancel()
+        originTask?.cancel()
         detailsBusy = false
         selectedPID = pid
         details = nil
         detailsLoading = false
+        origin = nil
+        openFiles = nil
+        openFilesLoading = false
         guard let pid, let entry = snapshot?.entry(pid: pid) else { return }
         loadDetails(for: entry, showLoading: true)
+        loadOrigin(for: entry)
+    }
+
+    /// Advice on ending the opened process, from what MacPeek knows about it (inference, never a guarantee).
+    func killAdvice(for entry: ProcessEntry) -> KillAdvice? {
+        guard let snapshot else { return nil }
+        return KillAdvice.assess(entry: entry, snapshot: snapshot, origin: origin, currentUID: currentUID)
+    }
+
+    private func loadOrigin(for entry: ProcessEntry) {
+        guard let insight, let snapshot else { return }
+        originTask = Task { [weak self] in
+            let result = await insight.origin(of: entry, in: snapshot)
+            guard !Task.isCancelled, self?.selectedPID == entry.pid else { return }
+            self?.origin = result
+        }
+    }
+
+    /// Lists the opened process's open files (`lsof -p`). Paths are shown on screen only.
+    func loadOpenFiles(for entry: ProcessEntry) {
+        guard let insight else { return }
+        insightTask?.cancel()
+        openFilesLoading = true
+        insightTask = Task { [weak self] in
+            do {
+                let report = try await insight.openFiles(of: entry, limit: 300)
+                guard !Task.isCancelled, self?.selectedPID == entry.pid else { return }
+                self?.openFiles = report
+            } catch {
+                if Task.isCancelled { return }
+                self?.openFiles = OpenFilesReport(pid: entry.pid, files: [], truncated: false, note: error.localizedDescription)
+            }
+            self?.openFilesLoading = false
+        }
     }
 
     private func loadDetails(for entry: ProcessEntry, showLoading: Bool) {

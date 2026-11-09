@@ -26,6 +26,7 @@ struct NetPeekView: View {
                     ConnectionCard(snapshot: snapshot)
                     if snapshot.primary?.isWiFi == true { WiFiCard() }
                     ChecksCard(snapshot: snapshot)
+                    ExtrasCard()
                     OtherInterfaces(snapshot: snapshot)
                 }
                 .padding(12)
@@ -44,7 +45,7 @@ struct NetPeekView: View {
         HStack {
             Text("Pings only when you press Run checks")
             Spacer()
-            Button { store.reloadWiFi(); Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
+            Button { store.reloadWiFi(); store.reloadExtras(); Task { await store.refresh() } } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.borderless)
                 .help("Refresh now")
                 .keyboardShortcut("r", modifiers: .command)
@@ -185,6 +186,73 @@ private struct OtherInterfaces: View {
             }
             .font(.caption)
         }
+    }
+}
+/// Proxy, VPN, Tailscale and Wi-Fi history: the settings that most often explain "works in the browser, fails in Terminal".
+private struct ExtrasCard: View {
+    @EnvironmentObject private var store: NetStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Proxy, VPN and Tailscale").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if store.isLoadingExtras { ProgressView().controlSize(.small) }
+            }
+            if let extras = store.extras {
+                ForEach(extras.findings, id: \.self) { finding in
+                    Label(finding, systemImage: "lightbulb").font(.caption).foregroundStyle(.secondary)
+                }
+                KeyValueRows(rows: rows(extras))
+                if let proxy = extras.proxy, proxy.isAnyEnabled, !proxy.exceptions.isEmpty {
+                    Text("Bypassed: " + proxy.exceptions.joined(separator: ", ")).font(.caption2).foregroundStyle(.secondary).lineLimit(3)
+                }
+                if !extras.vpns.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("VPN services").font(.caption).foregroundStyle(.secondary)
+                        ForEach(extras.vpns) { vpn in
+                            HStack {
+                                Text(vpn.name).font(.caption)
+                                Spacer()
+                                StatusBadge(text: vpn.status, tone: vpn.isConnected ? .good : (vpn.isConnecting ? .warning : .neutral))
+                            }
+                        }
+                    }
+                }
+                if let networks = extras.preferredWiFi, !networks.isEmpty {
+                    DisclosureGroup("Remembered Wi-Fi networks (\(networks.count))") {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(networks.enumerated()), id: \.offset) { index, name in
+                                Text("\(index + 1). \(name)").font(.caption).textSelection(.enabled)
+                            }
+                            Text("Most preferred first. macOS joins the first one in range.").font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
+                    }
+                    .font(.caption)
+                }
+            } else if !store.isLoadingExtras {
+                Text("Not read yet.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .peekCard()
+    }
+
+    private func rows(_ extras: NetExtras) -> [(label: String, value: String)] {
+        var rows: [(label: String, value: String)] = [("System proxy", extras.proxy?.summary ?? "Could not be read")]
+        rows.append(("VPN", extras.connectedVPNs.isEmpty ? "None connected" : extras.connectedVPNs.map(\.name).joined(separator: ", ")))
+        if let tailscale = extras.tailscale {
+            var value = tailscale.backendState
+            if let name = tailscale.selfName { value += " · \(name)" }
+            if let address = tailscale.selfAddresses.first { value += " · \(address)" }
+            if tailscale.isRunning { value += " · \(tailscale.peersOnline) of \(tailscale.peersTotal) peers online" }
+            rows.append(("Tailscale", value))
+            if let exit = tailscale.exitNode { rows.append(("Exit node", exit)) }
+        } else if let note = extras.tailscaleNote {
+            rows.append(("Tailscale", note))
+        }
+        return rows
     }
 }
 #endif

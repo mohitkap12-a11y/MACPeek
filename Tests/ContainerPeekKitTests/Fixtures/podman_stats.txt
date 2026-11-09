@@ -1,0 +1,1 @@
+[{"id":"9a8b7c6d5e4f","name":"api-cache","cpu_percent":"0.35%","mem_usage":"9.4MB / 2.048GB","mem_percent":"0.46%","net_io":"1.1kB / 0B","block_io":"0B / 0B","pids":"5"}]

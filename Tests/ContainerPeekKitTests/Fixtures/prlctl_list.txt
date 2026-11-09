@@ -1,0 +1,1 @@
+[{"uuid":"{6c8a1f2e-0000-4000-8000-000000000000}","status":"running","ip_configured":"-","name":"Windows 11"},{"uuid":"{7d9b2f3e-0000-4000-8000-000000000000}","status":"stopped","ip_configured":"-","name":"Ubuntu"}]

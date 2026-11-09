@@ -17,5 +17,8 @@ which statements are verified OS facts versus inference.
 - [DNSPeek](dnspeek.md)
 - [SoundPeek](soundpeek.md)
 - [UpdatePeek](updatepeek.md)
+- [GPUPeek](gpupeek.md)
+- [ContainerPeek](containerpeek.md)
+- [ModelPeek](modelpeek.md)
 
 Cross-cutting feasibility, permission diff and release checklist for the newest utilities: [next-peeks-capability-report.md](../next-peeks-capability-report.md).

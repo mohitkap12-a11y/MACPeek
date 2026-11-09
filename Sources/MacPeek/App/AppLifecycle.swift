@@ -15,6 +15,9 @@ import DNSPeekKit
 import NetPeekKit
 import SoundPeekKit
 import UpdatePeekKit
+import ContainerPeekKit
+import GPUPeekKit
+import ModelPeekKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
@@ -48,11 +51,12 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         )
 
         let displayStore = DisplayStore(discovery: SystemProfilerDisplayDiscovery())
-        let usbStore = USBStore(discovery: SystemUSBDiscovery(), settings: settings)
+        let usbStore = USBStore(discovery: SystemUSBDiscovery(), bluetooth: SystemBluetoothReader(), settings: settings)
         let sleepStore = SleepStore(reader: PMSetSleepReader(), settings: settings)
 
         let processStore = ProcessStore(
             lister: PSProcessLister(),
+            insight: SystemProcessInsightReader(),
             terminator: ProcessTerminator(),
             permissions: PermissionService(),
             settings: settings,
@@ -68,8 +72,9 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
 
         let dnsReader = SystemDNSReader()
-        let dnsStore = DNSStore(reader: dnsReader)
-        let netStore = NetStore(reader: SystemNetworkReader(dns: dnsReader), settings: settings)
+        let dnsStore = DNSStore(reader: dnsReader, overridesReader: FileDNSOverridesReader())
+        let netReader = SystemNetworkReader(dns: dnsReader)
+        let netStore = NetStore(reader: netReader, extrasReader: netReader, settings: settings)
 
         let soundStore = SoundStore(service: SoundPeekService(provider: CoreAudioDeviceProvider()),
                                     observer: CoreAudioChangeObserver())
@@ -81,6 +86,14 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             npmLocator: npmLocator, npm: NpmOutdatedChecker(locator: npmLocator),
             npmInstaller: NpmGlobalInstaller(locator: npmLocator),
             macOSRecord: PreferencesSoftwareUpdateRecord(), macOSChecker: SoftwareUpdateChecker()))
+
+        // GPUPeek's power sampler subscribes to macOS's energy counters once; it is only sampled while GPUPeek is open.
+        let gpuReader = SystemGPUReader(power: IOReportPowerSampler())
+        let gpuStore = GPUStore(reader: gpuReader, settings: settings)
+        let containerStore = ContainerStore(reader: SystemContainerReader(usage: processUsageReader),
+                                            controller: SystemContainerController(), settings: settings)
+        // ModelPeek reads GPU clients without the power sampler: it only needs per-process GPU time.
+        let modelStore = ModelStore(reader: SystemModelReader(usage: processUsageReader, gpu: SystemGPUReader()), settings: settings)
 
         let registry = UtilityRegistry(modules: [
             PortPeekModule(store: portStore),
@@ -97,6 +110,9 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             DNSPeekModule(store: dnsStore),
             SoundPeekModule(store: soundStore),
             UpdatePeekModule(store: updateStore),
+            GPUPeekModule(store: gpuStore),
+            ContainerPeekModule(store: containerStore),
+            ModelPeekModule(store: modelStore),
         ])
         registry.gaugeRefreshInterval = { [weak settings] in settings?.refreshInterval ?? 2 }
         let router = UtilityRouter(registry: registry)
