@@ -2,7 +2,7 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.2.0] - Unreleased
+## [0.3.2] - 2026-11-09
 ### Added
 - **ContainerPeek**: answers "Which containers and VMs are running, and what are they costing me?" Docker and Podman
   containers (with the Docker context: Docker Desktop, OrbStack, Colima, Rancher Desktop) with published ports, Compose
@@ -26,7 +26,36 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - **Remote management**: `network.extras`, `dns.overrides`, `bluetooth.devices`, `processes.origin`,
   `processes.openFiles`, `containers.snapshot`, `gpu.snapshot`, `models.snapshot` and the `containers.action` action
   (gated like the other actions). See [docs/remote.md](docs/remote.md).
+- **Remote management: accounts (protocol version 2).** A MacPeek Remote console signed in to an account can pair this
+  Mac into the account, so every device of that account can connect, with the access chosen at the Mac (the code and
+  four words are unchanged, and the Mac says the pairing adds it to an account). Consoles paired before keep working and
+  can offer "Move this Mac to your account", which the Mac announces and lets you undo. Devices removed from the
+  account are refused as soon as one of its consoles hands the Mac the account's signed revocation list. Settings shows
+  the account, its devices, **Undo move** and **Remove from account**. MacPeek itself still needs no account.
+- **Remote management**: `dns.configuration` (the resolvers macOS is using) and `dns.probe` (ask one DNS server for a
+  name) for MacPeek Remote's DNSPeek view. The Mac only asks servers in its own configuration, and only for a valid host
+  name, so a console cannot use it to send queries anywhere else.
 - Shared `LooseJSON`, `ExecutableLocator` and `ByteSizeText` (MacPeekCore) for reading other tools' JSON and sizes.
+### Changed
+- `docs/remote.md` documents protocol version 2: workspace keys and certificate chains, signed revocation lists, the
+  Mac's claim and the workspace roles (`owner`, `admin`, `operator`, `viewer`).
+- CI and the release workflow run on macOS 15 runners (GitHub retired the macOS 14 image on November 2, 2026).
+- `Package.resolved` is no longer tracked.
+### Fixed
+- **Remote management: pairing and connections hardened.** Every connection now shares one attempt limit against the
+  code on screen, so connections opened before a code was withdrawn can no longer keep guessing. A cancelled pairing is
+  never confirmed, a pairing finishes exactly once when the console's confirmation and the decision on the Mac arrive
+  together, a connection closed while a request ran (revoked, turned off) is not reopened and gets no answer, and
+  switching Remote management off right after on no longer leaves a listener running.
+### Upgrading
+- No new permissions or entitlements. Remote management stays off unless you turn it on, and consoles paired with 0.3.0
+  or 0.3.1 keep working.
+
+## [0.3.1] - 2026-10-27
+Built from the same commit as 0.3.0; no code changes.
+
+## [0.3.0] - 2026-10-27
+### Added
 - **MemoryPeek**: answers "Is my Mac actually running out of memory?" It leads with memory pressure (Normal, Warning,
   Critical) and a plain-language reading, then shows how memory is split (app memory, wired, compressed, cached files, free),
   how much has been moved to disk (swap), and the 15 processes with the largest memory footprint (the figure Activity Monitor
@@ -49,12 +78,6 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   `TrafficSampler` turns consecutive readings into download and upload rates. Totals leave out loopback, VPN tunnels and
   Apple's peer-to-peer interfaces, and a 32-bit counter wrap is handled. Not yet shown in the app.
 - `MemoryStats.swapTotalBytes`: the swap space macOS has set aside, next to the amount used.
-- **Remote management: accounts (protocol version 2).** A MacPeek Remote console signed in to an account can pair this
-  Mac into the account, so every device of that account can connect, with the access chosen at the Mac (the code and
-  four words are unchanged, and the Mac says the pairing adds it to an account). Consoles paired before keep working and
-  can offer "Move this Mac to your account", which the Mac announces and lets you undo. Devices removed from the
-  account are refused as soon as one of its consoles hands the Mac the account's signed revocation list. Settings shows
-  the account, its devices, **Undo move** and **Remove from account**. MacPeek itself still needs no account.
 - **Remote management** (Settings → Remote management), **off by default**, for the upcoming MacPeek Remote console.
   When turned on, MacPeek listens on the local network and advertises itself over Bonjour; while off, nothing listens or
   connects. Consoles must be paired on the Mac with a one-time code and four words compared on both screens, every
@@ -63,6 +86,7 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   menu-bar icon shows while it is on. New UI-free targets `RemoteCrypto`, `RemoteProtocol` and `RemoteAgent`, tested on
   Linux; the protocol is documented in `docs/remote.md`. The app asks for local network access the first time it is
   turned on (`NSLocalNetworkUsageDescription`).
+- Dependabot for SwiftPM and GitHub Actions.
 ### Changed
 - **New launcher and look.** CPU, Memory and Disk rings across the top (CPU in use and load, memory in use, startup disk
   used and free), then every other enabled utility as a row with its summary (and the search field). New dark and light colours, a sun/moon
@@ -75,26 +99,38 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   memory pressure gauge and colour bar, and a startup-disk card with live read/write rates and capacity.
 - DiskPeek and ProcessPeek format sizes with the shared formatter (one decimal below 100, e.g. ProcessPeek now shows "23.4 MB"
   where it showed "23 MB").
+- CI actions updated: `actions/checkout` 4 to 7, `softprops/action-gh-release` 2 to 3.
 ### Fixed
 - DiskPeek no longer reports a long-running process that could not be read in the previous sample as if its whole lifetime
   of disk I/O happened in one interval; it starts a new baseline instead.
+
+## [0.2.2] - 2026-10-17
+### Added
+- **Support MacPeek.** A new Support screen (heart button in the launcher footer, and a link in About) with the GitHub Sponsors
+  and PayPal links from the website. Optional; links only open in your browser when you click them.
+### Changed
+- Softer popover background in light mode.
+- Release docs and workflow messages: the website deploy hook is now a Cloudflare Workers Builds hook.
+
+## [0.2.1] - 2026-10-13
+### Fixed
+- **ProcessPeek now updates live.** The process list, search results and the opened process (including its listening ports)
+  were read only when the screen opened or on manual refresh, so they went stale. They now refresh every
+  **Settings → Refresh every** seconds while ProcessPeek is on screen, without a loading flash, and stop when you leave it.
+
+## [0.2.0] - 2026-10-13
+### Added
 - **In-app updates.** MacPeek can now update itself (using [Sparkle](https://sparkle-project.org)). About once a day it asks
   GitHub whether a newer release exists, and **Settings → Updates → Check for Updates…** checks on demand. Automatic
   checks are on by default and can be switched off in Settings. Updates are verified with an EdDSA signature and Apple's
   code signature before they are installed; nothing about you or your Mac is sent beyond an ordinary web request.
   Sparkle is MacPeek's only third-party dependency. Builds without an update key (`swift run`, local builds) run with
   updates switched off.
-- **Support MacPeek.** A new Support screen (heart button in the launcher footer, and a link in About) with the GitHub Sponsors
-  and PayPal links from the website. Optional; links only open in your browser when you click them.
 - The release workflow signs each DMG with the update key and publishes an `appcast.xml` feed next to the DMG.
 ### Changed
 - README, SECURITY, About and Settings now describe the daily update check alongside the checks you start yourself.
 - `docs/release.md` is now a full release runbook: one-time signing and notarization setup, Sparkle keys, every-release
   steps and troubleshooting.
-### Fixed
-- **ProcessPeek now updates live.** The process list, search results and the opened process (including its listening ports)
-  were read only when the screen opened or on manual refresh, so they went stale. They now refresh every
-  **Settings → Refresh every** seconds while ProcessPeek is on screen, without a loading flash, and stop when you leave it.
 ### Upgrading
 - 0.1.0 has no updater, so install 0.2.0 by downloading it once; from then on MacPeek can offer later releases itself.
 
