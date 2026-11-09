@@ -98,7 +98,7 @@ public struct AgentReaders: Sendable {
             try await SystemContainerReader(usage: usage).snapshot(previous: previous, interval: interval)
         }
         let gpu = IntervalSampler<[GPUClient]?, GPUSnapshot>(initial: nil) { previous, interval in
-            try await SystemGPUReader(power: GPUPowerShared.sampler).snapshot(previousClients: previous, interval: interval)
+            try await SystemGPUReader(power: GPUPowerShared.sampler, deviceFacts: GPUPowerShared.deviceFacts).snapshot(previousClients: previous, interval: interval)
         }
         let models = IntervalSampler<ModelSamplingState?, ModelSnapshot>(initial: nil) { previous, _ in
             let (snapshot, state) = try await SystemModelReader(usage: usage, gpu: SystemGPUReader()).snapshot(previous: previous)
@@ -346,4 +346,16 @@ enum GPUPowerShared {
     #else
     static let sampler: PowerSampling? = nil
     #endif
+
+    /// Metal's facts (family, memory the GPU may use) do not change while the agent runs, so they are read once.
+    #if canImport(Metal)
+    static let deviceFacts: GPUDeviceFactsReading? = FixedDeviceFacts(list: MetalDeviceFactsReader().facts())
+    #else
+    static let deviceFacts: GPUDeviceFactsReading? = nil
+    #endif
+}
+
+private struct FixedDeviceFacts: GPUDeviceFactsReading {
+    let list: [GPUDeviceFacts]
+    func facts() -> [GPUDeviceFacts] { list }
 }

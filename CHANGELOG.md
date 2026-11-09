@@ -2,6 +2,11 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Changed
+- **Remote agent**: GPUPeek replies now carry Metal's facts about the GPU (family, memory the GPU may use), so the
+  console can show GPU memory as a share of what the GPU may use.
+
 ## [0.3.2] - 2026-11-09
 ### Added
 - **GPUPeek on the launcher**: a GPU ring tile between CPU and Memory (GPU busy, with GPU memory in use). With four
