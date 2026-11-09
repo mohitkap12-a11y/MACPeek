@@ -98,7 +98,7 @@ public struct AgentReaders: Sendable {
             try await SystemContainerReader(usage: usage).snapshot(previous: previous, interval: interval)
         }
         let gpu = IntervalSampler<[GPUClient]?, GPUSnapshot>(initial: nil) { previous, interval in
-            try await SystemGPUReader(power: GPUPowerShared.sampler).snapshot(previousClients: previous, interval: interval)
+            try await SystemGPUReader(power: GPUPowerShared.sampler, deviceFacts: GPUPowerShared.deviceFacts).snapshot(previousClients: previous, interval: interval)
         }
         let models = IntervalSampler<ModelSamplingState?, ModelSnapshot>(initial: nil) { previous, _ in
             let (snapshot, state) = try await SystemModelReader(usage: usage, gpu: SystemGPUReader()).snapshot(previous: previous)
@@ -346,4 +346,36 @@ enum GPUPowerShared {
     #else
     static let sampler: PowerSampling? = nil
     #endif
+
+    /// Metal's facts (family, memory the GPU may use) barely change, so they are re-read at most once a minute; that
+    /// still picks up an external GPU attached while the agent runs.
+    #if canImport(Metal)
+    static let deviceFacts: GPUDeviceFactsReading? = RefreshingDeviceFacts(reader: MetalDeviceFactsReader())
+    #else
+    static let deviceFacts: GPUDeviceFactsReading? = nil
+    #endif
+}
+
+/// Reuses a reader's facts for `lifetime` seconds before reading them again.
+final class RefreshingDeviceFacts: GPUDeviceFactsReading, @unchecked Sendable {
+    private let reader: GPUDeviceFactsReading
+    private let lifetime: TimeInterval
+    private let now: @Sendable () -> Date
+    private let lock = NSLock()
+    private var cached: (facts: [GPUDeviceFacts], at: Date)?
+
+    init(reader: GPUDeviceFactsReading, lifetime: TimeInterval = 60, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.reader = reader
+        self.lifetime = lifetime
+        self.now = now
+    }
+
+    func facts() -> [GPUDeviceFacts] {
+        lock.lock(); defer { lock.unlock() }
+        let date = now()
+        if let cached, date.timeIntervalSince(cached.at) < lifetime { return cached.facts }
+        let facts = reader.facts()
+        cached = (facts, date)
+        return facts
+    }
 }
