@@ -128,6 +128,15 @@ public enum UtilityCatalog {
         permissions: ["None. macOS and Homebrew updates are never installed from MacPeek, and npm is never run with elevated rights."]
     )
 
+    public static let gpuPeek = UtilityInfo(
+        id: "gpupeek", name: "GPUPeek", question: "How busy are my GPU and Neural Engine, and who is using them?",
+        tagline: "See GPU load, GPU memory and Neural Engine activity.",
+        summary: "Shows how busy the GPU is and how much memory it is using, as its driver reports it, which processes have the GPU open and how much GPU time each used, and on Apple silicon the power the CPU, GPU and Neural Engine draw. macOS reports no Neural Engine utilization to apps, so its power draw is shown instead, labelled as such.",
+        icon: "cpu.fill", category: .everyday, availability: .available,
+        reads: ["GPU statistics and GPU clients from the I/O registry (ioreg), only while GPUPeek is open",
+                "On Apple silicon, macOS's energy counters (IOReport, an undocumented interface loaded only if present), only while GPUPeek is open"],
+        permissions: ["None. No administrator rights are needed or asked for."]
+    )
     public static let containerPeek = UtilityInfo(
         id: "containerpeek", name: "ContainerPeek", question: "Which containers and VMs are running, and what are they costing me?",
         tagline: "See your containers and VMs, their ports and what they use.",
@@ -138,15 +147,6 @@ public enum UtilityCatalog {
                 "CPU time and memory of hypervisor processes your user can inspect (libproc), only while ContainerPeek is open",
                 "A container's last log lines only when you ask for them"],
         permissions: ["None. Actions run the engine's own start, stop, restart, pause, unpause or rm command as your user, after you confirm; rm never removes volumes or images."]
-    )
-    public static let gpuPeek = UtilityInfo(
-        id: "gpupeek", name: "GPUPeek", question: "How busy are my GPU and Neural Engine, and who is using them?",
-        tagline: "See GPU load, GPU memory and Neural Engine activity.",
-        summary: "Shows how busy the GPU is and how much memory it is using, as its driver reports it, which processes have the GPU open and how much GPU time each used, and on Apple silicon the power the CPU, GPU and Neural Engine draw. macOS reports no Neural Engine utilization to apps, so its power draw is shown instead, labelled as such.",
-        icon: "cpu.fill", category: .everyday, availability: .available,
-        reads: ["GPU statistics and GPU clients from the I/O registry (ioreg), only while GPUPeek is open",
-                "On Apple silicon, macOS's energy counters (IOReport, an undocumented interface loaded only if present), only while GPUPeek is open"],
-        permissions: ["None. No administrator rights are needed or asked for."]
     )
     public static let modelPeek = UtilityInfo(
         id: "modelpeek", name: "ModelPeek", question: "Which local LLMs are loaded, and how much memory and GPU are they using?",
