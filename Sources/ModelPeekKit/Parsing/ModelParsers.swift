@@ -47,6 +47,16 @@ public enum RunnerMatcher {
         public let role: String
     }
 
+    /// Whether a process could be a runner, from its executable alone. Only these processes' command lines are read.
+    public static func isCandidate(command: String) -> Bool {
+        let name = (command.split(separator: "/").last.map(String.init) ?? command).lowercased()
+        if name.hasPrefix("ollama") || command.contains("/Ollama.app/") { return true }
+        if command.contains("/LM Studio.app/") || command.contains("/.lmstudio/") || command.contains("/.cache/lm-studio/") { return true }
+        if name == "llamafile" || name.hasSuffix(".llamafile") || llamaCppTools.contains(name) { return true }
+        // MLX runs in Python (`python -m mlx_lm.server`) or as an mlx_lm entry-point script.
+        return name.hasPrefix("python") || name.hasPrefix("mlx_lm") || name.hasPrefix("mlx-lm") || name.hasPrefix("mlx_vlm")
+    }
+
     private static let llamaCppTools: Set<String> = ["llama-server", "llama-cli", "llama-run", "llama-simple", "llama-mtmd-cli",
                                                      "llama-embedding", "llama-bench", "llama-gguf", "rpc-server"]
 

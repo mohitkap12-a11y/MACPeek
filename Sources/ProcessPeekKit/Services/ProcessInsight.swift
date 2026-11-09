@@ -283,8 +283,22 @@ public struct SystemProcessInsightReader: ProcessInsightReading {
         return LaunchctlPrintParser.parse(output.stdout)
     }
 
+    /// The process's start time as `ps` reports it now, or nil when it has exited.
+    private func startTime(pid: Int) async throws -> Date? {
+        let output = try await runner.run("/usr/bin/env", ["LC_ALL=C", "/bin/ps", "-o", "lstart=", "-p", String(pid)])
+        let line = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard output.status == 0, !line.isEmpty else { return nil }
+        return PSParser.date(from: line)
+    }
+
+    /// Lists open files only while the PID still belongs to the process the person opened (same start time, checked
+    /// before and after `lsof`), so a reused PID never shows another process's files.
     public func openFiles(of entry: ProcessEntry, limit: Int = 300) async throws -> OpenFilesReport {
+        let changed = OpenFilesReport(pid: entry.pid, files: [], truncated: false,
+                                      note: "This process has exited, or its PID now belongs to a different process.")
+        guard PSProcessLister.sameProcess(try await startTime(pid: entry.pid), entry.startTime) else { return changed }
         let output = try await runner.run(Self.lsof, ["-n", "-P", "-w", "-p", String(entry.pid), "-F", "ftn"])
+        guard PSProcessLister.sameProcess(try await startTime(pid: entry.pid), entry.startTime) else { return changed }
         let files = LsofOpenFilesParser.parse(output.stdout)
         if files.isEmpty {
             let note = entry.uid == uid ? "lsof listed no open files (the process may have exited)."

@@ -111,8 +111,17 @@ public struct SystemModelReader: ModelReading {
             let detail = comm.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             throw ModelError.commandFailed(detail.isEmpty ? "ps exited with status \(comm.status)" : detail)
         }
-        let args = try await runner.run(Self.ps, ["-axww", "-o", "pid=,args="])
-        let lines = ProcessLineParser.parse(comm: comm.stdout, args: args.status == 0 ? args.stdout : "")
+        // Command lines can hold other apps' secrets, so only the candidate runners' are read.
+        let all = ProcessLineParser.parse(comm: comm.stdout, args: "")
+        let candidates = all.filter { RunnerMatcher.isCandidate(command: $0.command) }.prefix(200)
+        var argsText = ""
+        if !candidates.isEmpty {
+            let list = candidates.map { String($0.pid) }.joined(separator: ",")
+            let args = try await runner.run(Self.ps, ["-ww", "-o", "pid=,args=", "-p", list])
+            argsText = args.status == 0 ? args.stdout : ""
+        }
+        let lines = ProcessLineParser.parse(comm: comm.stdout, args: argsText)
+            .filter { RunnerMatcher.isCandidate(command: $0.command) }
 
         var matched: [(ProcessLine, RunnerMatcher.Match)] = []
         for line in lines { if let match = RunnerMatcher.match(line) { matched.append((line, match)) } }

@@ -46,7 +46,7 @@ public enum DockerPortsParser {
             if let g = published.groups(in: item), let host = g[2].flatMap(Int.init), let inside = g[4].flatMap(Int.init), let proto = g[6] {
                 var ip = g[1] ?? ""
                 if ip.hasPrefix("[") && ip.hasSuffix("]") { ip = String(ip.dropFirst().dropLast()) }
-                let mapping = PortMapping(hostIP: ip.isEmpty ? nil : ip, hostPort: host, containerPort: inside,
+                let mapping = PortMapping(hostIP: ip.isEmpty ? nil : ip, hostPort: host, hostPortEnd: g[3].flatMap(Int.init), containerPort: inside,
                                           containerPortEnd: g[5].flatMap(Int.init), protocolName: proto)
                 let isWildcard6 = ip == "::" || ip.isEmpty
                 if isWildcard6, result.contains(where: { $0.hostPort == host && $0.containerPort == inside && $0.protocolName == proto }) {
@@ -98,7 +98,9 @@ public enum PodmanPSParser {
                 guard let inside = LooseJSON.int(port, "container_port") else { return nil }
                 let range = LooseJSON.int(port, "range") ?? 1
                 let host = LooseJSON.int(port, "host_port")
-                return PortMapping(hostIP: LooseJSON.text(port, "host_ip"), hostPort: host == 0 ? nil : host, containerPort: inside,
+                let published = host.flatMap { $0 == 0 ? nil : $0 }
+                return PortMapping(hostIP: LooseJSON.text(port, "host_ip"), hostPort: published,
+                                   hostPortEnd: range > 1 ? published.map { $0 + range - 1 } : nil, containerPort: inside,
                                    containerPortEnd: range > 1 ? inside + range - 1 : nil,
                                    protocolName: LooseJSON.text(port, "protocol") ?? "tcp")
             }

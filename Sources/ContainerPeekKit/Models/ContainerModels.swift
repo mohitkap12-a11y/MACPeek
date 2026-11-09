@@ -18,14 +18,18 @@ public enum ContainerEngineKind: String, Codable, Sendable, CaseIterable {
 public struct PortMapping: Hashable, Codable, Sendable {
     public let hostIP: String?
     public let hostPort: Int?
+    /// Last host port of a published range (`8000-8001->80-81/tcp`), nil for a single port.
+    public let hostPortEnd: Int?
     public let containerPort: Int
     /// Last port of a range (`8000-8010->8000-8010/tcp`), nil for a single port.
     public let containerPortEnd: Int?
     public let protocolName: String
 
-    public init(hostIP: String?, hostPort: Int?, containerPort: Int, containerPortEnd: Int? = nil, protocolName: String) {
+    public init(hostIP: String?, hostPort: Int?, hostPortEnd: Int? = nil, containerPort: Int, containerPortEnd: Int? = nil,
+                protocolName: String) {
         self.hostIP = hostIP
         self.hostPort = hostPort
+        self.hostPortEnd = hostPortEnd
         self.containerPort = containerPort
         self.containerPortEnd = containerPortEnd
         self.protocolName = protocolName
@@ -42,7 +46,8 @@ public struct PortMapping: Hashable, Codable, Sendable {
         case nil, "", "0.0.0.0", "::", "[::]": host = "*"
         default: host = hostIP!.contains(":") ? "[\(hostIP!)]" : hostIP!
         }
-        return "\(host):\(hostPort) → \(inside)/\(protocolName)"
+        let outside = hostPortEnd.map { "\(hostPort)-\($0)" } ?? String(hostPort)
+        return "\(host):\(outside) → \(inside)/\(protocolName)"
     }
 }
 

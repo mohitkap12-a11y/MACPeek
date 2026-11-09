@@ -75,7 +75,7 @@ final class ModelServiceTests: XCTestCase {
 
     private func runner() throws -> ScriptedRunner {
         let comm = try fixture("ps_comm"), args = try fixture("ps_args")
-        return ScriptedRunner(["-axo": ok(comm), "-axww": ok(args)])
+        return ScriptedRunner(["-axo": ok(comm), "-ww": ok(args)])
     }
 
     func testSnapshotGroupsProcessesAndAsksOnlyLoopbackAPIs() async throws {
@@ -85,7 +85,8 @@ final class ModelServiceTests: XCTestCase {
             ProcessUsage(pid: 640, name: "ollama", generation: 1, cpuTimeNanoseconds: 1_000_000_000, memoryFootprintBytes: 100),
             ProcessUsage(pid: 8120, name: "ollama", generation: 2, cpuTimeNanoseconds: 4_000_000_000, memoryFootprintBytes: 4_000_000_000),
         ], unreadable: 0))
-        let reader = SystemModelReader(runner: try runner(), api: api, usage: usage,
+        let scripted = try runner()
+        let reader = SystemModelReader(runner: scripted, api: api, usage: usage,
                                        gpu: FakeGPU(list: [GPUClient(pid: 8120, processName: "ollama", gpuTimeNanoseconds: 3_000_000_000)]))
         let previous = ModelSamplingState(
             usage: ProcessUsageSnapshot(usages: [ProcessUsage(pid: 8120, name: "ollama", generation: 2, cpuTimeNanoseconds: 2_000_000_000, memoryFootprintBytes: 1)], unreadable: 0),
@@ -105,6 +106,9 @@ final class ModelServiceTests: XCTestCase {
         XCTAssertEqual(snapshot.summary, "4 models loaded")
         XCTAssertEqual(Set(api.asked), ["11434/api/ps", "1234/api/v0/models"])
         XCTAssertEqual(state.gpuClients?.count, 1)
+        // Only candidate runners' command lines are asked for: not launchd (1) or the shell (1400).
+        let asked = try XCTUnwrap(scripted.calls.first { $0.1.first == "-ww" }?.1.last).split(separator: ",").map(String.init)
+        XCTAssertEqual(asked, ["612", "640", "8120", "701", "702", "930", "1001", "1100", "1200", "1300"])
         // Nothing from a command line other than the model name ends up in the snapshot (llama-server had --api-key).
         let encoded = String(decoding: try JSONEncoder().encode(snapshot), as: UTF8.self)
         XCTAssertFalse(encoded.contains("sk-secret"))
@@ -113,8 +117,10 @@ final class ModelServiceTests: XCTestCase {
 
     func testNoRunnersAsksNoAPI() async throws {
         let api = FakeAPI()
-        let reader = SystemModelReader(runner: ScriptedRunner(["-axo": ok("    1     0 /sbin/launchd\n"), "-axww": ok("    1 /sbin/launchd\n")]), api: api)
+        let runner = ScriptedRunner(["-axo": ok("    1     0 /sbin/launchd\n    7     1 /bin/zsh\n")])
+        let reader = SystemModelReader(runner: runner, api: api)
         let snapshot = try await reader.snapshot()
+        XCTAssertEqual(runner.calls.count, 1, "no command line is read when no process could be a runner")
         XCTAssertTrue(snapshot.runners.isEmpty)
         XCTAssertEqual(snapshot.summary, "No runners")
         XCTAssertTrue(api.asked.isEmpty)

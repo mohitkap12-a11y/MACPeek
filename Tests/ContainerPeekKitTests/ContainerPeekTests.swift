@@ -24,8 +24,10 @@ final class ContainerParserTests: XCTestCase {
     func testOlderDockerWithoutStateUsesStatusAndRanges() throws {
         let containers = DockerPSParser.parse(try fixture("docker_ps_old"))
         XCTAssertEqual(containers.first?.state, .running)
-        XCTAssertEqual(containers.first?.ports, [PortMapping(hostIP: "::", hostPort: 9000, containerPort: 9000, containerPortEnd: 9001, protocolName: "tcp")])
-        XCTAssertEqual(containers.first?.ports.first?.label, "*:9000 → 9000-9001/tcp")
+        XCTAssertEqual(containers.first?.ports, [PortMapping(hostIP: "::", hostPort: 9000, hostPortEnd: 9001, containerPort: 9000, containerPortEnd: 9001, protocolName: "tcp")])
+        XCTAssertEqual(containers.first?.ports.first?.label, "*:9000-9001 → 9000-9001/tcp")
+        // A host range that differs from the container range keeps both ends.
+        XCTAssertEqual(DockerPortsParser.parse("0.0.0.0:8000-8001->80-81/tcp").first?.label, "*:8000-8001 → 80-81/tcp")
         XCTAssertEqual(ContainerState(status: "Exited (137) 2 hours ago"), .exited)
         XCTAssertEqual(ContainerState(status: "Up 3 seconds (Paused)"), .paused)
         XCTAssertEqual(ContainerState(status: "Created"), .created)

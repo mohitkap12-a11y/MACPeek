@@ -3,8 +3,11 @@ import XCTest
 import MacPeekCore
 
 final class ProcessInsightTests: XCTestCase {
+    private static let lstart = "Mon Nov  9 10:00:00 2026"
+
     private func entry(_ pid: Int, ppid: Int, uid: Int = 501, name: String) -> ProcessEntry {
-        ProcessEntry(pid: pid, ppid: ppid, uid: uid, user: uid == 501 ? "me" : "root", state: "S", startTime: nil, elapsed: "01:00",
+        ProcessEntry(pid: pid, ppid: ppid, uid: uid, user: uid == 501 ? "me" : "root", state: "S",
+                     startTime: PSParser.date(from: Self.lstart), elapsed: "01:00",
                      cpuPercent: 0, residentKB: 1000, executable: name)
     }
 
@@ -31,10 +34,11 @@ final class ProcessInsightTests: XCTestCase {
         XCTAssertEqual(files[0].type, "DIR")
     }
 
-    private func reader() throws -> (SystemProcessInsightReader, RoutedRunner) {
+    private func reader(startedAt lstart: String = ProcessInsightTests.lstart) throws -> (SystemProcessInsightReader, RoutedRunner) {
         let list = try fixture("launchctl_list"), print = try fixture("launchctl_print"), lsof = try fixture("lsof_pid")
         let runner = RoutedRunner { args in
             switch args.first {
+            case "LC_ALL=C": return output(lstart + "\n")
             case "list": return output(list)
             case "print": return output(print)
             case "-n": return output(lsof)
@@ -81,7 +85,15 @@ final class ProcessInsightTests: XCTestCase {
         XCTAssertEqual(report.files.count, 3)
         XCTAssertTrue(report.truncated)
         XCTAssertEqual(report.workingDirectory, "/opt/homebrew/var/postgresql@16")
-        XCTAssertEqual(runner.calls.last?.1, ["-n", "-P", "-w", "-p", "5120", "-F", "ftn"])
+        XCTAssertTrue(runner.calls.contains { $0.1 == ["-n", "-P", "-w", "-p", "5120", "-F", "ftn"] })
         XCTAssertEqual(try JSONDecoder().decode(OpenFilesReport.self, from: JSONEncoder().encode(report)), report)
+    }
+
+    func testOpenFilesRefusesAReusedPID() async throws {
+        let (reader, runner) = try reader(startedAt: "Mon Nov  9 11:30:00 2026")
+        let report = try await reader.openFiles(of: snapshot.entry(pid: 5120)!, limit: 300)
+        XCTAssertTrue(report.files.isEmpty)
+        XCTAssertEqual(report.note, "This process has exited, or its PID now belongs to a different process.")
+        XCTAssertFalse(runner.calls.contains { $0.1.first == "-n" }, "lsof never runs for a different process")
     }
 }

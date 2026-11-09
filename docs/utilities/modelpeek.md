@@ -17,9 +17,10 @@ For each runner: total memory footprint (libproc), CPU (sampled, percent of one 
 per-process time, as in GPUPeek), and its processes with their roles.
 
 ## How it works
-- `ps -axo pid=,ppid=,comm=` and `ps -axww -o pid=,args=`. Of a runner's command line only the model argument is kept;
-  the rest (which can contain API keys, as `llama-server --api-key` does) is never stored, shown or logged. Command lines of
-  other processes are read by `ps` but discarded.
+- `ps -axo pid=,ppid=,comm=` lists executables only. Command lines are then read (`ps -ww -o pid=,args= -p …`) only for
+  processes that could be runners by their executable (Ollama, LM Studio, llama.cpp tools, llamafile, and Python for MLX).
+  Of a runner's command line only the model argument is kept; the rest (which can contain API keys, as
+  `llama-server --api-key` does) is never stored, shown or logged.
 - Ollama's and LM Studio's APIs are asked only while their processes are running, only on `127.0.0.1`, with a 2-second
   timeout and no proxy. Nothing leaves the Mac.
 - Reads every *refresh interval* (at least 3 s) only while the screen is open.
