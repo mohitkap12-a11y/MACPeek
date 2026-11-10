@@ -3,6 +3,11 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Fixed
+- **USBPeek and the remote agent**: Bluetooth devices whose battery level system_profiler leaves out (macOS's Bluetooth
+  menu still shows one) now get it from the I/O registry (`ioreg -k BatteryPercent`), by product name. Battery keys
+  other than `device_batteryLevelMain`/`Left`/`Right`/`Case` are read too.
+
 ### Changed
 - **Remote agent**: GPUPeek replies now carry Metal's facts about the GPU (family, memory the GPU may use), so the
   console can show GPU memory as a share of what the GPU may use.
