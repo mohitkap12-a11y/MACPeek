@@ -61,6 +61,28 @@ final class BluetoothTests: XCTestCase {
         XCTAssertEqual(IORegBatteryParser.parse("not a plist"), [:])
     }
 
+    func testAmbiguousNamesAreNotFilled() throws {
+        // Two mice of the same model with different charge: the registry cannot say which level is whose.
+        let registry = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <plist version="1.0"><array>
+          <dict><key>Product</key><string>MX Master 3S</string><key>BatteryPercent</key><integer>80</integer></dict>
+          <dict><key>Product</key><string>MX Master 3S</string><key>BatteryPercent</key><integer>12</integer></dict>
+          <dict><key>Product</key><string>Magic Keyboard</string><key>BatteryPercent</key><integer>77</integer></dict>
+        </array></plist>
+        """
+        XCTAssertEqual(IORegBatteryParser.parse(registry), ["Magic Keyboard": 77])
+
+        // Two connected devices with one name and one reading: either could own it.
+        let twoKeyboards = BluetoothReport(poweredOn: true, devices: [
+            BluetoothDevice(name: "Magic Keyboard", connected: true, kind: "Keyboard", batteryMain: nil, batteryLeft: nil,
+                            batteryRight: nil, batteryCase: nil, firmware: nil),
+            BluetoothDevice(name: "Magic Keyboard", connected: true, kind: "Keyboard", batteryMain: nil, batteryLeft: nil,
+                            batteryRight: nil, batteryCase: nil, firmware: nil),
+        ])
+        XCTAssertEqual(twoKeyboards.addingBatteries(["Magic Keyboard": 77]).connected.map(\.batteryMain), [nil, nil])
+    }
+
     func testReaderAsksTheRegistryOnlyWhenALevelIsMissing() async throws {
         let runner = ScriptedRunner(["SPBluetoothDataType": ok(profilerWithoutSomeLevels), "-r": ok(registryBatteries)])
         let report = try await SystemBluetoothReader(runner: runner).bluetooth()

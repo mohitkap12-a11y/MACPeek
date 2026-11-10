@@ -57,13 +57,17 @@ public struct BluetoothReport: Equatable, Codable, Sendable {
     public var connectedWithoutBattery: [BluetoothDevice] { connected.filter { !$0.hasBattery } }
 
     /// The report with battery levels found elsewhere (the I/O registry, by product name) filled in for connected
-    /// devices that system_profiler gave none for. Levels system_profiler did give are kept.
+    /// devices that system_profiler gave none for. Levels system_profiler did give are kept. A name two connected
+    /// devices share is left alone: a level matched by name could belong to either.
     public func addingBatteries(_ levels: [String: Int]) -> BluetoothReport {
         guard !levels.isEmpty else { return self }
         var byName: [String: Int] = [:]
         for (name, level) in levels { byName[BluetoothReport.key(name)] = level }
+        var connectedCount: [String: Int] = [:]
+        for device in connected { connectedCount[BluetoothReport.key(device.name), default: 0] += 1 }
         return BluetoothReport(poweredOn: poweredOn, devices: devices.map { device in
-            guard device.connected, !device.hasBattery, let level = byName[BluetoothReport.key(device.name)] else { return device }
+            let key = BluetoothReport.key(device.name)
+            guard device.connected, !device.hasBattery, connectedCount[key] == 1, let level = byName[key] else { return device }
             return BluetoothDevice(name: device.name, connected: true, kind: device.kind, batteryMain: level, batteryLeft: nil,
                                    batteryRight: nil, batteryCase: nil, firmware: device.firmware)
         })
@@ -131,13 +135,17 @@ public enum IORegBatteryParser {
               let root = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) else { return [:] }
         let entries = (root as? [Any]) ?? [root]
         var levels: [String: Int] = [:]
+        var conflicting = Set<String>()
         for case let entry as [String: Any] in entries {
             guard let name = ["Product", "DeviceName", "Name"].lazy.compactMap({ entry[$0] as? String }).first?
                     .trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty,
                   let level = percent(entry["BatteryPercent"]) else { continue }
-            // The same device can appear more than once (one entry per HID interface); they agree.
+            // One device appears once per HID interface, with the same level. Different levels under one name are
+            // different devices, and a name cannot say which is which: that name is left out.
+            if let known = levels[name], known != level { conflicting.insert(name) }
             levels[name] = level
         }
+        for name in conflicting { levels[name] = nil }
         return levels
     }
 
