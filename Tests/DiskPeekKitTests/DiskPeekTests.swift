@@ -234,3 +234,12 @@ final class VolumeIOSamplerTests: XCTestCase {
             .readBytesPerSecond ?? -1, 10, accuracy: 0.001)
     }
 }
+
+final class VolumeIONameTests: XCTestCase {
+    func testParentSlices() {
+        XCTAssertEqual(VolumeIOName.parent(of: "disk3s1s1"), "disk3s1")
+        XCTAssertEqual(VolumeIOName.parent(of: "disk3s1"), "disk3")
+        XCTAssertNil(VolumeIOName.parent(of: "disk3"))
+        XCTAssertNil(VolumeIOName.parent(of: "disks2"))
+    }
+}

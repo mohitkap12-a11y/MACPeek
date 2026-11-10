@@ -67,6 +67,15 @@ public struct VolumeIOSampler: Sendable {
     }
 }
 
+/// BSD media names: "disk3s1s1" is a slice of "disk3s1", itself a slice of "disk3".
+enum VolumeIOName {
+    static func parent(of name: String) -> String? {
+        guard let range = name.range(of: "s[0-9]+$", options: .regularExpression),
+              name[..<range.lowerBound].range(of: "^disk[0-9]+", options: .regularExpression) != nil else { return nil }
+        return String(name[..<range.lowerBound])
+    }
+}
+
 public protocol VolumeIOReading: Sendable {
     /// Counters for the drive behind each volume `VolumeCapacityReading` lists; volumes whose drive does not report
     /// statistics (disk images, network mounts) are left out.
@@ -102,7 +111,18 @@ public struct SystemVolumeIOReader: VolumeIOReading {
         return result
     }
 
+    /// The statistics for `media`, or for the slice or disk it is part of when the registry has no entry for it (the
+    /// startup disk's sealed snapshot, "disk3s1s1", is looked up as "disk3s1", then "disk3").
     static func statistics(media: String) -> (device: String, read: UInt64, written: UInt64)? {
+        var name = media
+        while true {
+            if let found = statistics(exactly: name) { return found }
+            guard let parent = VolumeIOName.parent(of: name) else { return nil }
+            name = parent
+        }
+    }
+
+    private static func statistics(exactly media: String) -> (device: String, read: UInt64, written: UInt64)? {
         guard let matching = IOBSDNameMatching(kIOMainPortDefault, 0, media) else { return nil }
         // IOServiceGetMatchingService consumes `matching`.
         var entry = IOServiceGetMatchingService(kIOMainPortDefault, matching)
