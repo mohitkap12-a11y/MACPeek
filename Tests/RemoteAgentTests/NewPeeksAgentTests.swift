@@ -1,6 +1,7 @@
 import XCTest
 import MacPeekCore
 import CPUPeekKit
+import DiskPeekKit
 import ProcessPeekKit
 import DNSPeekKit
 import NetPeekKit
@@ -44,7 +45,8 @@ final class NewPeeksAgentTests: XCTestCase {
             openFiles: { process in OpenFilesReport(pid: process.pid, files: [OpenFile(descriptor: "cwd", type: "DIR", name: "/tmp")], truncated: false, note: nil) },
             containers: { ContainerSnapshot(engines: [], virtualMachines: [], vmProcesses: [], notes: []) },
             gpu: { Self.gpuSnapshot },
-            models: { ModelSnapshot(runners: []) })
+            models: { ModelSnapshot(runners: []) },
+            volumeIO: { [VolumeIOCounters(path: "/Volumes/Backup", device: "disk4", bytesRead: 10, bytesWritten: 20)] })
         let actions = AgentActions(freePort: { _, _ in .terminated }, quitProcess: { _, _ in .terminated },
                                    containerAction: { action, container, _ in
                                        await calls.add("\(action.rawValue) \(container.name)")
@@ -63,7 +65,7 @@ final class NewPeeksAgentTests: XCTestCase {
         let handler = handler(Calls())
         let capabilities = try await handler.handle(.request(.capabilities), from: console(.viewOnly), settings: allowed)
             .response.body(Capabilities.self)
-        for operation in [Operation.networkExtras, .dnsOverrides, .bluetooth, .processOrigin, .processOpenFiles, .containers, .gpu, .models, .containerAction] {
+        for operation in [Operation.networkExtras, .dnsOverrides, .bluetooth, .processOrigin, .processOpenFiles, .containers, .gpu, .models, .diskIO, .containerAction] {
             XCTAssertTrue(capabilities.operations.contains(operation), operation.rawValue)
         }
         let extras = try await handler.handle(.request(.networkExtras), from: console(.viewOnly), settings: allowed).response.body(NetExtras.self)
@@ -74,6 +76,8 @@ final class NewPeeksAgentTests: XCTestCase {
         _ = try await handler.handle(.request(.models), from: console(.viewOnly), settings: allowed).response.body(ModelSnapshot.self)
         _ = try await handler.handle(.request(.dnsOverrides), from: console(.viewOnly), settings: allowed).response.body(DNSOverrides.self)
         _ = try await handler.handle(.request(.bluetooth), from: console(.viewOnly), settings: allowed).response.body(BluetoothReport.self)
+        let io = try await handler.handle(.request(.diskIO), from: console(.viewOnly), settings: allowed).response.body([VolumeIOCounters].self)
+        XCTAssertEqual(io.first?.device, "disk4")
     }
 
     func testProcessOriginOnlyForTheSameProcess() async throws {

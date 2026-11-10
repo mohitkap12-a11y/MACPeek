@@ -29,6 +29,8 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let memoryStats: Operation = "memory.stats"
     public static let processUsage: Operation = "process.usage"
     public static let diskVolumes: Operation = "disk.volumes"
+    /// Bytes read and written by the drive behind each volume (`[VolumeIOCounters]`), for per-drive disk activity.
+    public static let diskIO: Operation = "disk.io"
     public static let networkCounters: Operation = "network.counters"
     public static let networkSnapshot: Operation = "network.snapshot"
     public static let ports: Operation = "ports.list"
@@ -67,7 +69,7 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
                                             .dnsConfiguration, .dnsProbe, .networkExtras, .dnsOverrides, .bluetooth,
-                                            .processOrigin, .processOpenFiles, .containers, .gpu, .models]
+                                            .processOrigin, .processOpenFiles, .containers, .gpu, .models, .diskIO]
     public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceAdopt, .workspaceRevocations]

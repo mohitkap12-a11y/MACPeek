@@ -3,6 +3,11 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- **Remote agent**: a new read, `disk.io`, returns how many bytes the drive behind each volume has read and written
+  (from its block-storage driver's statistics in the I/O Registry). MacPeek Remote uses it to show an external
+  drive's own read and write speed instead of the total for every disk.
+
 ### Fixed
 - **USBPeek and the remote agent**: Bluetooth devices whose battery level system_profiler leaves out (macOS's Bluetooth
   menu still shows one) now get it from the I/O registry (`ioreg -k BatteryPercent`), by product name. Battery keys

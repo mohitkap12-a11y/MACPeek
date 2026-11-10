@@ -37,6 +37,7 @@ public struct AgentReaders: Sendable {
     public var containers: @Sendable () async throws -> ContainerSnapshot
     public var gpu: @Sendable () async throws -> GPUSnapshot
     public var models: @Sendable () async throws -> ModelSnapshot
+    public var volumeIO: @Sendable () throws -> [VolumeIOCounters]
 
     public init(device: @escaping @Sendable () -> DeviceInfo, cpuTopology: @escaping @Sendable () -> CPUTopology,
                 cpuSnapshot: @escaping @Sendable () throws -> CPUSnapshot, memory: @escaping @Sendable () throws -> MemoryStats,
@@ -64,7 +65,8 @@ public struct AgentReaders: Sendable {
                 },
                 containers: @escaping @Sendable () async throws -> ContainerSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
                 gpu: @escaping @Sendable () async throws -> GPUSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
-                models: @escaping @Sendable () async throws -> ModelSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") }) {
+                models: @escaping @Sendable () async throws -> ModelSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                volumeIO: @escaping @Sendable () throws -> [VolumeIOCounters] = { throw RemoteError(.unavailable, "This Mac does not report that.") }) {
         self.device = device
         self.cpuTopology = cpuTopology
         self.cpuSnapshot = cpuSnapshot
@@ -86,11 +88,12 @@ public struct AgentReaders: Sendable {
         self.containers = containers
         self.gpu = gpu
         self.models = models
+        self.volumeIO = volumeIO
     }
 
     public static func system() -> AgentReaders {
         let cpu = SystemCPUReader(), memory = SystemMemoryReader(), usage = SystemProcessUsageReader()
-        let volumes = SystemVolumeCapacityReader(), counters = SystemInterfaceCountersReader(), network = SystemNetworkReader()
+        let volumes = SystemVolumeCapacityReader(), volumeIO = SystemVolumeIOReader(), counters = SystemInterfaceCountersReader(), network = SystemNetworkReader()
         let ports = PortService(), processes = PSProcessLister(), sleep = PMSetSleepReader(), device = SystemDeviceInfoReader()
         let dns = SystemDNSReader()
         let overrides = FileDNSOverridesReader(), bluetooth = SystemBluetoothReader(), insight = SystemProcessInsightReader()
@@ -116,7 +119,7 @@ public struct AgentReaders: Sendable {
                             processOrigin: { entry, snapshot in await insight.origin(of: entry, in: snapshot) },
                             openFiles: { entry in try await insight.openFiles(of: entry, limit: 300) },
                             containers: { try await containers.read() }, gpu: { try await gpu.read() },
-                            models: { try await models.read() })
+                            models: { try await models.read() }, volumeIO: { try volumeIO.read() })
     }
 }
 
@@ -201,6 +204,7 @@ public struct RequestHandler: Sendable {
         case .memoryStats: return try request.response(try readers.memory())
         case .processUsage: return try request.response(try readers.processUsage())
         case .diskVolumes: return try request.response(try readers.volumes())
+        case .diskIO: return try request.response(try readers.volumeIO())
         case .networkCounters: return try request.response(try readers.networkCounters())
         case .networkSnapshot: return try request.response(try await readers.networkSnapshot())
         case .ports: return try request.response(try await readers.ports())
