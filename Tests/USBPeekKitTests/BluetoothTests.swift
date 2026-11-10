@@ -72,7 +72,8 @@ final class BluetoothTests: XCTestCase {
 
         // A registry that cannot be read leaves the report as system_profiler gave it.
         let failing = ScriptedRunner(["SPBluetoothDataType": ok(profilerWithoutSomeLevels), "-r": failed("no")])
-        XCTAssertEqual(try await SystemBluetoothReader(runner: failing).bluetooth().connected.first?.batteryMain, nil)
+        let unfilled = try await SystemBluetoothReader(runner: failing).bluetooth()
+        XCTAssertNil(unfilled.connected.first?.batteryMain)
     }
 
     func testReader() async throws {
