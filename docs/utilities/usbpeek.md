@@ -45,4 +45,9 @@ and the battery levels they report (one level, or left, right and case for AirPo
 connected. A level at or below 20 % is highlighted. Device addresses are never read into MacPeek's model. This is not a
 Bluetooth connection, so macOS does not ask for Bluetooth access. It is read once per visit and on refresh (system_profiler
 takes a second or two), not on every poll. Not yet verified on a Mac with the current macOS; the fixture follows the
-documented JSON keys (`device_batteryLevelMain`, `…Left`, `…Right`, `…Case`).
+documented JSON keys (`device_batteryLevelMain`, `…Left`, `…Right`, `…Case`); another `device_batteryLevel…` key is read
+as the device's level.
+
+system_profiler leaves the level out for some devices that macOS's Bluetooth menu shows one for. When a connected device
+has none, USBPeek also reads `ioreg -r -a -k BatteryPercent` (the I/O registry entries that report a battery, where the
+menu reads it) and fills in the level by product name. Only the name and the level are read from it.

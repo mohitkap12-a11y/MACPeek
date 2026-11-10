@@ -24,7 +24,8 @@ public enum UtilityCatalog {
         tagline: "See what's connected to your Mac.",
         summary: "Lists connected USB devices as a tree with vendor and the link speed macOS reports, plus the status of your Thunderbolt / USB4 ports. Serial numbers are never read.",
         icon: "cable.connector", category: .everyday, availability: .available,
-        reads: ["USB devices from the I/O registry (ioreg) and Thunderbolt port status (system_profiler), only while USBPeek is open"],
+        reads: ["USB devices from the I/O registry (ioreg) and Thunderbolt port status (system_profiler), only while USBPeek is open",
+                "Bluetooth devices (system_profiler) and battery levels macOS reports for them (system_profiler, and ioreg when it has none), never their addresses"],
         permissions: ["None"]
     )
     public static let netPeek = UtilityInfo(
