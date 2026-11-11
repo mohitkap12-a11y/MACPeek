@@ -26,6 +26,14 @@ final class IdentityTests: XCTestCase {
     }
 }
 
+final class MatchingWordsTests: XCTestCase {
+    func testWordListHasOneDistinctWordPerByte() {
+        XCTAssertEqual(MatchingWords.list.count, 256)
+        XCTAssertEqual(Set(MatchingWords.list).count, 256)
+        XCTAssertEqual(MatchingWords.words(for: Data([0, 255, 1, 2, 9])), ["acorn", "dune", "actor", "album"])
+    }
+}
+
 final class AccountJoinTests: XCTestCase {
     func testTheRequestIsSignedByTheMacOnOneLine() throws {
         let mac = DeviceIdentity(name: "Studio")
