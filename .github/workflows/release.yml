@@ -19,6 +19,7 @@ permissions:
 jobs:
   release:
     runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - name: Version
