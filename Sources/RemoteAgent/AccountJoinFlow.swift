@@ -1,15 +1,18 @@
 import Foundation
 import RemoteCrypto
 
-/// The MacPeek Remote service this Mac talks to for "Add to my account" and the relay. Production unless
-/// `MACPEEK_API_URL` is set in the environment, or `remote.serviceURL` in MacPeek's defaults (for trying staging:
-/// `defaults write <bundle id> remote.serviceURL https://api.staging.macpeekapp.com`).
+/// The MacPeek Remote service this Mac talks to for "Add to my account" and the relay, the first of:
+/// `MACPEEK_API_URL` in the environment; `remote.serviceURL` in MacPeek's defaults
+/// (`defaults write app.macpeek.MacPeek remote.serviceURL https://api.staging.macpeekapp.com`); the address the app was
+/// built for (Info.plist `MacPeekAPIURL`, set by scripts/build-app.sh: `MACPEEK_ENV=staging` builds use staging, like
+/// MacPeek Remote's); else production.
 public enum AccountService {
     public static let production = URL(string: "https://api.macpeekapp.com")!
 
     public static func baseURL(environment: [String: String] = ProcessInfo.processInfo.environment,
-                               defaults: UserDefaults = .standard) -> URL {
-        for candidate in [environment["MACPEEK_API_URL"], defaults.string(forKey: "remote.serviceURL")] {
+                               defaults: UserDefaults = .standard,
+                               built: String? = Bundle.main.object(forInfoDictionaryKey: "MacPeekAPIURL") as? String) -> URL {
+        for candidate in [environment["MACPEEK_API_URL"], defaults.string(forKey: "remote.serviceURL"), built] {
             if let candidate, let url = URL(string: candidate), url.scheme == "https" || url.scheme == "http" { return url }
         }
         return production

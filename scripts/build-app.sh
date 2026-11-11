@@ -9,6 +9,14 @@ cd "$(dirname "$0")/.."
 scripts/check-toolchain.sh
 VERSION="${1:-0.1.0}"
 APP="build/MacPeek.app"
+# MACPEEK_ENV=staging builds a MacPeek whose "Add to my account" and relay use the staging service
+# (api.staging.macpeekapp.com), like MacPeek Remote's script; MACPEEK_API_URL sets any other address. Default: production.
+case "${MACPEEK_ENV:-production}" in
+  staging) DEFAULT_API="https://api.staging.macpeekapp.com" ;;
+  production) DEFAULT_API="https://api.macpeekapp.com" ;;
+  *) echo "MACPEEK_ENV must be staging or production" >&2; exit 1 ;;
+esac
+API_URL="${MACPEEK_API_URL:-$DEFAULT_API}"
 
 swift build -c release --arch arm64 --arch x86_64
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
@@ -51,7 +59,7 @@ if [[ -n "${SIGN_IDENTITY:-}" && -z "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
   echo "error: SPARKLE_PUBLIC_ED_KEY is required for a signed/release build (see docs/release.md, Sparkle setup)" >&2
   exit 1
 fi
-sed -e "s/__VERSION__/${VERSION}/g" -e "s#__SPARKLE_PUBLIC_ED_KEY__#${SPARKLE_PUBLIC_ED_KEY:-__SPARKLE_PUBLIC_ED_KEY__}#" \
+sed -e "s/__VERSION__/${VERSION}/g" -e "s#__API_URL__#${API_URL}#g" -e "s#__SPARKLE_PUBLIC_ED_KEY__#${SPARKLE_PUBLIC_ED_KEY:-__SPARKLE_PUBLIC_ED_KEY__}#" \
   Resources/Info.plist > "$APP/Contents/Info.plist"
 
 FW="$APP/Contents/Frameworks/Sparkle.framework"
@@ -72,4 +80,4 @@ else
   codesign --force --sign - --deep "$APP"
 fi
 codesign --verify --strict --verbose=2 "$APP"
-echo "Built $APP ($VERSION)"
+echo "Built $APP ($VERSION) for $API_URL"
