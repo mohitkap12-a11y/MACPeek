@@ -204,3 +204,42 @@ final class VolumeCapacityTests: XCTestCase {
         XCTAssertGreaterThan(root.totalBytes, 0)
     }
 }
+
+final class VolumeIOSamplerTests: XCTestCase {
+    private let t0 = Date(timeIntervalSince1970: 1_000)
+
+    private func c(_ path: String, _ device: String, read: UInt64, write: UInt64) -> VolumeIOCounters {
+        VolumeIOCounters(path: path, device: device, bytesRead: read, bytesWritten: write)
+    }
+
+    func testRatesAreKeptPerVolume() throws {
+        var sampler = VolumeIOSampler()
+        XCTAssertTrue(sampler.ingest([c("/", "disk0", read: 1_000, write: 0), c("/Volumes/Ext", "disk4", read: 0, write: 0)], at: t0).isEmpty)
+        let rates = sampler.ingest([c("/", "disk0", read: 3_000, write: 0), c("/Volumes/Ext", "disk4", read: 0, write: 8_000)],
+                                   at: t0.addingTimeInterval(2))
+        let root = try XCTUnwrap(rates["/"]), external = try XCTUnwrap(rates["/Volumes/Ext"])
+        XCTAssertEqual(root.readBytesPerSecond, 1_000, accuracy: 0.001)
+        XCTAssertEqual(root.writeBytesPerSecond, 0, accuracy: 0.001)
+        XCTAssertEqual(external.readBytesPerSecond, 0, accuracy: 0.001)
+        XCTAssertEqual(external.writeBytesPerSecond, 4_000, accuracy: 0.001, "the external drive has its own numbers")
+    }
+
+    func testAReattachedDriveStartsAgain() {
+        var sampler = VolumeIOSampler()
+        _ = sampler.ingest([c("/Volumes/Ext", "disk4", read: 9_000, write: 9_000)], at: t0)
+        XCTAssertTrue(sampler.ingest([c("/Volumes/Ext", "disk4", read: 10, write: 10)], at: t0.addingTimeInterval(1)).isEmpty)
+        XCTAssertTrue(sampler.ingest([c("/Volumes/Ext", "disk5", read: 20, write: 20)], at: t0.addingTimeInterval(2)).isEmpty,
+                      "a different drive at the same mount point is a new baseline")
+        XCTAssertEqual(sampler.ingest([c("/Volumes/Ext", "disk5", read: 30, write: 20)], at: t0.addingTimeInterval(3))["/Volumes/Ext"]?
+            .readBytesPerSecond ?? -1, 10, accuracy: 0.001)
+    }
+}
+
+final class VolumeIONameTests: XCTestCase {
+    func testParentSlices() {
+        XCTAssertEqual(VolumeIOName.parent(of: "disk3s1s1"), "disk3s1")
+        XCTAssertEqual(VolumeIOName.parent(of: "disk3s1"), "disk3")
+        XCTAssertNil(VolumeIOName.parent(of: "disk3"))
+        XCTAssertNil(VolumeIOName.parent(of: "disks2"))
+    }
+}

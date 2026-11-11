@@ -78,10 +78,9 @@ public struct SystemVolumeCapacityReader: VolumeCapacityReading {
         let mounts = try Self.mounts()
         var volumes: [VolumeCapacity] = []
         for mount in mounts {
-            let flags = Int32(bitPattern: mount.f_flags)
             let path = Self.string(mount.f_mntonname)
             let isRoot = path == "/"
-            guard flags & MNT_LOCAL != 0, flags & MNT_DONTBROWSE == 0, isRoot || flags & MNT_RDONLY == 0 else { continue }
+            guard Self.isListed(mount) else { continue }
             let blockSize = Int64(mount.f_bsize)
             let total = Int64(clamping: mount.f_blocks) * blockSize
             guard total > 0 else { continue }
@@ -98,7 +97,14 @@ public struct SystemVolumeCapacityReader: VolumeCapacityReading {
         return VolumeCapacity.ordered(volumes)
     }
 
-    private static func mounts() throws -> [statfs] {
+    /// Local, browsable mounts, and only writable ones apart from the startup disk.
+    static func isListed(_ mount: statfs) -> Bool {
+        let flags = Int32(bitPattern: mount.f_flags)
+        let isRoot = string(mount.f_mntonname) == "/"
+        return flags & MNT_LOCAL != 0 && flags & MNT_DONTBROWSE == 0 && (isRoot || flags & MNT_RDONLY == 0)
+    }
+
+    static func mounts() throws -> [statfs] {
         let count = getfsstat(nil, 0, MNT_NOWAIT)
         guard count > 0 else { throw DiskReadError.unavailable("macOS did not list any mounted drives.") }
         // Room for a mount or two appearing between the two calls.
@@ -110,7 +116,7 @@ public struct SystemVolumeCapacityReader: VolumeCapacityReading {
         return Array(buffer.prefix(Int(filled)))
     }
 
-    private static func string<T>(_ tuple: T) -> String {
+    static func string<T>(_ tuple: T) -> String {
         withUnsafeBytes(of: tuple) { raw in
             let bytes = raw.prefix { $0 != 0 }
             return String(decoding: bytes, as: UTF8.self)
