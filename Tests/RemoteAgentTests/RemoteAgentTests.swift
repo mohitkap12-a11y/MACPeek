@@ -705,7 +705,10 @@ final class RelayTests: XCTestCase {
         let signature = try XCTUnwrap(Data(base64Encoded:
             "H468qmrkgC89nbRF4DaLjtXMojHXJ71Fw0g/9vL2GlbZxBus8XP+x91Qb7VPhY9IK4kYjy13rIZHkluFb+m8Aw=="))
         XCTAssertTrue(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "bm9uY2U="))
-        XCTAssertEqual(try RelayAuth.answer(nonce: "bm9uY2U=", by: mac).signature, signature)
+        // CryptoKit's signatures are randomized, so the Mac's own answer differs from Node's but checks out the same way.
+        let answer = try RelayAuth.answer(nonce: "bm9uY2U=", by: mac)
+        XCTAssertEqual(answer.macKey, macKey)
+        XCTAssertTrue(RelayAuth.isValid(signature: answer.signature, macKey: macKey, nonce: "bm9uY2U="))
         XCTAssertFalse(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "b3RoZXI="))
     }
 

@@ -314,7 +314,10 @@ public actor RelayClient {
                 }
                 self.socket = socket
                 let session = RelaySession(socket: socket, state: state, handler: handler, identity: identity,
-                                           onReady: { [weak self] in Task { await self?.ready(generation) } })
+                                           onReady: { [weak self] in
+                                               guard let client = self else { return }
+                                               Task { await client.ready(generation) }
+                                           })
                 try await withThrowingTaskGroup(of: Void.self) { group in
                     group.addTask { try await session.run() }
                     group.addTask {
