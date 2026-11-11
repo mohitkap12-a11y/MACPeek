@@ -1,15 +1,31 @@
 name: CI
 on:
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Cancel superseded PR runs; let main-branch runs finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   swift:
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - name: Build
@@ -27,6 +43,7 @@ jobs:
   core-linux:
     # Core logic is platform-independent; this keeps it honest and fast.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container: swift:5.9
     steps:
       - uses: actions/checkout@v7
