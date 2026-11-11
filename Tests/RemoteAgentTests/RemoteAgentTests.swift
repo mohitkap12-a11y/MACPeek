@@ -14,7 +14,6 @@ private struct Unreadable: Error {}
 
 private final class MemoryStore: AgentStoring, @unchecked Sendable {
     private let lock = NSLock()
-    private var consoles: [PairedConsole] = []
     private var log = ActivityLog()
     private var membership: WorkspaceMembership?
 
@@ -24,8 +23,6 @@ private final class MemoryStore: AgentStoring, @unchecked Sendable {
         return body()
     }
 
-    func loadConsoles() throws -> [PairedConsole] { locked { consoles } }
-    func saveConsoles(_ consoles: [PairedConsole]) throws { locked { self.consoles = consoles } }
     func loadLog() throws -> ActivityLog { locked { log } }
     func saveLog(_ log: ActivityLog) throws { locked { self.log = log } }
     func loadMembership() throws -> WorkspaceMembership? { locked { membership } }
@@ -111,33 +108,16 @@ private func deliver(_ message: WireMessage, to connection: AgentConnection) asy
     await connection.receive(Framing.frame(try message.encoded()))
 }
 
-/// Pairs a console with the harness's Mac, both people confirming the words. Returns the console identity.
-@discardableResult
-private func pair(_ harness: Harness, role: ConsoleRole, name: String = "Laptop") async throws -> DeviceIdentity {
-    try await pairReturningClaim(harness, role: role, identity: DeviceIdentity(name: name)).identity
+/// Adds the harness's Mac to `account` as "Add to my account" does once a console approved; `roleCap` is the most the
+/// account's devices may do here.
+private func join(_ harness: Harness, _ account: Account, roleCap: ConsoleRole = .viewAndAct) async throws {
+    try await harness.state.joinAccount(try account.grant(for: DeviceIdentity(name: "Main Mac")), roleCap: roleCap)
 }
 
-/// Pairs, optionally offering a workspace grant; returns the claim the Mac sent back, if it joined.
-private func pairReturningClaim(_ harness: Harness, role: ConsoleRole, identity consoleIdentity: DeviceIdentity,
-                                grant: WorkspaceGrant? = nil) async throws -> (identity: DeviceIdentity, claim: MacClaim?) {
-    let code = try unwrapped(await harness.state.newPairingCode())
-    let (connection, outbox) = await harness.connect()
-    var console = ConsolePairing(identity: consoleIdentity)
-    try await deliver(.pairStart(console.start()), to: connection)
-    guard case .pairAccept(let accept)? = await outbox.take().first else { throw Unreadable() }
-    let (reveal, words) = try console.reveal(after: accept, code: code.digits)
-    try await deliver(.pairReveal(reveal), to: connection)
-    let pending = try unwrapped(await harness.state.pendingPairing)
-    XCTAssertEqual(pending.words, words)
-    try await deliver(.pairConfirm(console.confirm(grant: grant)), to: connection)
-    let noConfirmYet = await outbox.take()
-    XCTAssertTrue(noConfirmYet.isEmpty, "The Mac must not confirm before its own person has")
-    await harness.state.resolvePairing(role: role)
-    guard case .pairConfirm(let macConfirm)? = await outbox.take().first else { throw Unreadable() }
-    let confirmed = try console.macConfirmation(from: macConfirm)
-    XCTAssertEqual(confirmed.mac.signingKey, harness.macIdentity.publicIdentity.signingKey)
-    await connection.disconnected()
-    return (consoleIdentity, confirmed.claim)
+/// A device of `account` connected to the harness's Mac. The Mac must have joined the account.
+private func accountDevice(_ harness: Harness, _ account: Account, name: String = "Laptop", role: WorkspaceRole = .owner) async throws -> Session {
+    let identity = DeviceIdentity(name: name)
+    return try await Session(harness, identity: identity, chain: try account.chain(for: identity, role: role))
 }
 
 /// A console session over the handshake, sending requests and reading responses.
@@ -196,249 +176,18 @@ final class AgentModelTests: XCTestCase {
         XCTAssertTrue(log.isIntact)
     }
 
-    func testFileStoreRoundTripsWithPrivatePermissions() throws {
+    func testFileStoreKeepsTheLogPrivately() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = FileAgentStore(directory: directory)
-        XCTAssertEqual(try store.loadConsoles(), [])
-        let console = PairedConsole(identity: DeviceIdentity(name: "Laptop").publicIdentity, role: .viewOnly,
-                                    pairedAt: Date(timeIntervalSince1970: 1_700_000_000))
-        try store.saveConsoles([console])
-        XCTAssertEqual(try store.loadConsoles(), [console])
-        let path = directory.appendingPathComponent("paired-consoles.json").path
+        XCTAssertEqual(try store.loadLog(), ActivityLog())
+        var log = ActivityLog()
+        log.append(actor: "This Mac", fingerprint: nil, event: "Turned Remote management on", outcome: "Done")
+        try store.saveLog(log)
+        XCTAssertEqual(try store.loadLog(), log)
+        let path = directory.appendingPathComponent("activity-log.json").path
         let permissions = try FileManager.default.attributesOfItem(atPath: path)[.posixPermissions] as? Int
         XCTAssertEqual(permissions, 0o600)
-    }
-}
-
-final class AgentPairingTests: XCTestCase {
-    func testPairingNeedsBothPeopleAndStoresTheRole() async throws {
-        let harness = Harness()
-        let console = try await pair(harness, role: .viewOnly)
-        let consoles = await harness.state.consoles
-        XCTAssertEqual(consoles.map(\.identity.signingKey), [console.publicIdentity.signingKey])
-        XCTAssertEqual(consoles.first?.role, .viewOnly)
-        let code = await harness.state.pairingCode
-        XCTAssertNil(code, "A code works for one pairing only")
-        let observed = await harness.state.log.isIntact
-        XCTAssertTrue(observed)
-    }
-
-    func testNoPairingWithoutACodeOnScreen() async throws {
-        let harness = Harness()
-        let (connection, outbox) = await harness.connect()
-        try await deliver(.pairStart(ConsolePairing(identity: DeviceIdentity(name: "Laptop")).start()), to: connection)
-        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        let observed = await outbox.closed
-        XCTAssertTrue(observed)
-    }
-
-    func testDecliningTheWordsPairsNothing() async throws {
-        let harness = Harness()
-        let code = try unwrapped(await harness.state.newPairingCode())
-        let (connection, outbox) = await harness.connect()
-        var console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
-        try await deliver(.pairStart(console.start()), to: connection)
-        guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
-        try await deliver(.pairReveal(try console.reveal(after: accept, code: code.digits).reveal), to: connection)
-        try await deliver(.pairConfirm(console.confirm()), to: connection)
-        await harness.state.resolvePairing(role: nil)
-        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        let consoles = await harness.state.consoles
-        XCTAssertTrue(consoles.isEmpty)
-        let pending = await harness.state.pendingPairing
-        XCTAssertNil(pending)
-    }
-
-    func testWrongCodesWithdrawTheCode() async throws {
-        let harness = Harness()
-        let code = try unwrapped(await harness.state.newPairingCode())
-        let wrong = code.digits == "000000" ? "111111" : "000000"
-        for _ in 0..<PairingCode.maximumAttempts {
-            let (connection, outbox) = await harness.connect()
-            var console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
-            try await deliver(.pairStart(console.start()), to: connection)
-            guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
-            try await deliver(.pairReveal(try console.reveal(after: accept, code: wrong).reveal), to: connection)
-            guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        }
-        let remaining = await harness.state.pairingCode
-        XCTAssertNil(remaining)
-    }
-
-    func testParallelConnectionsShareTheAttemptLimit() async throws {
-        let harness = Harness()
-        let code = try unwrapped(await harness.state.newPairingCode())
-        let wrong = code.digits == "000000" ? "111111" : "000000"
-        // Every connection starts pairing before any guess is checked, as an attacker trying many codes at once would.
-        var started: [(AgentConnection, Outbox, ConsolePairing, PairingMessage.Accept)] = []
-        for _ in 0...PairingCode.maximumAttempts {
-            let (connection, outbox) = await harness.connect()
-            let console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
-            try await deliver(.pairStart(console.start()), to: connection)
-            guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
-            started.append((connection, outbox, console, accept))
-        }
-        for (connection, outbox, var console, accept) in started.dropLast() {
-            try await deliver(.pairReveal(try console.reveal(after: accept, code: wrong).reveal), to: connection)
-            guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        }
-        // The code is withdrawn, so even the right code on a connection begun earlier no longer pairs.
-        let (connection, outbox, _, accept) = try unwrapped(started.last)
-        var console = try unwrapped(started.last).2
-        try await deliver(.pairReveal(try console.reveal(after: accept, code: code.digits).reveal), to: connection)
-        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        let pending = await harness.state.pendingPairing
-        XCTAssertNil(pending)
-    }
-
-    func testBothConfirmationsArrivingTogetherPairOnce() async throws {
-        // The console's Confirm and the decision on this Mac race; whichever finishes the pairing, it must succeed once.
-        for _ in 0..<25 {
-            let harness = Harness()
-            let code = try unwrapped(await harness.state.newPairingCode())
-            let (connection, outbox) = await harness.connect()
-            var console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
-            try await deliver(.pairStart(console.start()), to: connection)
-            guard case .pairAccept(let accept)? = await outbox.take().first else { return XCTFail() }
-            try await deliver(.pairReveal(try console.reveal(after: accept, code: code.digits).reveal), to: connection)
-            let confirm = try console.confirm()
-            async let fromConsole: Void = deliver(.pairConfirm(confirm), to: connection)
-            async let fromMac: Void = harness.state.resolvePairing(role: .viewOnly)
-            _ = try await (fromConsole, fromMac)
-            let messages = await outbox.take()
-            XCTAssertEqual(messages.filter { if case .pairConfirm = $0 { return true } else { return false } }.count, 1, "\(messages)")
-            XCTAssertFalse(messages.contains { if case .refused = $0 { return true } else { return false } }, "\(messages)")
-            let consoles = await harness.state.consoles
-            XCTAssertEqual(consoles.count, 1)
-        }
-    }
-
-    func testTurningOffEndsAPairingAndRefusesNewConnections() async throws {
-        let harness = Harness()
-        _ = await harness.state.newPairingCode()
-        let (connection, outbox) = await harness.connect()
-        await harness.state.update(RemoteSettings(isEnabled: false))
-        let observed = await outbox.closed
-        XCTAssertTrue(observed)
-        let code = await harness.state.pairingCode
-        XCTAssertNil(code)
-        let (late, lateOutbox) = await harness.connect()
-        try await deliver(.hello(ConsoleHandshake(identity: DeviceIdentity(name: "Laptop")).hello()), to: late)
-        guard case .refused? = await lateOutbox.take().first else { return XCTFail("Expected a refusal") }
-        _ = connection
-    }
-}
-
-final class AgentSessionTests: XCTestCase {
-    func testPairedConsoleReadsOverAnEncryptedSession() async throws {
-        let harness = Harness()
-        let identity = try await pair(harness, role: .viewOnly)
-        let session = try await Session(harness, identity: identity)
-
-        let capabilities = try unwrapped(try await session.send(.request(.capabilities))).body(Capabilities.self)
-        XCTAssertEqual(capabilities.device, device)
-        XCTAssertEqual(capabilities.agentVersion, "0.3.0")
-        XCTAssertFalse(capabilities.actionsAllowed, "View-only consoles may not act")
-
-        let ports = try unwrapped(try await session.send(.request(.ports))).body([PortInfo].self)
-        XCTAssertEqual(ports, [port])
-
-        let failure = try unwrapped(try await session.send(.request(.memoryStats)))
-        XCTAssertEqual(failure.kind, .error)
-        XCTAssertEqual(try failure.body(RemoteError.self).code, .unavailable)
-
-        let unknown = try unwrapped(try await session.send(.request("files.delete")))
-        XCTAssertEqual(try unknown.body(RemoteError.self).code, .unknownOperation)
-    }
-
-    func testDNSProbesOnlyTheMacsOwnServers() async throws {
-        let harness = Harness()
-        let session = try await Session(harness, identity: try await pair(harness, role: .viewOnly))
-
-        let configuration = try unwrapped(try await session.send(.request(.dnsConfiguration))).body(DNSConfiguration.self)
-        XCTAssertEqual(configuration.activeServers, ["192.168.1.1"])
-
-        let own = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "apple.com"))
-        let probe = try unwrapped(try await session.send(own)).body(ServerProbe.self)
-        XCTAssertEqual(probe.server, "192.168.1.1")
-
-        let elsewhere = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "203.0.113.9", name: "apple.com"))
-        let elsewhereCode = try unwrapped(try await session.send(elsewhere)).body(RemoteError.self).code
-        XCTAssertEqual(elsewhereCode, .notPermitted)
-
-        let badName = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "-x; rm"))
-        let badNameCode = try unwrapped(try await session.send(badName)).body(RemoteError.self).code
-        XCTAssertEqual(badNameCode, .invalidPayload)
-    }
-
-    func testUnpairedConsoleIsRefused() async throws {
-        let harness = Harness()
-        try await pair(harness, role: .viewAndAct)
-        let (connection, outbox) = await harness.connect()
-        var handshake = ConsoleHandshake(identity: DeviceIdentity(name: "Stranger"))
-        try await deliver(.hello(handshake.hello()), to: connection)
-        guard case .reply(let reply)? = await outbox.take().first else { return XCTFail() }
-        let finish = try handshake.finish(after: reply) { _ in true }.finish
-        try await deliver(.finish(finish), to: connection)
-        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
-        let observed = await outbox.closed
-        XCTAssertTrue(observed)
-    }
-
-    func testActionsNeedTheRoleAndTheSwitch() async throws {
-        let request = try Envelope.request(.freePort, body: FreePortRequest(port: port))
-
-        let viewOnly = Harness()
-        let viewer = try await Session(viewOnly, identity: try await pair(viewOnly, role: .viewOnly))
-        let viewerCode = try unwrapped(try await viewer.send(request)).body(RemoteError.self).code
-        XCTAssertEqual(viewerCode, .notPermitted)
-
-        let switchedOff = Harness(settings: RemoteSettings(isEnabled: true, allowActions: false))
-        let actor = try await Session(switchedOff, identity: try await pair(switchedOff, role: .viewAndAct))
-        let switchedOffCode = try unwrapped(try await actor.send(request)).body(RemoteError.self).code
-        XCTAssertEqual(switchedOffCode, .actionsDisabled)
-
-        let allowed = Harness()
-        let operator_ = try await Session(allowed, identity: try await pair(allowed, role: .viewAndAct))
-        let allowedResult = try unwrapped(try await operator_.send(request)).body(ActionResult.self).result
-        XCTAssertEqual(allowedResult, .terminated)
-
-        let counts = (await viewOnly.counter.count, await switchedOff.counter.count, await allowed.counter.count)
-        XCTAssertEqual(counts.0, 0)
-        XCTAssertEqual(counts.1, 0)
-        XCTAssertEqual(counts.2, 1)
-
-        // Every action, refused or not, is in the log, attributed to the console.
-        let entries = await allowed.state.log.entries
-        XCTAssertEqual(entries.last?.actor, "Laptop")
-        XCTAssertEqual(entries.last?.event, "Free port 3000 (node, PID 4242)")
-        XCTAssertEqual(entries.last?.outcome, "Done")
-        let refused = await viewOnly.state.log.entries.last
-        XCTAssertEqual(refused?.outcome, "Refused: This console is paired view-only.")
-    }
-
-    func testRevokingEndsTheSession() async throws {
-        let harness = Harness()
-        let identity = try await pair(harness, role: .viewOnly)
-        let session = try await Session(harness, identity: identity)
-        await harness.state.revoke(identity.publicIdentity.signingKey)
-        let observed = await session.outbox.closed
-        XCTAssertTrue(observed)
-        let afterRevoke = try await session.send(.request(.capabilities))
-        XCTAssertNil(afterRevoke)
-    }
-
-    func testReplayedFrameEndsTheSession() async throws {
-        let harness = Harness()
-        let session = try await Session(harness, identity: try await pair(harness, role: .viewOnly))
-        let frame = try session.channel.seal(JSONEncoder().encode(Envelope.request(.deviceInfo)))
-        try await deliver(.sealed(frame), to: session.connection)
-        _ = await session.outbox.take()
-        try await deliver(.sealed(frame), to: session.connection)
-        guard case .refused? = await session.outbox.take().first else { return XCTFail("Expected a refusal") }
-        let observed = await session.outbox.closed
-        XCTAssertTrue(observed)
     }
 }
 
@@ -471,32 +220,154 @@ private struct Account {
     }
 }
 
+final class AgentSessionTests: XCTestCase {
+    func testNobodyConnectsBeforeTheMacJoinsAnAccount() async throws {
+        let harness = Harness()
+        let (connection, outbox) = await harness.connect()
+        var handshake = ConsoleHandshake(identity: DeviceIdentity(name: "Laptop"), chain: try Account().chain(for: DeviceIdentity(name: "Laptop")))
+        try await deliver(.hello(handshake.hello()), to: connection)
+        guard case .refused(let reason)? = await outbox.take().first else { return XCTFail("Expected a refusal") }
+        XCTAssertTrue(reason.contains("Add to my account"))
+        let closed = await outbox.closed
+        XCTAssertTrue(closed)
+    }
+
+    func testADeviceOfTheAccountReadsOverAnEncryptedSession() async throws {
+        let harness = Harness(), account = Account()
+        try await join(harness, account, roleCap: .viewOnly)
+        let session = try await accountDevice(harness, account)
+
+        let capabilities = try unwrapped(try await session.send(.request(.capabilities))).body(Capabilities.self)
+        XCTAssertEqual(capabilities.device, device)
+        XCTAssertEqual(capabilities.agentVersion, "0.3.0")
+        XCTAssertFalse(capabilities.actionsAllowed, "The Mac chose view only")
+
+        let ports = try unwrapped(try await session.send(.request(.ports))).body([PortInfo].self)
+        XCTAssertEqual(ports, [port])
+
+        let failure = try unwrapped(try await session.send(.request(.memoryStats)))
+        XCTAssertEqual(failure.kind, .error)
+        XCTAssertEqual(try failure.body(RemoteError.self).code, .unavailable)
+
+        let unknown = try unwrapped(try await session.send(.request("files.delete")))
+        XCTAssertEqual(try unknown.body(RemoteError.self).code, .unknownOperation)
+    }
+
+    func testDNSProbesOnlyTheMacsOwnServers() async throws {
+        let harness = Harness(), account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+
+        let configuration = try unwrapped(try await session.send(.request(.dnsConfiguration))).body(DNSConfiguration.self)
+        XCTAssertEqual(configuration.activeServers, ["192.168.1.1"])
+
+        let own = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "apple.com"))
+        let probe = try unwrapped(try await session.send(own)).body(ServerProbe.self)
+        XCTAssertEqual(probe.server, "192.168.1.1")
+
+        let elsewhere = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "203.0.113.9", name: "apple.com"))
+        let elsewhereCode = try unwrapped(try await session.send(elsewhere)).body(RemoteError.self).code
+        XCTAssertEqual(elsewhereCode, .notPermitted)
+
+        let badName = try Envelope.request(.dnsProbe, body: DNSProbeRequest(server: "192.168.1.1", name: "-x; rm"))
+        let badNameCode = try unwrapped(try await session.send(badName)).body(RemoteError.self).code
+        XCTAssertEqual(badNameCode, .invalidPayload)
+    }
+
+    func testADeviceWithoutTheAccountsChainIsRefused() async throws {
+        let harness = Harness()
+        try await join(harness, Account())
+        let (connection, outbox) = await harness.connect()
+        var handshake = ConsoleHandshake(identity: DeviceIdentity(name: "Stranger"))
+        try await deliver(.hello(handshake.hello()), to: connection)
+        guard case .reply(let reply)? = await outbox.take().first else { return XCTFail() }
+        let finish = try handshake.finish(after: reply) { _ in true }.finish
+        try await deliver(.finish(finish), to: connection)
+        guard case .refused? = await outbox.take().first else { return XCTFail("Expected a refusal") }
+        let observed = await outbox.closed
+        XCTAssertTrue(observed)
+    }
+
+    func testActionsNeedTheRoleAndTheSwitch() async throws {
+        let request = try Envelope.request(.freePort, body: FreePortRequest(port: port))
+
+        let viewOnly = Harness(), viewAccount = Account()
+        try await join(viewOnly, viewAccount, roleCap: .viewOnly)
+        let viewer = try await accountDevice(viewOnly, viewAccount)
+        let viewerCode = try unwrapped(try await viewer.send(request)).body(RemoteError.self).code
+        XCTAssertEqual(viewerCode, .notPermitted)
+
+        let switchedOff = Harness(settings: RemoteSettings(isEnabled: true, allowActions: false)), offAccount = Account()
+        try await join(switchedOff, offAccount)
+        let actor = try await accountDevice(switchedOff, offAccount)
+        let switchedOffCode = try unwrapped(try await actor.send(request)).body(RemoteError.self).code
+        XCTAssertEqual(switchedOffCode, .actionsDisabled)
+
+        let allowed = Harness(), allowedAccount = Account()
+        try await join(allowed, allowedAccount)
+        let operator_ = try await accountDevice(allowed, allowedAccount)
+        let allowedResult = try unwrapped(try await operator_.send(request)).body(ActionResult.self).result
+        XCTAssertEqual(allowedResult, .terminated)
+
+        let counts = (await viewOnly.counter.count, await switchedOff.counter.count, await allowed.counter.count)
+        XCTAssertEqual(counts.0, 0)
+        XCTAssertEqual(counts.1, 0)
+        XCTAssertEqual(counts.2, 1)
+
+        // Every action, refused or not, is in the log, attributed to the device.
+        let entries = await allowed.state.log.entries
+        XCTAssertEqual(entries.last?.actor, "Laptop")
+        XCTAssertEqual(entries.last?.event, "Free port 3000 (node, PID 4242)")
+        XCTAssertEqual(entries.last?.outcome, "Done")
+        let refused = await viewOnly.state.log.entries.last
+        XCTAssertEqual(refused?.outcome, "Refused: This device has view-only access to this Mac.")
+    }
+
+    func testReplayedFrameEndsTheSession() async throws {
+        let harness = Harness(), account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+        let frame = try session.channel.seal(JSONEncoder().encode(Envelope.request(.deviceInfo)))
+        try await deliver(.sealed(frame), to: session.connection)
+        _ = await session.outbox.take()
+        try await deliver(.sealed(frame), to: session.connection)
+        guard case .refused? = await session.outbox.take().first else { return XCTFail("Expected a refusal") }
+        let observed = await session.outbox.closed
+        XCTAssertTrue(observed)
+    }
+
+    func testTurningOffEndsSessionsAndRefusesNewOnes() async throws {
+        let harness = Harness(), account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+        await harness.state.update(RemoteSettings(isEnabled: false))
+        let closed = await session.outbox.closed
+        XCTAssertTrue(closed)
+        let again = try? await accountDevice(harness, account)
+        let answered = try await again?.send(.request(.capabilities))
+        XCTAssertNil(answered)
+    }
+}
+
 final class AgentWorkspaceTests: XCTestCase {
     private func status(_ session: Session) async throws -> WorkspaceStatus {
         try unwrapped(try await session.send(.request(.workspaceStatus))).body(WorkspaceStatus.self)
     }
 
-    func testPairingIntoAnAccountLetsEveryDeviceOfItIn() async throws {
+    func testJoiningAnAccountLetsEveryDeviceOfItIn() async throws {
         let harness = Harness(), account = Account()
-        let laptop = DeviceIdentity(name: "Laptop"), studio = DeviceIdentity(name: "Desk")
-        let paired = try await pairReturningClaim(harness, role: .viewAndAct, identity: laptop, grant: try account.grant(for: laptop))
-
-        let claim = try unwrapped(paired.claim)
-        XCTAssertTrue(claim.isValid)
-        XCTAssertEqual(claim.workspaceID, account.id)
-        XCTAssertEqual(claim.macKey, harness.macIdentity.publicIdentity.signingKey)
-        let consoles = await harness.state.consoles
-        XCTAssertTrue(consoles.isEmpty, "The account is pinned, not the console")
+        try await join(harness, account)
         let membership = try unwrapped(await harness.state.membership)
         XCTAssertEqual(membership.workspaceKey, account.publicKey)
-        XCTAssertEqual(membership.roleCap, .viewAndAct)
+        XCTAssertEqual(membership.roleCap, .viewAndAct, "View and act unless the Mac says otherwise")
+        let logged = await harness.state.log.entries.last?.event
+        XCTAssertEqual(logged, "Added this Mac to me@example.com's account")
 
-        // Another device of the account, never paired here, connects with its chain.
-        let session = try await Session(harness, identity: studio, chain: try account.chain(for: studio))
+        let session = try await accountDevice(harness, account, name: "Desk")
         let capabilities = try unwrapped(try await session.send(.request(.capabilities))).body(Capabilities.self)
         XCTAssertTrue(capabilities.actionsAllowed)
         XCTAssertEqual(capabilities.protocolVersion, 2)
-        XCTAssertTrue(capabilities.operations.contains(.workspaceAdopt))
+        XCTAssertTrue(capabilities.operations.contains(.workspaceRevocations))
         let current = try await status(session)
         XCTAssertEqual(current.workspaceID, account.id)
         XCTAssertTrue(current.viaWorkspace)
@@ -507,15 +378,13 @@ final class AgentWorkspaceTests: XCTestCase {
 
     func testViewersAndTheMacsChoiceLimitAccess() async throws {
         let harness = Harness(), account = Account()
-        let laptop = DeviceIdentity(name: "Laptop")
-        _ = try await pairReturningClaim(harness, role: .viewOnly, identity: laptop, grant: try account.grant(for: laptop))
-        let owner = try await Session(harness, identity: laptop, chain: try account.chain(for: laptop))
+        try await join(harness, account, roleCap: .viewOnly)
+        let owner = try await accountDevice(harness, account)
         var capabilities = try unwrapped(try await owner.send(.request(.capabilities))).body(Capabilities.self)
         XCTAssertFalse(capabilities.actionsAllowed, "The Mac chose view only")
 
         await harness.state.setWorkspaceRoleCap(.viewAndAct)
-        let viewer = DeviceIdentity(name: "Tablet")
-        let session = try await Session(harness, identity: viewer, chain: try account.chain(for: viewer, role: .viewer))
+        let session = try await accountDevice(harness, account, name: "Tablet", role: .viewer)
         capabilities = try unwrapped(try await session.send(.request(.capabilities))).body(Capabilities.self)
         XCTAssertFalse(capabilities.actionsAllowed, "A viewer never acts")
         let freed = try unwrapped(try await session.send(try .request(.freePort, body: FreePortRequest(port: port))))
@@ -524,12 +393,10 @@ final class AgentWorkspaceTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
-    func testStrangersAndOtherAccountsAreRefused() async throws {
-        let harness = Harness(), account = Account()
-        let laptop = DeviceIdentity(name: "Laptop")
-        _ = try await pairReturningClaim(harness, role: .viewAndAct, identity: laptop, grant: try account.grant(for: laptop))
-        let stranger = DeviceIdentity(name: "Stranger")
-        let session = try await Session(harness, identity: stranger, chain: try Account().chain(for: stranger))
+    func testOtherAccountsAreRefused() async throws {
+        let harness = Harness()
+        try await join(harness, Account())
+        let session = try await accountDevice(harness, Account(), name: "Stranger")
         let answer = try await session.send(.request(.capabilities))
         XCTAssertNil(answer)
         let closed = await session.outbox.closed
@@ -538,13 +405,13 @@ final class AgentWorkspaceTests: XCTestCase {
 
     func testRevocationEndsTheSessionAndOldListsAreIgnored() async throws {
         let harness = Harness(), account = Account()
-        let laptop = DeviceIdentity(name: "Laptop"), lost = DeviceIdentity(name: "Lost")
-        _ = try await pairReturningClaim(harness, role: .viewAndAct, identity: laptop, grant: try account.grant(for: laptop))
+        try await join(harness, account)
+        let lost = DeviceIdentity(name: "Lost")
         let lostSession = try await Session(harness, identity: lost, chain: try account.chain(for: lost))
         let before = try await lostSession.send(.request(.capabilities))
         XCTAssertNotNil(before)
 
-        let owner = try await Session(harness, identity: laptop, chain: try account.chain(for: laptop))
+        let owner = try await accountDevice(harness, account)
         let after = try unwrapped(try await owner.send(try .request(.workspaceRevocations, body: try account.revocations(2, [lost]))))
             .body(WorkspaceStatus.self)
         XCTAssertEqual(after.revocationSequence, 2)
@@ -562,66 +429,28 @@ final class AgentWorkspaceTests: XCTestCase {
         XCTAssertNil(refused)
     }
 
-    func testMoveThisMacToAnAccountAndUndo() async throws {
-        let harness = Harness(), account = Account()
-        let console = try await pair(harness, role: .viewAndAct)
-        let session = try await Session(harness, identity: console)
-        let initial = try await status(session)
-        XCTAssertNil(initial.workspaceID)
-
-        let accountDevice = DeviceIdentity(name: "Laptop account key")
-        let moved = try unwrapped(try await session.send(try .request(.workspaceAdopt, body: try account.grant(for: accountDevice))))
-            .body(WorkspaceStatus.self)
-        XCTAssertEqual(moved.workspaceID, account.id)
-        XCTAssertTrue(try unwrapped(moved.claim).isValid)
-        let membership = try unwrapped(await harness.state.membership)
-        XCTAssertEqual(membership.roleCap, .viewAndAct, "The account gets the access this console had")
-        XCTAssertEqual(membership.movedFrom?.identity.signingKey, console.publicIdentity.signingKey)
-        var consoles = await harness.state.consoles
-        XCTAssertTrue(consoles.isEmpty, "The console now comes in through the account")
-        let logged = await harness.state.log.entries.last?.event
-        XCTAssertEqual(logged, "Laptop moved this Mac to me@example.com's account")
-
-        let viaAccount = try await Session(harness, identity: accountDevice, chain: try account.chain(for: accountDevice))
-        let answered = try await viaAccount.send(.request(.capabilities))
-        XCTAssertNotNil(answered)
-
-        await harness.state.undoMove()
-        consoles = await harness.state.consoles
-        XCTAssertEqual(consoles.map(\.identity.signingKey), [console.publicIdentity.signingKey])
-        let left = await harness.state.membership
-        XCTAssertNil(left)
-        let closed = await viaAccount.outbox.closed
-        XCTAssertTrue(closed)
-    }
-
-    func testAMacInAnotherAccountIsNotMovedOverTheNetwork() async throws {
+    func testJoiningAnotherAccountEndsTheOldAccountsSessions() async throws {
         let harness = Harness(), first = Account(), second = Account()
-        let laptop = DeviceIdentity(name: "Laptop")
-        _ = try await pairReturningClaim(harness, role: .viewAndAct, identity: laptop, grant: try first.grant(for: laptop))
-        let console = try await pair(harness, role: .viewAndAct, name: "Old console")
-        // Pairing on its own again does not take the Mac out of its account.
-        let stillMember = await harness.state.membership
-        XCTAssertNotNil(stillMember)
-        let session = try await Session(harness, identity: console)
-        let refused = try unwrapped(try await session.send(try .request(.workspaceAdopt, body: try second.grant(for: laptop))))
-        XCTAssertEqual(refused.kind, .error)
-        let workspaceID = await harness.state.membership?.workspaceID
-        XCTAssertEqual(workspaceID, first.id)
+        try await join(harness, first)
+        let session = try await accountDevice(harness, first)
+        try await join(harness, second)
+        let closed = await session.outbox.closed
+        XCTAssertTrue(closed)
+        let workspaceKey = await harness.state.membership?.workspaceKey
+        XCTAssertEqual(workspaceKey, second.publicKey)
     }
 
     func testLeavingTheAccountRefusesItsDevices() async throws {
         let harness = Harness(), account = Account()
-        let laptop = DeviceIdentity(name: "Laptop")
-        _ = try await pairReturningClaim(harness, role: .viewAndAct, identity: laptop, grant: try account.grant(for: laptop))
-        let session = try await Session(harness, identity: laptop, chain: try account.chain(for: laptop))
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
         let answered = try await session.send(.request(.capabilities))
         XCTAssertNotNil(answered)
         await harness.state.leaveWorkspace()
         let closed = await session.outbox.closed
         XCTAssertTrue(closed)
-        let again = try await Session(harness, identity: laptop, chain: try account.chain(for: laptop))
-        let refused = try await again.send(.request(.capabilities))
+        let again = try? await accountDevice(harness, account)
+        let refused = try await again?.send(.request(.capabilities))
         XCTAssertNil(refused)
     }
 
@@ -726,10 +555,10 @@ final class RelayTests: XCTestCase {
         XCTAssertTrue(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "bm9uY2U="))
         await socket.push(control: ["type": "ready"])
 
-        // A console asks to pair through the relay with no code on screen: the agent refuses on that stream only.
+        // A console says hello through the relay to a Mac in no account: the agent refuses on that stream only.
         await socket.push(control: ["type": "open", "stream": 7])
         var start = Data([0, 0, 0, 7])
-        start.append(Framing.frame(try WireMessage.pairStart(ConsolePairing(identity: DeviceIdentity(name: "Laptop")).start()).encoded()))
+        start.append(Framing.frame(try WireMessage.hello(ConsoleHandshake(identity: DeviceIdentity(name: "Laptop")).hello()).encoded()))
         await socket.pipe.push(.data(start))
 
         let reply = try await socket.sent { message -> Data? in
@@ -741,7 +570,7 @@ final class RelayTests: XCTestCase {
         guard case .refused(let reason)? = try frames.first.map({ try WireMessage.decoded(from: $0) }) else {
             return XCTFail("expected a refusal")
         }
-        XCTAssertEqual(reason, "This Mac is not showing a pairing code.")
+        XCTAssertTrue(reason.contains("not in a MacPeek Remote account"))
         // And the relay is told the stream ended, so the console's socket closes.
         let closed = try await socket.sent { message in control(message).flatMap { $0["type"] as? String == "close" ? $0["stream"] as? Int : nil } }
         XCTAssertEqual(closed, 7)
@@ -808,5 +637,199 @@ final class RelayTests: XCTestCase {
         await harness.state.update(RemoteSettings(isEnabled: true, allowActions: true, allowFromAnywhere: true))
         let log = await harness.state.snapshot().log
         XCTAssertTrue(log.entries.contains { $0.event == "Turned Allow from anywhere on" })
+    }
+}
+
+// MARK: Add to my account (AccountJoinFlow)
+
+/// The service's side of a join request (macpeek-remote cloud/src/joins.ts), in memory: what the Mac sent, and what the
+/// test (standing in for the web page and a console) answers.
+private actor FakeJoinService: AccountHTTP {
+    var request: [String: Any] = [:]
+    var status = "waiting"
+    var grant: String?
+    var claim: [String: Any]?
+    var cancelled = false
+    var failClaim = false
+    let workspaceID: String
+
+    init(workspaceID: String) { self.workspaceID = workspaceID }
+
+    func failClaims() { failClaim = true }
+
+    func set(status: String, grant: String? = nil) {
+        self.status = status
+        if let grant { self.grant = grant }
+    }
+
+    nonisolated func send(_ method: String, _ url: URL, headers: [String: String], body: Data?) async throws -> (status: Int, body: Data) {
+        let object = body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        return await handle(method, url.path, secret: headers["X-Join-Secret"], object)
+    }
+
+    private func reply(_ status: Int, _ object: [String: Any]) -> (status: Int, body: Data) {
+        (status, try! JSONSerialization.data(withJSONObject: object))
+    }
+
+    private func handle(_ method: String, _ path: String, secret: String?, _ body: [String: Any]) -> (status: Int, body: Data) {
+        if method == "POST", path == "/mac-joins" {
+            request = body
+            return reply(201, ["id": "join_1234567890abcdef", "secret": "secret-secret-secret-secret",
+                               "url": "https://remote.macpeekapp.com/account/join/?id=join_1234567890abcdef"])
+        }
+        guard secret == "secret-secret-secret-secret" else { return reply(404, ["error": "not_found"]) }
+        switch (method, path) {
+        case ("GET", "/mac-joins/join_1234567890abcdef"):
+            let approved = status == "approved"
+            return reply(200, ["status": status, "account": "me@example.com", "workspaceId": workspaceID,
+                               "grant": approved ? (grant.map { $0 as Any } ?? NSNull()) : NSNull()])
+        case ("POST", "/mac-joins/join_1234567890abcdef/claim"):
+            guard status == "approved" else { return reply(409, ["error": "not_approved"]) }
+            if failClaim { return reply(503, ["error": "unavailable"]) }
+            claim = body["claim"] as? [String: Any]
+            status = "joined"
+            return reply(200, ["status": "joined"])
+        case ("POST", "/mac-joins/join_1234567890abcdef/cancel"):
+            cancelled = true
+            status = "declined"
+            return reply(200, ["status": "declined"])
+        default:
+            return reply(404, ["error": "not_found"])
+        }
+    }
+}
+
+final class AccountJoinTests: XCTestCase {
+    private let base = URL(string: "https://api.macpeekapp.com")!
+
+    func testJoinsAfterTheWebSignInAndTheConsolesApproval() async throws {
+        let harness = Harness(), account = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office\nMac", http: service, baseURL: base)
+
+        await flow.start()
+        let started = await flow.phase
+        XCTAssertEqual(started, .signIn(URL(string: "https://remote.macpeekapp.com/account/join/?id=join_1234567890abcdef")!))
+        // The request is signed by the Mac's key and names it on one line.
+        let request = await service.request
+        let macKey = try unwrapped(Data(base64Encoded: request["macKey"] as? String ?? ""))
+        XCTAssertEqual(macKey, harness.macIdentity.publicIdentity.signingKey)
+        XCTAssertEqual(request["name"] as? String, "Office Mac")
+        let time = try unwrapped(request["time"] as? Int)
+        let message = try AccountJoin.requestMessage(macKey: macKey, name: "Office Mac", time: Int64(time))
+        XCTAssertTrue(harness.macIdentity.publicIdentity.isValidSignature(
+            try unwrapped(Data(base64Encoded: request["signature"] as? String ?? "")), for: Data(message.utf8)))
+
+        await flow.poll()
+        let stillWaiting = await flow.phase
+        XCTAssertEqual(stillWaiting, started)
+
+        await service.set(status: "attached")
+        await flow.poll()
+        let attached = await flow.phase
+        XCTAssertEqual(attached, .waitingForApproval(account: "me@example.com"))
+
+        // A console approves with the workspace grant: the Mac sends its claim and joins, with nothing to confirm here.
+        let consoleDevice = DeviceIdentity(name: "Main Mac")
+        let grant = try account.grant(for: consoleDevice)
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(grant), as: UTF8.self))
+        await flow.poll()
+        let joined = await flow.phase
+        XCTAssertEqual(joined, .joined(account: "me@example.com"))
+        let membership = try unwrapped(await harness.state.membership)
+        XCTAssertEqual(membership.workspaceID, account.id)
+        XCTAssertEqual(membership.workspaceKey, account.publicKey)
+        XCTAssertEqual(membership.roleCap, .viewAndAct, "View and act by default; actions still need Allow actions")
+        let claim = try unwrapped(await service.claim)
+        let sent = MacClaim(macKey: try unwrapped(Data(base64Encoded: claim["macKey"] as? String ?? "")), workspaceID: account.id,
+                            time: Int64(try unwrapped(claim["time"] as? Int)),
+                            signature: try unwrapped(Data(base64Encoded: claim["signature"] as? String ?? "")))
+        XCTAssertTrue(sent.isValid)
+        // The console that approved now reaches the Mac through the account.
+        let authorized = await harness.state.authorize(consoleDevice.publicIdentity, chain: grant.chain)
+        XCTAssertNotNil(authorized)
+    }
+
+    func testRefusesAGrantThatDoesNotCheckOut() async throws {
+        let harness = Harness(), account = Account(), other = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        // A chain issued by another workspace key than the one the grant names.
+        let device = DeviceIdentity(name: "Main Mac")
+        let forged = WorkspaceGrant(workspaceID: account.id, workspaceKey: account.publicKey, name: "me@example.com",
+                                    chain: try other.chain(for: device))
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(forged), as: UTF8.self))
+        await flow.poll()
+        let phase = await flow.phase
+        guard case .failed = phase else { return XCTFail("expected a failure, got \(phase)") }
+        let claim = await service.claim
+        XCTAssertNil(claim, "The Mac claims nothing for a grant it cannot check")
+        let membership = await harness.state.membership
+        XCTAssertNil(membership)
+    }
+
+    func testCancellingTellsTheServiceAndJoinsNothing() async throws {
+        let harness = Harness()
+        let service = FakeJoinService(workspaceID: "ws_test")
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.set(status: "attached")
+        await flow.poll()
+        await flow.cancel()
+        let cancelled = await service.cancelled
+        XCTAssertTrue(cancelled)
+        let phase = await flow.phase
+        XCTAssertEqual(phase, .idle)
+        await service.set(status: "declined")
+        await flow.poll()
+        let after = await flow.phase
+        XCTAssertEqual(after, .idle, "A cancelled flow stops checking")
+    }
+
+    func testJoinsNothingWhenTheServiceDoesNotTakeTheClaim() async throws {
+        let harness = Harness(), account = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.failClaims()
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(try account.grant(for: DeviceIdentity(name: "Main Mac"))), as: UTF8.self))
+        await flow.poll()
+        let phase = await flow.phase
+        guard case .failed = phase else { return XCTFail("expected a failure, got \(phase)") }
+        let membership = await harness.state.membership
+        XCTAssertNil(membership, "The Mac joins only once the service has its claim, so it can start again")
+    }
+
+    func testSaysWhenTheConsoleDeclined() async throws {
+        let harness = Harness()
+        let service = FakeJoinService(workspaceID: "ws_test")
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.set(status: "declined")
+        await flow.poll()
+        let phase = await flow.phase
+        XCTAssertEqual(phase, .failed("The request was declined in MacPeek Remote."))
+    }
+
+    func testJoiningNeedsRemoteManagementOn() async throws {
+        let harness = Harness(settings: RemoteSettings(isEnabled: false))
+        do {
+            try await harness.state.joinAccount(try Account().grant(for: DeviceIdentity(name: "Main Mac")), roleCap: .viewOnly)
+            XCTFail("expected a refusal")
+        } catch {}
+    }
+
+    func testServiceAddresses() {
+        let defaults = UserDefaults(suiteName: "AccountServiceTests-\(UUID().uuidString)")!
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults), AccountService.production)
+        XCTAssertEqual(AccountService.baseURL(environment: ["MACPEEK_API_URL": "https://api.staging.macpeekapp.com"], defaults: defaults).absoluteString,
+                       "https://api.staging.macpeekapp.com")
+        defaults.set("https://api.staging.macpeekapp.com", forKey: "remote.serviceURL")
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults).host, "api.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: AccountService.production).absoluteString, "wss://relay.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: URL(string: "https://api.staging.macpeekapp.com")!).absoluteString,
+                       "wss://relay.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: URL(string: "http://localhost:8787")!).absoluteString, "ws://localhost:8787")
     }
 }

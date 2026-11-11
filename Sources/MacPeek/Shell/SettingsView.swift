@@ -57,11 +57,11 @@ struct SettingsView: View {
                         LabeledContent("MacPeek Remote", value: remote.isEnabled ? "On" : "Off")
                     }
                     .buttonStyle(.plain)
-                    Text("Off by default. Lets MacPeek Remote consoles you pair with see this Mac, and act on it if you allow.")
+                    Text("Off by default. Lets the devices of your MacPeek Remote account see this Mac, and act on it if you allow.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
-                    Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off), checks you start yourself (NetPeek, DNSPeek, UpdatePeek) and, only if you turn it on, Remote management, which listens on your local network for consoles you have paired.")
+                    Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off), checks you start yourself (NetPeek, DNSPeek, UpdatePeek) and, only if you turn it on, Remote management, which talks to MacPeek Remote's service to add this Mac to your account and lets your account's devices connect on the local network or through the relay.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

@@ -4,6 +4,11 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **Remote management: Add to my account.** The only way to add a Mac to MacPeek Remote: sign in to your account in the
+  browser from MacPeek, approve the Mac in MacPeek Remote on your main Mac, and it joins with View and act and **Allow
+  from anywhere** on (and says so). Actions still need **Allow actions**.
+- **Remote management: Allow from anywhere.** The account's devices reach the Mac from any network through MacPeek's
+  end-to-end encrypted relay, without opening a port.
 - **Remote agent**: a new read, `disk.io`, returns how many bytes the drive behind each volume has read and written
   (from its block-storage driver's statistics in the I/O Registry). MacPeek Remote uses it to show an external
   drive's own read and write speed instead of the total for every disk.
@@ -12,6 +17,10 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - **USBPeek and the remote agent**: Bluetooth devices whose battery level system_profiler leaves out (macOS's Bluetooth
   menu still shows one) now get it from the I/O registry (`ioreg -k BatteryPercent`), by product name. Battery keys
   other than `device_batteryLevelMain`/`Left`/`Right`/`Case` are read too.
+
+### Removed
+- **Remote management: pairing with a code.** The one-time code, the four words, consoles paired one by one, "Move this
+  Mac to your account" and "Undo move" are gone: a Mac is reachable only by the devices of the account it was added to.
 
 ### Changed
 - **Remote agent**: GPUPeek replies now carry Metal's facts about the GPU (family, memory the GPU may use), so the

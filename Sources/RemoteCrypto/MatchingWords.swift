@@ -1,40 +1,7 @@
 import Foundation
 
-/// The six digits a Mac shows when someone chooses "Show pairing code". They prove the person pairing can see that Mac's
-/// screen. The code is short-lived and allows only a few attempts; the matching words protect the connection itself.
-public struct PairingCode: Equatable, Sendable {
-    public static let lifetime: TimeInterval = 300
-    public static let maximumAttempts = 3
-
-    public let digits: String
-    public let expiresAt: Date
-
-    public init(digits: String, expiresAt: Date) {
-        self.digits = digits
-        self.expiresAt = expiresAt
-    }
-
-    /// A uniformly random code from the system's secure generator.
-    public static func generate(now: Date = Date()) -> PairingCode {
-        var generator = SystemRandomNumberGenerator()
-        let value = Int.random(in: 0..<1_000_000, using: &generator)
-        return PairingCode(digits: String(format: "%06d", value), expiresAt: now.addingTimeInterval(lifetime))
-    }
-
-    /// "482 913".
-    public var formatted: String { "\(digits.prefix(3)) \(digits.suffix(3))" }
-
-    public func isExpired(at now: Date = Date()) -> Bool { now >= expiresAt }
-
-    /// What someone typed, as six digits, or nil. Spaces and dashes are ignored: "482 913" and "482-913" both work.
-    public static func normalized(_ typed: String) -> String? {
-        let digits = typed.filter { !$0.isWhitespace && $0 != "-" }
-        guard digits.count == 6, digits.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
-        return digits
-    }
-}
-
-/// The words both screens show while pairing. If they match, nobody is in the middle of the connection.
+/// Four short words from a digest, for people to compare on two screens (MacPeek Remote uses them to approve a new
+/// console of an account). If they match, nobody is in the middle.
 public enum MatchingWords {
     public static let count = 4
 

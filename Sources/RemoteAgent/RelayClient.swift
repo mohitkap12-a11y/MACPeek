@@ -226,10 +226,11 @@ public actor RelayClient {
         case waiting(retryAt: Date, reason: String)
     }
 
-    /// The production relay. `MACPEEK_RELAY_URL` in the environment points a development build elsewhere.
+    /// The relay next to the service (`AccountService`): production, or staging when MacPeek points at staging.
+    /// `MACPEEK_RELAY_URL` in the environment points a development build at any relay.
     public static var defaultBaseURL: URL {
         if let override = ProcessInfo.processInfo.environment["MACPEEK_RELAY_URL"], let url = URL(string: override) { return url }
-        return URL(string: "wss://relay.macpeekapp.com")!
+        return AccountService.relayURL(for: AccountService.baseURL())
     }
 
     /// The Mac's socket URL: `<base>/relay/mac/<mac id>`.

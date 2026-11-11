@@ -91,16 +91,14 @@ transmits it. MacPeek asks GitHub about once a day whether a newer release exist
 checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
 **Remote management** (Settings → Remote management) is off by default. While it is off MacPeek does not listen, does not
-advertise itself and connects nowhere. When you turn it on, MacPeek listens on your local network and advertises itself
-over Bonjour (`_macpeek._tcp`) so a MacPeek Remote console can find it. A console can read anything only after you pair it
-on this Mac (a one-time code plus four words you compare on both screens), and every connection is end-to-end encrypted
-and checked against the paired key. Actions (freeing a port, quitting a process) are a separate switch, are allowed only
-for consoles you paired as "View and act", use the same safety checks as on the Mac, and are recorded in an activity log
-you can read in Settings. A menu-bar dot shows whenever Remote management is on. The protocol is described in
-[docs/remote.md](docs/remote.md). On the local network nothing goes through a MacPeek server. A separate switch, **Allow
-from anywhere** (off by default), lets the devices of your MacPeek Remote account reach the Mac from any network through
-MacPeek's relay, still end-to-end encrypted: the relay sees only which Mac and which of your
-devices connect, addresses, times and amounts of data.
+advertise itself and connects nowhere. To manage this Mac from MacPeek Remote, turn it on and choose **Add to my
+account…**: sign in to your MacPeek Remote account in the browser, then approve the Mac in MacPeek Remote on your main
+Mac. Only devices of that account can then connect, over end-to-end encrypted connections checked against the account
+key the Mac pinned, on the local network or, with **Allow from anywhere** (turned on when the Mac joins, and said so),
+from any network through MacPeek's relay, which sees only which Mac and which of your devices connect, addresses, times
+and amounts of data. Actions (freeing a port, quitting a process) need a separate **Allow actions** switch, use the same
+safety checks as on the Mac, and are recorded in an activity log you can read in Settings. A menu-bar dot shows whenever
+Remote management is on. The protocol is described in [docs/remote.md](docs/remote.md).
 
 ## Roadmap
 Seventeen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,

@@ -1,6 +1,7 @@
 #if os(macOS)
 import Foundation
 import Combine
+import AppKit
 import RemoteAgent
 import RemoteCrypto
 
@@ -15,6 +16,8 @@ final class RemoteManagementController: ObservableObject {
     @Published private(set) var allowActions: Bool
     @Published private(set) var allowFromAnywhere: Bool
     @Published private(set) var relayStatus: RelayClient.Status = .off
+    /// "Add to my account" (AccountJoinFlow), shown in Settings while this Mac is in no account.
+    @Published private(set) var joinPhase: AccountJoinFlow.Phase = .idle
     @Published private(set) var snapshot: AgentState.Snapshot?
     @Published private(set) var listenerStatus: BonjourListener.Status = .stopped
     @Published private(set) var error: String?
@@ -25,6 +28,8 @@ final class RemoteManagementController: ObservableObject {
     private var relay: RelayClient?
     private var handler: RequestHandler?
     private var identity: DeviceIdentity?
+    private var joinFlow: AccountJoinFlow?
+    private var joinWork: Task<Void, Never>?
     private let notifications = NotificationService()
 
     init(defaults: UserDefaults = .standard) {
@@ -64,14 +69,56 @@ final class RemoteManagementController: ObservableObject {
         }
     }
 
-    func showPairingCode() { Task { await state?.newPairingCode() } }
-    func cancelPairing() { Task { await state?.cancelPairing() } }
-    func resolvePairing(role: ConsoleRole?) { Task { await state?.resolvePairing(role: role) } }
-    func setRole(_ role: ConsoleRole, for console: PairedConsole) { Task { await state?.setRole(role, for: console.id) } }
-    func revoke(_ console: PairedConsole) { Task { await state?.revoke(console.id) } }
+    /// Starts "Add to my account": asks the service, opens the sign-in page in the browser, then checks every few seconds
+    /// until a console of the account approves (or the request ends).
+    func startJoin() {
+        guard isEnabled, let state, let identity else { return }
+        joinWork?.cancel()
+        let flow = AccountJoinFlow(state: state, identity: identity, name: Self.deviceName, http: URLSessionAccountHTTP()) { [weak self] phase in
+            let controller = self
+            Task { @MainActor in controller?.joinChanged(phase) }
+        }
+        joinFlow = flow
+        joinWork = Task {
+            await flow.start()
+            if case .signIn(let url) = await flow.phase { NSWorkspace.shared.open(url) }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { return }
+                await flow.poll()
+                switch await flow.phase {
+                case .signIn, .waitingForApproval: continue
+                default: return
+                }
+            }
+        }
+    }
+
+    func openJoinPage(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    /// The person changed their mind.
+    func cancelJoin() {
+        joinWork?.cancel()
+        joinWork = nil
+        let flow = joinFlow
+        joinFlow = nil
+        joinPhase = .idle
+        Task { await flow?.cancel() }
+    }
+
+    private func joinChanged(_ phase: AccountJoinFlow.Phase) {
+        guard joinFlow != nil else { return }
+        joinPhase = phase
+        if case .joined(let account) = phase {
+            // The point of adding a Mac from the Mac: its account reaches it from anywhere. Settings says so.
+            setAllowFromAnywhere(true)
+            notifications.notify(title: "This Mac is in \(account)'s account",
+                                 body: "Its devices can now reach it from anywhere through MacPeek's encrypted relay. Turn this off in MacPeek ▸ Settings ▸ Remote management.")
+        }
+    }
+
     func setAccountRole(_ role: ConsoleRole) { Task { await state?.setWorkspaceRoleCap(role) } }
     func leaveAccount() { Task { await state?.leaveWorkspace() } }
-    func undoMove() { Task { await state?.undoMove() } }
 
     private func start() {
         do {
@@ -104,6 +151,7 @@ final class RemoteManagementController: ObservableObject {
         listener?.stop()
         listener = nil
         stopRelay()
+        cancelJoin()
         let settings = settings
         Task {
             await state?.update(settings)
@@ -127,16 +175,9 @@ final class RemoteManagementController: ObservableObject {
     }
 
     private func refresh() async {
-        let hadSnapshot = snapshot != nil
         let before = snapshot?.membership
         snapshot = await state?.snapshot()
         updateRelay(movedFrom: before?.workspaceID)
-        // A console moved this Mac into its account: that lets every device of the account in, so say so even when
-        // Settings is closed. "Undo move" is in Settings ▸ Remote management.
-        if hadSnapshot, let after = snapshot?.membership, let console = after.movedFrom, before?.workspaceID != after.workspaceID {
-            notifications.notify(title: "This Mac was added to \(after.name)'s account",
-                                 body: "\(console.identity.name) moved it. Every device in that account can now connect. To undo it, open MacPeek ▸ Settings ▸ Remote management.")
-        }
     }
 
     /// Runs the relay connection exactly while Remote management and Allow from anywhere are on and this Mac is in an

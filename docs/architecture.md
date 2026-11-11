@@ -32,8 +32,8 @@
   *disabled* set is persisted (not the enabled set), so utilities shipped later appear enabled by default.
 
 ## Remote management
-`RemoteCrypto` (pairing, handshake, encrypted channel), `RemoteProtocol` (envelopes, operations, framing) and
-`RemoteAgent` (settings, paired consoles, activity log, request handling, connection state machine) are UI-free and
+`RemoteCrypto` (account certificates, joining an account, handshake, encrypted channel), `RemoteProtocol` (envelopes, operations, framing) and
+`RemoteAgent` (settings, account membership, joining and the relay, activity log, request handling, connection state machine) are UI-free and
 tested on Linux. Only `BonjourListener` (Network.framework) and `KeychainIdentityStore` are macOS-only. The app's
 `RemoteManagementController` creates them only when the person turns Remote management on. See [remote.md](remote.md).
 

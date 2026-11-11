@@ -26,25 +26,7 @@ final class IdentityTests: XCTestCase {
     }
 }
 
-final class PairingCodeTests: XCTestCase {
-    func testGeneratedCodesAreSixDigitsAndExpire() {
-        let now = Date(timeIntervalSince1970: 1_761_000_000)
-        let code = PairingCode.generate(now: now)
-        XCTAssertEqual(code.digits.count, 6)
-        XCTAssertTrue(code.digits.allSatisfy(\.isNumber))
-        XCTAssertFalse(code.isExpired(at: now.addingTimeInterval(299)))
-        XCTAssertTrue(code.isExpired(at: now.addingTimeInterval(300)))
-        XCTAssertEqual(PairingCode(digits: "482913", expiresAt: now).formatted, "482 913")
-    }
-
-    func testTypedCodesAreNormalised() {
-        XCTAssertEqual(PairingCode.normalized(" 482 913 "), "482913")
-        XCTAssertEqual(PairingCode.normalized("482-913"), "482913")
-        XCTAssertNil(PairingCode.normalized("48291"))
-        XCTAssertNil(PairingCode.normalized("48291a"))
-        XCTAssertNil(PairingCode.normalized("４８２９１３"))
-    }
-
+final class MatchingWordsTests: XCTestCase {
     func testWordListHasOneDistinctWordPerByte() {
         XCTAssertEqual(MatchingWords.list.count, 256)
         XCTAssertEqual(Set(MatchingWords.list).count, 256)
@@ -52,93 +34,15 @@ final class PairingCodeTests: XCTestCase {
     }
 }
 
-final class PairingTests: XCTestCase {
-    private let now = Date()
-    private let console = DeviceIdentity(name: "Console")
-    private let mac = DeviceIdentity(name: "Mac")
-
-    private func code(_ digits: String = "482913") -> PairingCode {
-        PairingCode(digits: digits, expiresAt: now.addingTimeInterval(300))
-    }
-
-    func testSuccessfulPairingShowsTheSameWordsAndPinsBothIdentities() throws {
-        var consoleSide = ConsolePairing(identity: console)
-        var macSide = MacPairing(identity: mac, code: code())
-        let accept = try macSide.accept(consoleSide.start(), now: now)
-        let (reveal, consoleWords) = try consoleSide.reveal(after: accept, code: "482 913")
-        let macWords = try macSide.words(after: reveal, now: now)
-        XCTAssertEqual(consoleWords, macWords)
-        XCTAssertEqual(consoleWords.count, 4)
-
-        XCTAssertEqual(try macSide.consoleIdentity(from: consoleSide.confirm()), console.publicIdentity)
-        XCTAssertEqual(try consoleSide.macIdentity(from: macSide.confirm()), mac.publicIdentity)
-    }
-
-    func testWrongCodeIsRefused() throws {
-        var consoleSide = ConsolePairing(identity: console)
-        var macSide = MacPairing(identity: mac, code: code())
-        let accept = try macSide.accept(consoleSide.start(), now: now)
-        let (reveal, _) = try consoleSide.reveal(after: accept, code: "482914")
-        XCTAssertThrowsError(try macSide.words(after: reveal, now: now)) { XCTAssertEqual($0 as? PairingError, .wrongCode) }
-        XCTAssertThrowsError(try macSide.confirm())
-    }
-
-    func testExpiredCodeIsRefused() throws {
-        let consoleSide = ConsolePairing(identity: console)
-        var macSide = MacPairing(identity: mac, code: PairingCode(digits: "482913", expiresAt: now))
-        XCTAssertThrowsError(try macSide.accept(consoleSide.start(), now: now)) { XCTAssertEqual($0 as? PairingError, .codeExpired) }
-    }
-
-    func testRevealThatDoesNotMatchTheCommitmentIsRefused() throws {
-        var consoleSide = ConsolePairing(identity: console)
-        var otherConsole = ConsolePairing(identity: console)
-        var macSide = MacPairing(identity: mac, code: code())
-        let accept = try macSide.accept(consoleSide.start(), now: now)
-        // A different key than the one committed to (what an attacker choosing keys after seeing the Mac's would send).
-        let (swapped, _) = try otherConsole.reveal(after: accept, code: "482913")
-        XCTAssertThrowsError(try macSide.words(after: swapped, now: now)) { XCTAssertEqual($0 as? PairingError, .commitmentMismatch) }
-        _ = try consoleSide.reveal(after: accept, code: "482913")
-    }
-
-    func testPersonInTheMiddleSeesDifferentWords() throws {
-        // The attacker pairs with the console pretending to be the Mac, and with the Mac pretending to be the console.
-        var consoleSide = ConsolePairing(identity: console)
-        var attackerAsMac = MacPairing(identity: DeviceIdentity(name: "Mac"), code: code())
-        var attackerAsConsole = ConsolePairing(identity: DeviceIdentity(name: "Console"))
-        var macSide = MacPairing(identity: mac, code: code())
-
-        let (_, consoleWords) = try consoleSide.reveal(after: try attackerAsMac.accept(consoleSide.start(), now: now), code: "482913")
-        let (reveal, _) = try attackerAsConsole.reveal(after: try macSide.accept(attackerAsConsole.start(), now: now), code: "482913")
-        let macWords = try macSide.words(after: reveal, now: now)
-        XCTAssertNotEqual(consoleWords, macWords)
-    }
-
-    func testConfirmFromAnotherSessionIsRefused() throws {
-        func paired() throws -> (ConsolePairing, MacPairing) {
-            var consoleSide = ConsolePairing(identity: console)
-            var macSide = MacPairing(identity: mac, code: code())
-            let (reveal, _) = try consoleSide.reveal(after: try macSide.accept(consoleSide.start(), now: now), code: "482913")
-            _ = try macSide.words(after: reveal, now: now)
-            return (consoleSide, macSide)
-        }
-        let (consoleA, _) = try paired()
-        let (_, macB) = try paired()
-        XCTAssertThrowsError(try macB.consoleIdentity(from: consoleA.confirm())) { XCTAssertEqual($0 as? PairingError, .invalidIdentity) }
-    }
-
-    func testMessagesOutOfOrderAreRefused() throws {
-        var macSide = MacPairing(identity: mac, code: code())
-        let consoleSide = ConsolePairing(identity: console)
-        let start = consoleSide.start()
-        _ = try macSide.accept(start, now: now)
-        XCTAssertThrowsError(try macSide.accept(start, now: now)) { XCTAssertEqual($0 as? PairingError, .unexpectedMessage) }
-        XCTAssertThrowsError(try consoleSide.confirm()) { XCTAssertEqual($0 as? PairingError, .unexpectedMessage) }
-    }
-
-    func testUnsupportedVersionIsRefused() {
-        var macSide = MacPairing(identity: mac, code: code())
-        let start = PairingMessage.Start(version: 99, commitment: Data(count: 32))
-        XCTAssertThrowsError(try macSide.accept(start, now: now)) { XCTAssertEqual($0 as? PairingError, .unsupportedVersion(99)) }
+final class AccountJoinTests: XCTestCase {
+    func testTheRequestIsSignedByTheMacOnOneLine() throws {
+        let mac = DeviceIdentity(name: "Studio")
+        let key = mac.publicIdentity.signingKey
+        XCTAssertEqual(try AccountJoin.requestMessage(macKey: key, name: "Office Mac", time: 1),
+                       "macpeek-join-request-v1\n\(key.base64EncodedString())\nOffice Mac\n1")
+        let signature = try AccountJoin.request(by: mac, name: "Office Mac", time: 1)
+        XCTAssertTrue(mac.publicIdentity.isValidSignature(signature, for: Data(try AccountJoin.requestMessage(macKey: key, name: "Office Mac", time: 1).utf8)))
+        XCTAssertThrowsError(try AccountJoin.requestMessage(macKey: key, name: "Two\nlines", time: 1))
     }
 }
 

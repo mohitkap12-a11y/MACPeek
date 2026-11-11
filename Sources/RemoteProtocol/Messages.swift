@@ -61,8 +61,6 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let quitProcess: Operation = "processes.quit"
     /// Which workspace (account) this Mac belongs to, its revocation list number and a fresh claim.
     public static let workspaceStatus: Operation = "workspace.status"
-    /// Moves a Mac paired with this console alone into the console's workspace ("Move this Mac to your account").
-    public static let workspaceAdopt: Operation = "workspace.adopt"
     /// Hands the Mac a newer revocation list for its workspace.
     public static let workspaceRevocations: Operation = "workspace.revocations"
 
@@ -72,7 +70,7 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
                                             .processOrigin, .processOpenFiles, .containers, .gpu, .models, .diskIO]
     public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
-    public static let workspace: [Operation] = [.workspaceStatus, .workspaceAdopt, .workspaceRevocations]
+    public static let workspace: [Operation] = [.workspaceStatus, .workspaceRevocations]
 
     public var isAction: Bool { Self.actions.contains(self) }
 }
@@ -174,15 +172,15 @@ public struct DNSProbeRequest: Equatable, Codable, Sendable {
     }
 }
 
-/// `workspace.status`, and the answer to `workspace.adopt` and `workspace.revocations`.
+/// `workspace.status`, and the answer to `workspace.revocations`.
 public struct WorkspaceStatus: Equatable, Codable, Sendable {
-    /// Nil while this Mac trusts only consoles paired with it one by one.
+    /// Nil while this Mac is in no account (then no console can connect).
     public let workspaceID: String?
     /// The number of the revocation list the Mac holds; 0 for none.
     public let revocationSequence: Int
     /// A claim signed just now, when the Mac belongs to a workspace.
     public let claim: MacClaim?
-    /// Whether this console reached the Mac through the workspace (true) or as a console paired with it alone.
+    /// Always true: every console reaches the Mac through its account. Kept for the console's decoding.
     public let viaWorkspace: Bool
 
     public init(workspaceID: String?, revocationSequence: Int, claim: MacClaim?, viaWorkspace: Bool) {
@@ -267,13 +265,9 @@ public struct ActionResult: Equatable, Codable, Sendable {
     }
 }
 
-/// One frame on the connection. Pairing and the handshake travel in the clear (they protect themselves); everything
-/// after the handshake is an `Envelope` encrypted with the session's `SecureChannel`.
+/// One frame on the connection. The handshake travels in the clear (it protects itself); everything after it is an
+/// `Envelope` encrypted with the session's `SecureChannel`.
 public enum WireMessage: Equatable, Codable, Sendable {
-    case pairStart(PairingMessage.Start)
-    case pairAccept(PairingMessage.Accept)
-    case pairReveal(PairingMessage.Reveal)
-    case pairConfirm(PairingMessage.Confirm)
     case hello(HandshakeMessage.Hello)
     case reply(HandshakeMessage.Reply)
     case finish(HandshakeMessage.Finish)
