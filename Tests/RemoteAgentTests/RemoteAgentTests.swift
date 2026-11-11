@@ -822,11 +822,15 @@ final class AccountJoinTests: XCTestCase {
 
     func testServiceAddresses() {
         let defaults = UserDefaults(suiteName: "AccountServiceTests-\(UUID().uuidString)")!
-        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults), AccountService.production)
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults, built: nil), AccountService.production)
+        // Built for staging (scripts/build-app.sh with MACPEEK_ENV=staging); a placeholder left unsubstituted is ignored.
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults, built: "https://api.staging.macpeekapp.com").host,
+                       "api.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults, built: "__API_URL__"), AccountService.production)
         XCTAssertEqual(AccountService.baseURL(environment: ["MACPEEK_API_URL": "https://api.staging.macpeekapp.com"], defaults: defaults).absoluteString,
                        "https://api.staging.macpeekapp.com")
         defaults.set("https://api.staging.macpeekapp.com", forKey: "remote.serviceURL")
-        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults).host, "api.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults, built: nil).host, "api.staging.macpeekapp.com")
         XCTAssertEqual(AccountService.relayURL(for: AccountService.production).absoluteString, "wss://relay.macpeekapp.com")
         XCTAssertEqual(AccountService.relayURL(for: URL(string: "https://api.staging.macpeekapp.com")!).absoluteString,
                        "wss://relay.staging.macpeekapp.com")

@@ -64,6 +64,7 @@ swift test
 swift run MacPeek            # runs the menu-bar app
 open Package.swift           # or open it in Xcode
 scripts/build-app.sh 0.1.0   # build/MacPeek.app (ad-hoc signed unless SIGN_IDENTITY is set)
+MACPEEK_ENV=staging scripts/build-app.sh 0.1.0   # the same, with Add to my account and the relay on the staging service
 scripts/make-dmg.sh 0.1.0    # dist/MacPeek-0.1.0.dmg + SHA256SUMS
 ```
 

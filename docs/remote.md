@@ -55,6 +55,11 @@ another one replaces it and ends the old account's sessions.
 controlled the service while a Mac joins could give that Mac a workspace key of its own. Once joined, the Mac keeps the
 key it pinned, and everything after that is end-to-end encrypted and checked against it, whatever the service does.
 
+**Which service.** Production (`api.macpeekapp.com`) by default. A build made with
+`MACPEEK_ENV=staging scripts/build-app.sh` uses staging (`api.staging.macpeekapp.com`), as MacPeek Remote's script does;
+`MACPEEK_API_URL` in the environment, or `defaults write app.macpeek.MacPeek remote.serviceURL <url>`, overrides either.
+The Mac, the console and the account site must all use the same service, or the request is never found.
+
 ## Sessions
 Every connection runs a SIGMA-I handshake with fresh X25519 keys:
 
