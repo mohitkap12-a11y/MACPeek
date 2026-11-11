@@ -156,31 +156,12 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertFalse(MacClaim(macKey: claim.macKey, workspaceID: "ws_test", time: 2, signature: claim.signature).isValid)
     }
 
-    func testPairingCarriesTheGrantAndTheClaim() throws {
+    func testAGrantIsConsistentOnlyWithItsOwnKey() throws {
         let workspace = TestWorkspace()
-        let code = PairingCode.generate()
-        var console = ConsolePairing(identity: DeviceIdentity(name: "Laptop"))
-        let mac = DeviceIdentity(name: "Studio")
-        var macSide = MacPairing(identity: mac, code: code)
-        let accept = try macSide.accept(console.start())
-        let (reveal, _) = try console.reveal(after: accept, code: code.digits)
-        _ = try macSide.words(after: reveal)
-
         let grant = try workspace.grant()
-        let received = try macSide.consoleConfirmation(from: try console.confirm(grant: grant))
-        XCTAssertEqual(received.grant, grant)
-        let claim = try MacClaim.sign(by: mac, workspaceID: workspace.id, time: 5)
-        let confirmed = try console.macConfirmation(from: try macSide.confirm(claim: claim))
-        XCTAssertEqual(confirmed.claim, claim)
-        XCTAssertNil(try console.macConfirmation(from: try macSide.confirm()).claim, "No claim from a Mac that did not join")
-
-        // A claim signed by another key is dropped rather than trusted.
-        let foreign = try MacClaim.sign(by: DeviceIdentity(name: "Other"), workspaceID: workspace.id, time: 5)
-        XCTAssertNil(try console.macConfirmation(from: try macSide.confirm(claim: foreign)).claim)
-        // An inconsistent grant is dropped: the Mac then pairs the console on its own.
-        let broken = WorkspaceGrant(workspaceID: workspace.id, workspaceKey: TestWorkspace().publicKey, name: "x",
-                                    chain: grant.chain)
-        XCTAssertNil(try macSide.consoleConfirmation(from: try console.confirm(grant: broken)).grant)
+        XCTAssertTrue(grant.isValid())
+        let broken = WorkspaceGrant(workspaceID: workspace.id, workspaceKey: TestWorkspace().publicKey, name: "x", chain: grant.chain)
+        XCTAssertFalse(broken.isValid())
     }
 
     func testHandshakeCarriesTheChain() throws {

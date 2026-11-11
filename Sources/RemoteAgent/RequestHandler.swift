@@ -292,7 +292,7 @@ public struct RequestHandler: Sendable {
     }
 
     private func refusal(console: PairedConsole, settings: RemoteSettings) -> RemoteError? {
-        guard console.role.mayAct else { return RemoteError(.notPermitted, "This console is paired view-only.") }
+        guard console.role.mayAct else { return RemoteError(.notPermitted, "This device has view-only access to this Mac.") }
         guard settings.allowActions else { return RemoteError(.actionsDisabled, "Actions are turned off on this Mac.") }
         return nil
     }

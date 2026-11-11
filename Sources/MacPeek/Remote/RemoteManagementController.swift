@@ -96,13 +96,7 @@ final class RemoteManagementController: ObservableObject {
 
     func openJoinPage(_ url: URL) { NSWorkspace.shared.open(url) }
 
-    /// The words matched: join with `role`.
-    func confirmJoin(role: ConsoleRole) {
-        guard let joinFlow else { return }
-        Task { await joinFlow.join(role: role) }
-    }
-
-    /// The words did not match, or the person changed their mind.
+    /// The person changed their mind.
     func cancelJoin() {
         joinWork?.cancel()
         joinWork = nil
@@ -123,14 +117,8 @@ final class RemoteManagementController: ObservableObject {
         }
     }
 
-    func showPairingCode() { Task { await state?.newPairingCode() } }
-    func cancelPairing() { Task { await state?.cancelPairing() } }
-    func resolvePairing(role: ConsoleRole?) { Task { await state?.resolvePairing(role: role) } }
-    func setRole(_ role: ConsoleRole, for console: PairedConsole) { Task { await state?.setRole(role, for: console.id) } }
-    func revoke(_ console: PairedConsole) { Task { await state?.revoke(console.id) } }
     func setAccountRole(_ role: ConsoleRole) { Task { await state?.setWorkspaceRoleCap(role) } }
     func leaveAccount() { Task { await state?.leaveWorkspace() } }
-    func undoMove() { Task { await state?.undoMove() } }
 
     private func start() {
         do {
@@ -187,16 +175,9 @@ final class RemoteManagementController: ObservableObject {
     }
 
     private func refresh() async {
-        let hadSnapshot = snapshot != nil
         let before = snapshot?.membership
         snapshot = await state?.snapshot()
         updateRelay(movedFrom: before?.workspaceID)
-        // A console moved this Mac into its account: that lets every device of the account in, so say so even when
-        // Settings is closed. "Undo move" is in Settings ▸ Remote management.
-        if hadSnapshot, let after = snapshot?.membership, let console = after.movedFrom, before?.workspaceID != after.workspaceID {
-            notifications.notify(title: "This Mac was added to \(after.name)'s account",
-                                 body: "\(console.identity.name) moved it. Every device in that account can now connect. To undo it, open MacPeek ▸ Settings ▸ Remote management.")
-        }
     }
 
     /// Runs the relay connection exactly while Remote management and Allow from anywhere are on and this Mac is in an

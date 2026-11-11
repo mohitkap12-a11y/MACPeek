@@ -84,11 +84,9 @@ public struct WorkspaceMembership: Equatable, Codable, Sendable {
     public let joinedAt: Date
     public var revocations: RevocationList?
     public var devices: [WorkspaceDevice]
-    /// The console that moved this Mac in, when it was paired before: "Undo" pairs it again on its own.
-    public let movedFrom: PairedConsole?
 
     public init(workspaceID: String, workspaceKey: Data, name: String, roleCap: ConsoleRole, joinedAt: Date,
-                revocations: RevocationList? = nil, devices: [WorkspaceDevice] = [], movedFrom: PairedConsole? = nil) {
+                revocations: RevocationList? = nil, devices: [WorkspaceDevice] = []) {
         self.workspaceID = workspaceID
         self.workspaceKey = workspaceKey
         self.name = name
@@ -96,7 +94,6 @@ public struct WorkspaceMembership: Equatable, Codable, Sendable {
         self.joinedAt = joinedAt
         self.revocations = revocations
         self.devices = devices
-        self.movedFrom = movedFrom
     }
 
     public var revokedKeys: Set<Data> { Set(revocations?.revokedKeys ?? []) }
@@ -110,21 +107,13 @@ public struct WorkspaceMembership: Equatable, Codable, Sendable {
     }
 }
 
-/// Where the agent keeps who is paired and what happened. The identity's private key is not here: it is in the Keychain.
+/// Where the agent keeps its account and what happened. The identity's private key is not here: it is in the Keychain.
 public protocol AgentStoring: Sendable {
-    func loadConsoles() throws -> [PairedConsole]
-    func saveConsoles(_ consoles: [PairedConsole]) throws
     func loadLog() throws -> ActivityLog
     func saveLog(_ log: ActivityLog) throws
     func loadMembership() throws -> WorkspaceMembership?
     /// Nil removes it.
     func saveMembership(_ membership: WorkspaceMembership?) throws
-}
-
-extension AgentStoring {
-    // Stores written before protocol version 2 keep no workspace.
-    public func loadMembership() throws -> WorkspaceMembership? { nil }
-    public func saveMembership(_ membership: WorkspaceMembership?) throws {}
 }
 
 /// JSON files readable only by this user, in MacPeek's Application Support folder.
@@ -137,12 +126,9 @@ public struct FileAgentStore: AgentStoring {
     }
 
     public var directory: URL { URL(fileURLWithPath: directoryPath, isDirectory: true) }
-    private var consolesURL: URL { directory.appendingPathComponent("paired-consoles.json") }
     private var logURL: URL { directory.appendingPathComponent("activity-log.json") }
     private var membershipURL: URL { directory.appendingPathComponent("workspace.json") }
 
-    public func loadConsoles() throws -> [PairedConsole] { try load([PairedConsole].self, from: consolesURL) ?? [] }
-    public func saveConsoles(_ consoles: [PairedConsole]) throws { try writePrivately(try JSONEncoder().encode(consoles), to: consolesURL) }
     public func loadLog() throws -> ActivityLog { try load(ActivityLog.self, from: logURL) ?? ActivityLog() }
     public func saveLog(_ log: ActivityLog) throws { try writePrivately(try JSONEncoder().encode(log), to: logURL) }
     public func loadMembership() throws -> WorkspaceMembership? { try load(WorkspaceMembership.self, from: membershipURL) }

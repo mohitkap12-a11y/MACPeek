@@ -31,8 +31,8 @@ public protocol AccountHTTP: Sendable {
 }
 
 /// "Add to my account" on this Mac, step by step (`AccountJoin` in RemoteCrypto describes the protocol): ask the service,
-/// let the person sign in on the web, wait for a console of the account to approve, show the words, and join when the
-/// person confirms. `onPhase` is told every change; the app shows it in Settings ▸ Remote management.
+/// let the person sign in on the web, wait for a console of the account to approve, then join. `onPhase` is told every
+/// change; the app shows it in Settings ▸ Remote management.
 public actor AccountJoinFlow {
     public enum Phase: Equatable, Sendable {
         case idle
@@ -41,8 +41,7 @@ public actor AccountJoinFlow {
         case signIn(URL)
         /// Added on the web; waiting for a console of the account to approve.
         case waitingForApproval(account: String)
-        /// Approved: compare these words with the console's, then join or cancel.
-        case confirm(words: [String], account: String)
+        /// Approved: sending the claim and joining.
         case joining
         case joined(account: String)
         case failed(String)
@@ -51,24 +50,25 @@ public actor AccountJoinFlow {
     private struct Request {
         let id: String
         let secret: String
-        let macNonce: Data
     }
 
     private let state: AgentState
     private let identity: DeviceIdentity
     private let name: String
+    private let role: ConsoleRole
     private let http: AccountHTTP
     private let baseURL: URL
     private let onPhase: @Sendable (Phase) -> Void
     private let clock: @Sendable () -> Date
     private var request: Request?
-    private var grant: WorkspaceGrant?
     private var account = ""
     public private(set) var phase: Phase = .idle {
         didSet { if phase != oldValue { onPhase(phase) } }
     }
 
-    public init(state: AgentState, identity: DeviceIdentity, name: String, http: AccountHTTP,
+    /// `role` is the most the account's devices may do here: View and act unless the app says otherwise. Actions still
+    /// need the separate "Allow actions" switch on this Mac.
+    public init(state: AgentState, identity: DeviceIdentity, name: String, role: ConsoleRole = .viewAndAct, http: AccountHTTP,
                 baseURL: URL = AccountService.baseURL(), clock: @escaping @Sendable () -> Date = Date.init,
                 onPhase: @escaping @Sendable (Phase) -> Void = { _ in }) {
         self.state = state
@@ -77,6 +77,7 @@ public actor AccountJoinFlow {
         let line = name.replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " ")
         let trimmed = String(line.trimmingCharacters(in: .whitespaces).prefix(64)).trimmingCharacters(in: .whitespaces)
         self.name = trimmed.isEmpty ? "Mac" : trimmed
+        self.role = role
         self.http = http
         self.baseURL = baseURL
         self.clock = clock
@@ -86,27 +87,24 @@ public actor AccountJoinFlow {
     /// Asks the service. On success the phase is `.signIn(url)`: open the page, then call `poll` every few seconds.
     public func start() async {
         phase = .starting
-        grant = nil
-        let macNonce = AccountJoin.newNonce()
-        let commitment = AccountJoin.commitment(to: macNonce)
         let time = Int64((clock().timeIntervalSince1970 * 1000).rounded())
         do {
-            let signature = try AccountJoin.request(by: identity, name: name, commitment: commitment, time: time)
+            let signature = try AccountJoin.request(by: identity, name: name, time: time)
             let reply = try await call("POST", "/mac-joins", body: [
-                "macKey": identity.publicIdentity.signingKey.base64EncodedString(), "name": name,
-                "commitment": commitment.base64EncodedString(), "time": Int(time), "signature": signature.base64EncodedString(),
+                "macKey": identity.publicIdentity.signingKey.base64EncodedString(), "name": name, "time": Int(time),
+                "signature": signature.base64EncodedString(),
             ])
             guard let id = reply["id"] as? String, let secret = reply["secret"] as? String,
                   let page = (reply["url"] as? String).flatMap(URL.init(string:)) else { throw Failure.unexpected }
-            request = Request(id: id, secret: secret, macNonce: macNonce)
+            request = Request(id: id, secret: secret)
             phase = .signIn(page)
         } catch {
             phase = .failed(Self.describe(error))
         }
     }
 
-    /// Checks the request once and moves on when something changed. Does nothing once the flow is waiting for the person
-    /// at this Mac, has finished, or failed.
+    /// Checks the request once and moves on when something changed. Once a console approved, the Mac joins on its own.
+    /// Does nothing once the flow has finished or failed.
     public func poll() async {
         guard let request else { return }
         switch phase {
@@ -119,20 +117,13 @@ public actor AccountJoinFlow {
             switch reply["status"] as? String {
             case "waiting": return
             case "attached": phase = .waitingForApproval(account: account)
-            case "approved", "revealed":
+            case "approved":
                 guard let text = reply["grant"] as? String,
                       let grant = try? JSONDecoder().decode(WorkspaceGrant.self, from: Data(text.utf8)), grant.isValid(),
-                      grant.workspaceID == reply["workspaceId"] as? String,
-                      let consoleNonce = (reply["consoleNonce"] as? String).flatMap({ Data(base64Encoded: $0) }),
-                      consoleNonce.count == 32 else {
-                    throw Failure.message("The approval from your account does not check out. Start again from MacPeek Remote.")
+                      grant.workspaceID == reply["workspaceId"] as? String else {
+                    throw Failure.message("The approval from your account does not check out. Start again.")
                 }
-                _ = try await call("POST", "/mac-joins/\(request.id)/reveal", secret: request.secret,
-                                   body: ["nonce": request.macNonce.base64EncodedString()])
-                self.grant = grant
-                phase = .confirm(words: AccountJoin.words(macKey: identity.publicIdentity.signingKey, workspaceKey: grant.workspaceKey,
-                                                          macNonce: request.macNonce, consoleNonce: consoleNonce),
-                                 account: account.isEmpty ? grant.name : account)
+                try await join(grant, request: request)
             case "declined": phase = .failed("The request was declined in MacPeek Remote.")
             case "joined": phase = .joined(account: account)
             default: throw Failure.unexpected
@@ -142,24 +133,18 @@ public actor AccountJoinFlow {
         }
     }
 
-    /// The words matched: this Mac joins the account with `role` as the most its devices may do, and tells the service.
-    public func join(role: ConsoleRole) async {
-        guard case .confirm(_, let account) = phase, let request, let grant else { return }
+    /// The service records the claim first: if that fails nothing changed here, and the person can start again.
+    private func join(_ grant: WorkspaceGrant, request: Request) async throws {
         phase = .joining
-        do {
-            // The service records the claim first: if that fails nothing changed here, and the person can start again.
-            let claim = try await state.claimForJoining(grant)
-            _ = try await call("POST", "/mac-joins/\(request.id)/claim", secret: request.secret, body: ["claim": [
-                "macKey": claim.macKey.base64EncodedString(), "time": Int(claim.time), "signature": claim.signature.base64EncodedString(),
-            ]])
-            try await state.joinAccount(grant, roleCap: role)
-            phase = .joined(account: account)
-        } catch {
-            phase = .failed(Self.describe(error))
-        }
+        let claim = try await state.claimForJoining(grant)
+        _ = try await call("POST", "/mac-joins/\(request.id)/claim", secret: request.secret, body: ["claim": [
+            "macKey": claim.macKey.base64EncodedString(), "time": Int(claim.time), "signature": claim.signature.base64EncodedString(),
+        ]])
+        try await state.joinAccount(grant, roleCap: role)
+        phase = .joined(account: account.isEmpty ? grant.name : account)
     }
 
-    /// Stops here, and tells the service when a request was made (the words did not match, or the person changed their mind).
+    /// Stops here, and tells the service when a request was made.
     public func cancel() async {
         if let request, phase != .idle {
             switch phase {
@@ -168,7 +153,6 @@ public actor AccountJoinFlow {
             }
         }
         request = nil
-        grant = nil
         phase = .idle
     }
 

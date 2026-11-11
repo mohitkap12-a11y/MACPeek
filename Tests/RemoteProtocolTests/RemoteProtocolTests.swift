@@ -46,7 +46,6 @@ final class WireTests: XCTestCase {
     func testWireMessagesRoundTrip() throws {
         let messages: [WireMessage] = [
             .hello(ConsoleHandshake(identity: DeviceIdentity(name: "C")).hello()),
-            .pairStart(ConsolePairing(identity: DeviceIdentity(name: "C")).start()),
             .sealed(Data([1, 2, 3])),
             .refused("Remote management is off"),
         ]
