@@ -147,10 +147,12 @@ public actor AccountJoinFlow {
         guard case .confirm(_, let account) = phase, let request, let grant else { return }
         phase = .joining
         do {
-            let claim = try await state.joinAccount(grant, roleCap: role)
+            // The service records the claim first: if that fails nothing changed here, and the person can start again.
+            let claim = try await state.claimForJoining(grant)
             _ = try await call("POST", "/mac-joins/\(request.id)/claim", secret: request.secret, body: ["claim": [
                 "macKey": claim.macKey.base64EncodedString(), "time": Int(claim.time), "signature": claim.signature.base64EncodedString(),
             ]])
+            try await state.joinAccount(grant, roleCap: role)
             phase = .joined(account: account)
         } catch {
             phase = .failed(Self.describe(error))

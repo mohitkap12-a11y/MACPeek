@@ -823,9 +823,12 @@ private actor FakeJoinService: AccountHTTP {
     var revealed: Data?
     var claim: [String: Any]?
     var cancelled = false
+    var failClaim = false
     let workspaceID: String
 
     init(workspaceID: String) { self.workspaceID = workspaceID }
+
+    func failClaims() { failClaim = true }
 
     func set(status: String, grant: String? = nil) {
         self.status = status
@@ -863,6 +866,7 @@ private actor FakeJoinService: AccountHTTP {
             status = "revealed"
             return reply(200, ["status": "revealed"])
         case ("POST", "/mac-joins/join_1234567890abcdef/claim"):
+            if failClaim { return reply(503, ["error": "unavailable"]) }
             claim = body["claim"] as? [String: Any]
             status = "joined"
             return reply(200, ["status": "joined"])
@@ -974,6 +978,21 @@ final class AccountJoinTests: XCTestCase {
         XCTAssertEqual(after, .idle, "A cancelled flow stops checking")
     }
 
+    func testJoinsNothingWhenTheServiceDoesNotTakeTheClaim() async throws {
+        let harness = Harness(), account = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(try account.grant(for: DeviceIdentity(name: "Main Mac"))), as: UTF8.self))
+        await flow.poll()
+        await service.failClaims()
+        await flow.join(role: .viewAndAct)
+        let phase = await flow.phase
+        guard case .failed = phase else { return XCTFail("expected a failure, got \(phase)") }
+        let membership = await harness.state.membership
+        XCTAssertNil(membership, "The Mac joins only once the service has its claim, so it can start again")
+    }
+
     func testSaysWhenTheConsoleDeclined() async throws {
         let harness = Harness()
         let service = FakeJoinService(workspaceID: "ws_test")
@@ -988,7 +1007,7 @@ final class AccountJoinTests: XCTestCase {
     func testJoiningNeedsRemoteManagementOn() async throws {
         let harness = Harness(settings: RemoteSettings(isEnabled: false))
         do {
-            _ = try await harness.state.joinAccount(try Account().grant(for: DeviceIdentity(name: "Main Mac")), roleCap: .viewOnly)
+            try await harness.state.joinAccount(try Account().grant(for: DeviceIdentity(name: "Main Mac")), roleCap: .viewOnly)
             XCTFail("expected a refusal")
         } catch {}
     }

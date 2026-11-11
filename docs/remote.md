@@ -191,9 +191,10 @@ Mac is in no account) adds it without a console on that Mac. The code is `Source
    (the workspace key and a certificate chain) and a random nonce of the console's own.
 4. The Mac checks the grant, then reveals its nonce. Both screens show four words: SHA-256 of
    `macpeek-join-words-v1`, the Mac's key, the workspace key and both nonces, through the pairing word list.
-5. The person compares them. **They match, join** pins the workspace key (as pairing with an account does), signs the
-   claim, sends it, and turns on **Allow from anywhere**, which Settings and a notification say. **They don't match**
-   cancels the request.
+5. The person compares them. **They match, join** signs the claim and sends it; once the service has it, the Mac pins
+   the workspace key (as pairing with an account does) and turns on **Allow from anywhere**, which Settings and a
+   notification say. If the claim cannot be sent, nothing changes on the Mac and the person can start again. **They
+   don't match** cancels the request.
 
 The service carries every message but holds no key that grants anything. It cannot hand the Mac a workspace key of its
 own and still make the words match: the Mac's nonce is fixed (committed) before the service learns anything else, and
