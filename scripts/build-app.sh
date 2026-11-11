@@ -17,6 +17,9 @@ case "${MACPEEK_ENV:-production}" in
   *) echo "MACPEEK_ENV must be staging or production" >&2; exit 1 ;;
 esac
 API_URL="${MACPEEK_API_URL:-$DEFAULT_API}"
+# It is written into Info.plist with sed: allow only a plain service address (no query, no characters sed or XML treat
+# specially), and refuse anything else rather than build an app with a broken one.
+[[ "$API_URL" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?/?$ ]] || { echo "error: MACPEEK_API_URL must be a plain address like https://api.example.com" >&2; exit 1; }
 
 swift build -c release --arch arm64 --arch x86_64
 BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
