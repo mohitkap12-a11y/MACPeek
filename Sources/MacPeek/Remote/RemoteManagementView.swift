@@ -60,7 +60,7 @@ struct RemoteManagementView: View {
         Section("Access from anywhere") {
             Toggle("Allow from anywhere", isOn: Binding(get: { remote.allowFromAnywhere }, set: remote.setAllowFromAnywhere))
                 .disabled(snapshot.membership == nil && !remote.allowFromAnywhere)
-            Text("Lets the devices of this Mac's MacPeek Remote account reach it from any network, through MacPeek's relay, without opening a port. The connection stays end-to-end encrypted: the relay sees only which Mac, addresses, times and amounts of data. Actions still need \"Allow actions\".")
+            Text("Lets the devices of this Mac's MacPeek Remote account reach it from any network, through MacPeek's relay, without opening a port. The connection stays end-to-end encrypted: the relay sees only which Mac and which of your devices connect, addresses, times and amounts of data. Actions still need \"Allow actions\".")
                 .font(.caption).foregroundStyle(.secondary)
             if remote.allowFromAnywhere || snapshot.membership == nil {
                 Label(relayText(snapshot), systemImage: relayIcon(snapshot))

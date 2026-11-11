@@ -99,7 +99,8 @@ for consoles you paired as "View and act", use the same safety checks as on the 
 you can read in Settings. A menu-bar dot shows whenever Remote management is on. The protocol is described in
 [docs/remote.md](docs/remote.md). On the local network nothing goes through a MacPeek server. A separate switch, **Allow
 from anywhere** (off by default), lets the devices of your MacPeek Remote account reach the Mac from any network through
-MacPeek's relay, still end-to-end encrypted: the relay sees only which Mac, addresses, times and amounts of data.
+MacPeek's relay, still end-to-end encrypted: the relay sees only which Mac and which of your
+devices connect, addresses, times and amounts of data.
 
 ## Roadmap
 Seventeen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,

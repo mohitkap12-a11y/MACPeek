@@ -97,7 +97,7 @@ detects changes; it cannot stop someone with access to the account from deleting
 - A person who controls this Mac's user account (they can read the Keychain item and the files).
 - Denial of service on the local network: a peer can open and hold connections, and can occupy the one pairing slot
   while a code is on screen (the person can cancel and show a new code). A peer that is not paired gets nothing else.
-- Through the relay: the relay can see which Mac connects, IP addresses, times and amounts of data, and can drop or
+- Through the relay: the relay can see which Mac and which device connect, IP addresses, times and amounts of data, and can drop or
   delay traffic. It cannot read or change anything, or connect a console the Mac does not trust (see [Relay](#relay)).
 
 ## Accounts (protocol version 2)
