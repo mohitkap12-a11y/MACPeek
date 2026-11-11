@@ -7,10 +7,24 @@ public struct RemoteSettings: Equatable, Codable, Sendable {
     public var isEnabled: Bool
     /// Lets consoles paired to act free ports and quit processes. Reads are always allowed to paired consoles.
     public var allowActions: Bool
+    /// "Allow from anywhere": keeps a connection to the MacPeek Remote relay so devices of this Mac's account reach it
+    /// from any network. Off by default, separate from `allowActions`, and only used while the Mac is in an account.
+    public var allowFromAnywhere: Bool
 
-    public init(isEnabled: Bool = false, allowActions: Bool = false) {
+    public init(isEnabled: Bool = false, allowActions: Bool = false, allowFromAnywhere: Bool = false) {
         self.isEnabled = isEnabled
         self.allowActions = allowActions
+        self.allowFromAnywhere = allowFromAnywhere
+    }
+
+    private enum CodingKeys: String, CodingKey { case isEnabled, allowActions, allowFromAnywhere }
+
+    // Settings saved before the relay existed have no allowFromAnywhere: it stays off.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        allowActions = try container.decode(Bool.self, forKey: .allowActions)
+        allowFromAnywhere = try container.decodeIfPresent(Bool.self, forKey: .allowFromAnywhere) ?? false
     }
 }
 

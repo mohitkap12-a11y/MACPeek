@@ -7,7 +7,9 @@ does, so it can be reviewed. The code is in `Sources/RemoteCrypto`, `Sources/Rem
 1. **Off by default.** While Remote management is off, MacPeek creates no identity, opens no socket and advertises
    nothing. Turning it off ends every connection at once.
 2. **Separate switches.** Reading is allowed to paired consoles. Actions need the Mac's **Allow actions** switch *and* a
-   console paired as "View and act". Relay access from outside the local network is not implemented.
+   console paired as "View and act". Access from outside the local network is a third switch, **Allow from anywhere**,
+   off by default and usable only while the Mac is in a MacPeek Remote account (see [Relay](#relay)). Turning it on
+   does not turn on actions.
 3. **Visible.** The menu-bar icon carries a dot and its tooltip says so while Remote management is on.
 4. **No new privileges.** The agent runs inside MacPeek as the person's user. Actions use the same
    `ProcessTerminationService` checks as the app (same process, still holding the port, SIGTERM first, force only when
@@ -95,7 +97,8 @@ detects changes; it cannot stop someone with access to the account from deleting
 - A person who controls this Mac's user account (they can read the Keychain item and the files).
 - Denial of service on the local network: a peer can open and hold connections, and can occupy the one pairing slot
   while a code is on screen (the person can cancel and show a new code). A peer that is not paired gets nothing else.
-- The relay, which is not implemented (see below).
+- Through the relay: the relay can see which Mac and which device connect, IP addresses, times and amounts of data, and can drop or
+  delay traffic. It cannot read or change anything, or connect a console the Mac does not trust (see [Relay](#relay)).
 
 ## Accounts (protocol version 2)
 
@@ -146,16 +149,38 @@ through it, **Undo move** and **Remove from account**. Every change is in the ac
 devices that can open the vault holds it. Revoking a stolen owner device stops that device, but someone who also got its
 vault open could certify a new device; until replacing the workspace key in place is built (with teams), the remedy is
 **Remove from account** on each Mac and pairing again. A revocation reaches a Mac only when a console of the account
-connects to it on the local network; with the relay it will reach it at once.
+connects to it, on the local network or through the relay (with **Allow from anywhere** on).
 
-## Planned: relay and history
+## Relay
+
+**Allow from anywhere** (Settings ▸ Remote management) lets the devices of this Mac's MacPeek Remote account reach it
+from any network, without opening a port. It is off by default, needs Remote management on, and works only while the Mac
+is in an account (version 2 above): the relay accepts only Macs whose claim the service holds, and only consoles that
+are active devices of that account, with a trial or subscription in force. The code is
+`Sources/RemoteAgent/RelayClient.swift` and `Sources/RemoteCrypto/Relay.swift`; the relay itself is in MacPeek Remote's
+`cloud/src/relay.ts`.
+
+- **Connection.** While the switch is on, the Mac keeps one outbound WebSocket (TLS) to
+  `wss://relay.macpeekapp.com/relay/mac/<mac id>`, where the Mac id is the hex SHA-256 of its public key. The relay
+  sends a fresh 32-byte challenge; the Mac signs `macpeek-relay-mac-v1`, its id and the challenge (lines joined with
+  `\n`) with its identity key. No account, token or password is stored on the Mac. A ping every 30 seconds keeps the
+  connection open; after a drop the Mac reconnects after 2 seconds, doubling to at most 5 minutes. A Mac the relay does
+  not know as part of an account asks again every 15 minutes.
+- **Streams.** Each console that connects through the relay becomes a numbered stream on that socket and gets its own
+  connection in the agent, exactly like a TCP connection on the local network: the same frames, the same SIGMA-I
+  handshake against the pinned workspace key, the same check of every request against the revocation list and roles,
+  the same **Allow actions** switch. Pairing still needs the code and the words on this Mac's screen, confirmed by the
+  person in front of it; and the relay lets in only devices of the account, which reach the Mac without pairing anyway.
+- **What the relay sees.** Which Mac and which device connect, IP addresses, times and byte counts. It keeps whether
+  the Mac is connected and when it last was, nothing else.
+- **Off.** Turning the switch off, turning Remote management off or leaving the account closes the relay connection
+  and every console stream on it at once. Removing the Mac from the account on the service side closes it too.
+- **Logged.** Turning the switch on or off is recorded in the activity log.
+
+## Planned: history
 
 Not implemented; recorded here so the changes can be reviewed before they are built.
 
-- **Relay.** A separate "Allow from anywhere" switch, off by default. When on, the Mac keeps one outbound WebSocket to
-  the relay and authenticates by signing a challenge with its own key; no account or token is stored on the Mac.
-  Sessions through the relay are the same end-to-end SIGMA-I sessions as on the LAN, and actions still need **Allow
-  actions**.
 - **History.** While Remote management is on, the Mac keeps 30 days of 30-second CPU, memory, disk and network points
   (about 2.6 MB) on the Mac, and a new `history.range` request returns them to paired consoles as compact binary
   chunks. Nothing is sent anywhere unless a paired console asks for it.
