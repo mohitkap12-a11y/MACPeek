@@ -76,6 +76,7 @@ public actor AgentState {
     public func update(_ newSettings: RemoteSettings) async {
         guard newSettings != settings else { return }
         let wasEnabled = settings.isEnabled
+        let wasAnywhere = settings.allowFromAnywhere
         settings = newSettings
         if !newSettings.isEnabled {
             pairingCode = nil
@@ -85,6 +86,11 @@ public actor AgentState {
         if wasEnabled != newSettings.isEnabled {
             record(actor: Self.localActor, fingerprint: nil,
                    event: newSettings.isEnabled ? "Turned Remote management on" : "Turned Remote management off", outcome: "Done")
+        }
+        if wasAnywhere != newSettings.allowFromAnywhere {
+            record(actor: Self.localActor, fingerprint: nil,
+                   event: newSettings.allowFromAnywhere ? "Turned Allow from anywhere on" : "Turned Allow from anywhere off",
+                   outcome: "Done")
         }
         changed()
     }

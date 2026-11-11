@@ -640,3 +640,170 @@ final class AgentWorkspaceTests: XCTestCase {
         XCTAssertNil(try store.loadMembership())
     }
 }
+
+// MARK: Relay ("Allow from anywhere")
+
+/// The relay's side of the Mac's socket, in memory: what the relay sends is queued for `receive`; what the Mac sends
+/// is collected.
+private actor RelayPipe {
+    private var queue: [RelaySocketMessage?] = []
+    private var waiter: CheckedContinuation<RelaySocketMessage?, Never>?
+    private(set) var sent: [RelaySocketMessage] = []
+
+    func push(_ message: RelaySocketMessage?) {
+        if let waiter {
+            self.waiter = nil
+            waiter.resume(returning: message)
+        } else {
+            queue.append(message)
+        }
+    }
+
+    func next() async -> RelaySocketMessage? {
+        if !queue.isEmpty { return queue.removeFirst() }
+        return await withCheckedContinuation { continuation in waiter = continuation }
+    }
+
+    func record(_ message: RelaySocketMessage) { sent.append(message) }
+}
+
+private final class FakeRelaySocket: RelaySocket, @unchecked Sendable {
+    let pipe = RelayPipe()
+
+    func send(_ message: RelaySocketMessage) async throws { await pipe.record(message) }
+    func receive() async throws -> RelaySocketMessage? { await pipe.next() }
+    func close() { Task { await pipe.push(nil) } }
+
+    func push(control: [String: Any]) async {
+        await pipe.push(.text(String(decoding: try! JSONSerialization.data(withJSONObject: control), as: UTF8.self)))
+    }
+
+    /// Waits up to two seconds for a message the Mac sent that `match` accepts.
+    func sent<Value>(_ match: @escaping (RelaySocketMessage) -> Value?) async throws -> Value {
+        for _ in 0..<200 {
+            for message in await pipe.sent { if let value = match(message) { return value } }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        throw Unreadable()
+    }
+}
+
+private func control(_ message: RelaySocketMessage) -> [String: Any]? {
+    guard case .text(let text) = message else { return nil }
+    return (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
+}
+
+final class RelayTests: XCTestCase {
+    /// Signed with Node's Ed25519 from a private key of 32 bytes of 7; macpeek-remote's cloud/test/relay.test.ts checks
+    /// the same values.
+    func testSharedVector() throws {
+        let mac = try DeviceIdentity(name: "Studio", privateKeyData: Data(repeating: 7, count: 32))
+        let macKey = mac.publicIdentity.signingKey
+        XCTAssertEqual(RelayAuth.macID(of: macKey), "fe812c12f3ab4ce6ac5db69ac352f906cb1b11ef43fb33e252ef7ff552263889")
+        XCTAssertEqual(try RelayAuth.message(macID: RelayAuth.macID(of: macKey), nonce: "bm9uY2U="),
+                       "macpeek-relay-mac-v1\nfe812c12f3ab4ce6ac5db69ac352f906cb1b11ef43fb33e252ef7ff552263889\nbm9uY2U=")
+        let signature = try XCTUnwrap(Data(base64Encoded:
+            "H468qmrkgC89nbRF4DaLjtXMojHXJ71Fw0g/9vL2GlbZxBus8XP+x91Qb7VPhY9IK4kYjy13rIZHkluFb+m8Aw=="))
+        XCTAssertTrue(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "bm9uY2U="))
+        XCTAssertEqual(try RelayAuth.answer(nonce: "bm9uY2U=", by: mac).signature, signature)
+        XCTAssertFalse(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "b3RoZXI="))
+    }
+
+    func testAnswersTheChallengeAndServesEachConsoleOnItsOwnStream() async throws {
+        let harness = Harness()
+        let socket = FakeRelaySocket()
+        let session = RelaySession(socket: socket, state: harness.state, handler: harness.handler, identity: harness.macIdentity)
+        let run = Task { try await session.run() }
+
+        await socket.push(control: ["type": "challenge", "nonce": "bm9uY2U="])
+        let auth = try await socket.sent { message in control(message).flatMap { $0["type"] as? String == "auth" ? $0 : nil } }
+        let macKey = try XCTUnwrap(Data(base64Encoded: try XCTUnwrap(auth["macKey"] as? String)))
+        let signature = try XCTUnwrap(Data(base64Encoded: try XCTUnwrap(auth["signature"] as? String)))
+        XCTAssertEqual(macKey, harness.macIdentity.publicIdentity.signingKey)
+        XCTAssertTrue(RelayAuth.isValid(signature: signature, macKey: macKey, nonce: "bm9uY2U="))
+        await socket.push(control: ["type": "ready"])
+
+        // A console asks to pair through the relay with no code on screen: the agent refuses on that stream only.
+        await socket.push(control: ["type": "open", "stream": 7])
+        var start = Data([0, 0, 0, 7])
+        start.append(Framing.frame(try WireMessage.pairStart(ConsolePairing(identity: DeviceIdentity(name: "Laptop")).start()).encoded()))
+        await socket.pipe.push(.data(start))
+
+        let reply = try await socket.sent { message -> Data? in
+            guard case .data(let data) = message, data.prefix(4) == Data([0, 0, 0, 7]) else { return nil }
+            return Data(data.dropFirst(4))
+        }
+        var reader = Framing.Reader()
+        let frames = try reader.append(reply)
+        guard case .refused(let reason)? = try frames.first.map({ try WireMessage.decoded(from: $0) }) else {
+            return XCTFail("expected a refusal")
+        }
+        XCTAssertEqual(reason, "This Mac is not showing a pairing code.")
+        // And the relay is told the stream ended, so the console's socket closes.
+        let closed = try await socket.sent { message in control(message).flatMap { $0["type"] as? String == "close" ? $0["stream"] as? Int : nil } }
+        XCTAssertEqual(closed, 7)
+        let remaining = await session.streamCount
+        XCTAssertEqual(remaining, 0)
+
+        // Data for a stream the Mac does not know is answered with a close.
+        await socket.pipe.push(.data(Data([0, 0, 0, 9, 1])))
+        let unknown = try await socket.sent { message in control(message).flatMap { $0["stream"] as? Int == 9 ? true : nil } }
+        XCTAssertTrue(unknown)
+
+        socket.close()
+        do {
+            try await run.value
+            XCTFail("a session ends by throwing")
+        } catch {
+            XCTAssertEqual(error as? RelayEnd, .disconnected)
+        }
+    }
+
+    func testStopsWhenTheMacIsNotInAnAccount() async throws {
+        let harness = Harness()
+        let socket = FakeRelaySocket()
+        let session = RelaySession(socket: socket, state: harness.state, handler: harness.handler, identity: harness.macIdentity)
+        await socket.push(control: ["type": "challenge", "nonce": "bm9uY2U="])
+        await socket.push(control: ["type": "error", "error": "not_in_account"])
+        do {
+            try await session.run()
+            XCTFail("expected notInAccount")
+        } catch {
+            XCTAssertEqual(error as? RelayEnd, .notInAccount)
+        }
+    }
+
+    func testRefusesAnythingButAChallengeFirst() async throws {
+        let harness = Harness()
+        let socket = FakeRelaySocket()
+        let session = RelaySession(socket: socket, state: harness.state, handler: harness.handler, identity: harness.macIdentity)
+        await socket.pipe.push(.data(Data([0, 0, 0, 1])))
+        do {
+            try await session.run()
+            XCTFail("expected a protocol error")
+        } catch {
+            XCTAssertEqual(error as? RelayEnd, .protocolError)
+        }
+    }
+
+    func testBacksOffFromTwoSecondsToFiveMinutes() {
+        XCTAssertEqual(RelayClient.backoff(after: 1, random: 1), 2)
+        XCTAssertEqual(RelayClient.backoff(after: 2, random: 1), 4)
+        XCTAssertEqual(RelayClient.backoff(after: 5, random: 1), 32)
+        XCTAssertEqual(RelayClient.backoff(after: 20, random: 1), 300)
+    }
+
+    func testSettingsSavedBeforeTheRelayKeepItOff() throws {
+        let old = try JSONDecoder().decode(RemoteSettings.self, from: Data(#"{"isEnabled":true,"allowActions":false}"#.utf8))
+        XCTAssertEqual(old, RemoteSettings(isEnabled: true, allowActions: false, allowFromAnywhere: false))
+        let round = try JSONDecoder().decode(RemoteSettings.self, from: JSONEncoder().encode(RemoteSettings(isEnabled: true, allowFromAnywhere: true)))
+        XCTAssertTrue(round.allowFromAnywhere)
+    }
+
+    func testTurningAllowFromAnywhereOnIsLogged() async {
+        let harness = Harness()
+        await harness.state.update(RemoteSettings(isEnabled: true, allowActions: true, allowFromAnywhere: true))
+        let log = await harness.state.snapshot().log
+        XCTAssertTrue(log.entries.contains { $0.event == "Turned Allow from anywhere on" })
+    }
+}

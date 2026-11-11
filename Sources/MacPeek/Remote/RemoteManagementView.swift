@@ -29,6 +29,7 @@ struct RemoteManagementView: View {
                         Text("Lets consoles paired to \"View and act\" free ports and quit processes, with the same safety checks as on this Mac. Every action is recorded below.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                    anywhereSection(snapshot)
                     pairingSection(snapshot)
                     if let membership = snapshot.membership { accountSection(membership, snapshot: snapshot) }
                     consolesSection(snapshot)
@@ -46,10 +47,49 @@ struct RemoteManagementView: View {
 
     private var statusText: String {
         switch remote.listenerStatus {
-        case .listening: return "On · listening on the local network"
+        case .listening:
+            return remote.relayStatus == .connected ? "On · local network and anywhere" : "On · listening on the local network"
         case .starting: return "Starting…"
         case .failed(let message): return "Not listening: \(message)"
         case .stopped: return "On"
+        }
+    }
+
+    @ViewBuilder
+    private func anywhereSection(_ snapshot: AgentState.Snapshot) -> some View {
+        Section("Access from anywhere") {
+            Toggle("Allow from anywhere", isOn: Binding(get: { remote.allowFromAnywhere }, set: remote.setAllowFromAnywhere))
+                .disabled(snapshot.membership == nil && !remote.allowFromAnywhere)
+            Text("Lets the devices of this Mac's MacPeek Remote account reach it from any network, through MacPeek's relay, without opening a port. The connection stays end-to-end encrypted: the relay sees only which Mac, addresses, times and amounts of data. Actions still need \"Allow actions\".")
+                .font(.caption).foregroundStyle(.secondary)
+            if remote.allowFromAnywhere || snapshot.membership == nil {
+                Label(relayText(snapshot), systemImage: relayIcon(snapshot))
+                    .font(.caption)
+                    .foregroundStyle(remote.relayStatus == .connected ? Color.green : Color.secondary)
+            }
+        }
+    }
+
+    private func relayText(_ snapshot: AgentState.Snapshot) -> String {
+        if snapshot.membership == nil {
+            return "Available once this Mac is in a MacPeek Remote account: pair it with a console that is signed in."
+        }
+        switch remote.relayStatus {
+        case .off: return "Off"
+        case .connecting: return "Connecting to the relay…"
+        case .connected: return "Reachable from anywhere"
+        case .notInAccount: return "The relay does not know this Mac's account yet. It will try again shortly."
+        case .waiting(let retryAt, let reason):
+            return "\(reason) Trying again \(retryAt.formatted(.relative(presentation: .named)))."
+        }
+    }
+
+    private func relayIcon(_ snapshot: AgentState.Snapshot) -> String {
+        if snapshot.membership == nil { return "person.crop.circle.badge.questionmark" }
+        switch remote.relayStatus {
+        case .connected: return "globe"
+        case .connecting: return "arrow.triangle.2.circlepath"
+        default: return "exclamationmark.triangle"
         }
     }
 
