@@ -810,3 +810,199 @@ final class RelayTests: XCTestCase {
         XCTAssertTrue(log.entries.contains { $0.event == "Turned Allow from anywhere on" })
     }
 }
+
+// MARK: Add to my account (AccountJoinFlow)
+
+/// The service's side of a join request (macpeek-remote cloud/src/joins.ts), in memory: what the Mac sent, and what the
+/// test (standing in for the web page and a console) answers.
+private actor FakeJoinService: AccountHTTP {
+    var request: [String: Any] = [:]
+    var status = "waiting"
+    var grant: String?
+    var consoleNonce = AccountJoin.newNonce()
+    var revealed: Data?
+    var claim: [String: Any]?
+    var cancelled = false
+    let workspaceID: String
+
+    init(workspaceID: String) { self.workspaceID = workspaceID }
+
+    func set(status: String, grant: String? = nil) {
+        self.status = status
+        if let grant { self.grant = grant }
+    }
+
+    nonisolated func send(_ method: String, _ url: URL, headers: [String: String], body: Data?) async throws -> (status: Int, body: Data) {
+        let object = body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        return await handle(method, url.path, secret: headers["X-Join-Secret"], object)
+    }
+
+    private func reply(_ status: Int, _ object: [String: Any]) -> (status: Int, body: Data) {
+        (status, try! JSONSerialization.data(withJSONObject: object))
+    }
+
+    private func handle(_ method: String, _ path: String, secret: String?, _ body: [String: Any]) -> (status: Int, body: Data) {
+        if method == "POST", path == "/mac-joins" {
+            request = body
+            return reply(201, ["id": "join_1234567890abcdef", "secret": "secret-secret-secret-secret",
+                               "url": "https://remote.macpeekapp.com/account/join/?id=join_1234567890abcdef"])
+        }
+        guard secret == "secret-secret-secret-secret" else { return reply(404, ["error": "not_found"]) }
+        switch (method, path) {
+        case ("GET", "/mac-joins/join_1234567890abcdef"):
+            let approved = status == "approved" || status == "revealed"
+            return reply(200, ["status": status, "account": "me@example.com", "workspaceId": workspaceID,
+                               "grant": approved ? (grant.map { $0 as Any } ?? NSNull()) : NSNull(),
+                               "consoleNonce": approved ? consoleNonce.base64EncodedString() : NSNull()])
+        case ("POST", "/mac-joins/join_1234567890abcdef/reveal"):
+            let nonce = Data(base64Encoded: body["nonce"] as? String ?? "") ?? Data()
+            guard (request["commitment"] as? String) == AccountJoin.commitment(to: nonce).base64EncodedString() else {
+                return reply(403, ["error": "bad_nonce"])
+            }
+            revealed = nonce
+            status = "revealed"
+            return reply(200, ["status": "revealed"])
+        case ("POST", "/mac-joins/join_1234567890abcdef/claim"):
+            claim = body["claim"] as? [String: Any]
+            status = "joined"
+            return reply(200, ["status": "joined"])
+        case ("POST", "/mac-joins/join_1234567890abcdef/cancel"):
+            cancelled = true
+            status = "declined"
+            return reply(200, ["status": "declined"])
+        default:
+            return reply(404, ["error": "not_found"])
+        }
+    }
+}
+
+final class AccountJoinTests: XCTestCase {
+    private let base = URL(string: "https://api.macpeekapp.com")!
+
+    func testJoinsAfterTheWebSignInAndTheConsolesApproval() async throws {
+        let harness = Harness(), account = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office\nMac", http: service, baseURL: base)
+
+        await flow.start()
+        let started = await flow.phase
+        XCTAssertEqual(started, .signIn(URL(string: "https://remote.macpeekapp.com/account/join/?id=join_1234567890abcdef")!))
+        // The request is signed by the Mac's key, names it on one line and commits to a nonce.
+        let request = await service.request
+        let macKey = try unwrapped(Data(base64Encoded: request["macKey"] as? String ?? ""))
+        XCTAssertEqual(macKey, harness.macIdentity.publicIdentity.signingKey)
+        XCTAssertEqual(request["name"] as? String, "Office Mac")
+        let commitment = try unwrapped(Data(base64Encoded: request["commitment"] as? String ?? ""))
+        let time = try unwrapped(request["time"] as? Int)
+        let message = try AccountJoin.requestMessage(macKey: macKey, name: "Office Mac", commitment: commitment, time: Int64(time))
+        XCTAssertTrue(harness.macIdentity.publicIdentity.isValidSignature(
+            try unwrapped(Data(base64Encoded: request["signature"] as? String ?? "")), for: Data(message.utf8)))
+
+        await flow.poll()
+        let stillWaiting = await flow.phase
+        XCTAssertEqual(stillWaiting, started)
+
+        await service.set(status: "attached")
+        await flow.poll()
+        let attached = await flow.phase
+        XCTAssertEqual(attached, .waitingForApproval(account: "me@example.com"))
+
+        // A console approves with the workspace grant: the Mac reveals its nonce and shows the words.
+        let consoleDevice = DeviceIdentity(name: "Main Mac")
+        let grant = try account.grant(for: consoleDevice)
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(grant), as: UTF8.self))
+        await flow.poll()
+        let revealed = try unwrapped(await service.revealed)
+        let consoleNonce = await service.consoleNonce
+        let words = AccountJoin.words(macKey: macKey, workspaceKey: account.publicKey, macNonce: revealed, consoleNonce: consoleNonce)
+        let confirming = await flow.phase
+        XCTAssertEqual(confirming, .confirm(words: words, account: "me@example.com"))
+        XCTAssertEqual(words.count, 4)
+
+        // The person compares the words and joins: the Mac pins the account and sends its claim.
+        await flow.join(role: .viewOnly)
+        let joined = await flow.phase
+        XCTAssertEqual(joined, .joined(account: "me@example.com"))
+        let membership = try unwrapped(await harness.state.membership)
+        XCTAssertEqual(membership.workspaceID, account.id)
+        XCTAssertEqual(membership.workspaceKey, account.publicKey)
+        XCTAssertEqual(membership.roleCap, .viewOnly)
+        let claim = try unwrapped(await service.claim)
+        let sent = MacClaim(macKey: try unwrapped(Data(base64Encoded: claim["macKey"] as? String ?? "")), workspaceID: account.id,
+                            time: Int64(try unwrapped(claim["time"] as? Int)),
+                            signature: try unwrapped(Data(base64Encoded: claim["signature"] as? String ?? "")))
+        XCTAssertTrue(sent.isValid)
+        // The console that approved now reaches the Mac through the account.
+        let authorized = await harness.state.authorize(consoleDevice.publicIdentity, chain: grant.chain)
+        XCTAssertNotNil(authorized)
+    }
+
+    func testRefusesAGrantThatDoesNotCheckOut() async throws {
+        let harness = Harness(), account = Account(), other = Account()
+        let service = FakeJoinService(workspaceID: account.id)
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        // A chain issued by another workspace key than the one the grant names.
+        let device = DeviceIdentity(name: "Main Mac")
+        let forged = WorkspaceGrant(workspaceID: account.id, workspaceKey: account.publicKey, name: "me@example.com",
+                                    chain: try other.chain(for: device))
+        await service.set(status: "approved", grant: String(decoding: try JSONEncoder().encode(forged), as: UTF8.self))
+        await flow.poll()
+        let phase = await flow.phase
+        guard case .failed = phase else { return XCTFail("expected a failure, got \(phase)") }
+        let revealed = await service.revealed
+        XCTAssertNil(revealed, "The Mac reveals nothing for a grant it cannot check")
+        let membership = await harness.state.membership
+        XCTAssertNil(membership)
+    }
+
+    func testCancellingTellsTheServiceAndJoinsNothing() async throws {
+        let harness = Harness()
+        let service = FakeJoinService(workspaceID: "ws_test")
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.set(status: "attached")
+        await flow.poll()
+        await flow.cancel()
+        let cancelled = await service.cancelled
+        XCTAssertTrue(cancelled)
+        let phase = await flow.phase
+        XCTAssertEqual(phase, .idle)
+        await service.set(status: "declined")
+        await flow.poll()
+        let after = await flow.phase
+        XCTAssertEqual(after, .idle, "A cancelled flow stops checking")
+    }
+
+    func testSaysWhenTheConsoleDeclined() async throws {
+        let harness = Harness()
+        let service = FakeJoinService(workspaceID: "ws_test")
+        let flow = AccountJoinFlow(state: harness.state, identity: harness.macIdentity, name: "Office Mac", http: service, baseURL: base)
+        await flow.start()
+        await service.set(status: "declined")
+        await flow.poll()
+        let phase = await flow.phase
+        XCTAssertEqual(phase, .failed("The request was declined in MacPeek Remote."))
+    }
+
+    func testJoiningNeedsRemoteManagementOn() async throws {
+        let harness = Harness(settings: RemoteSettings(isEnabled: false))
+        do {
+            _ = try await harness.state.joinAccount(try Account().grant(for: DeviceIdentity(name: "Main Mac")), roleCap: .viewOnly)
+            XCTFail("expected a refusal")
+        } catch {}
+    }
+
+    func testServiceAddresses() {
+        let defaults = UserDefaults(suiteName: "AccountServiceTests-\(UUID().uuidString)")!
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults), AccountService.production)
+        XCTAssertEqual(AccountService.baseURL(environment: ["MACPEEK_API_URL": "https://api.staging.macpeekapp.com"], defaults: defaults).absoluteString,
+                       "https://api.staging.macpeekapp.com")
+        defaults.set("https://api.staging.macpeekapp.com", forKey: "remote.serviceURL")
+        XCTAssertEqual(AccountService.baseURL(environment: [:], defaults: defaults).host, "api.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: AccountService.production).absoluteString, "wss://relay.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: URL(string: "https://api.staging.macpeekapp.com")!).absoluteString,
+                       "wss://relay.staging.macpeekapp.com")
+        XCTAssertEqual(AccountService.relayURL(for: URL(string: "http://localhost:8787")!).absoluteString, "ws://localhost:8787")
+    }
+}

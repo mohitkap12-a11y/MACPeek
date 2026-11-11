@@ -8,8 +8,8 @@ does, so it can be reviewed. The code is in `Sources/RemoteCrypto`, `Sources/Rem
    nothing. Turning it off ends every connection at once.
 2. **Separate switches.** Reading is allowed to paired consoles. Actions need the Mac's **Allow actions** switch *and* a
    console paired as "View and act". Access from outside the local network is a third switch, **Allow from anywhere**,
-   off by default and usable only while the Mac is in a MacPeek Remote account (see [Relay](#relay)). Turning it on
-   does not turn on actions.
+   off until chosen and usable only while the Mac is in a MacPeek Remote account (see [Relay](#relay)). Pairing with a
+   signed-in console and adding a Mac from the Mac offer it ticked, and say so. Turning it on does not turn on actions.
 3. **Visible.** The menu-bar icon carries a dot and its tooltip says so while Remote management is on.
 4. **No new privileges.** The agent runs inside MacPeek as the person's user. Actions use the same
    `ProcessTerminationService` checks as the app (same process, still holding the port, SIGTERM first, force only when
@@ -176,6 +176,31 @@ are active devices of that account, with a trial or subscription in force. The c
 - **Off.** Turning the switch off, turning Remote management off or leaving the account closes the relay connection
   and every console stream on it at once. Removing the Mac from the account on the service side closes it too.
 - **Logged.** Turning the switch on or off is recorded in the activity log.
+
+## Adding a Mac from the Mac
+
+For a Mac that is not on the same network as a console, **Add to my account…** (Settings ▸ Remote management, while the
+Mac is in no account) adds it without a console on that Mac. The code is `Sources/RemoteCrypto/AccountJoin.swift` and
+`Sources/RemoteAgent/AccountJoinFlow.swift`; the service side is MacPeek Remote's `cloud/src/joins.ts`.
+
+1. The Mac asks the service (`POST /mac-joins`), signing with its identity key: `macpeek-join-request-v1`, its key, its
+   name, the SHA-256 of a random 32-byte nonce and the time. It gets an id, a secret only it holds and a page on the
+   account site, which it opens in the browser.
+2. The person signs in there and chooses Add: the request goes to their account.
+3. MacPeek Remote, signed in to that account on their main Mac, asks to approve it. Approving sends the account's grant
+   (the workspace key and a certificate chain) and a random nonce of the console's own.
+4. The Mac checks the grant, then reveals its nonce. Both screens show four words: SHA-256 of
+   `macpeek-join-words-v1`, the Mac's key, the workspace key and both nonces, through the pairing word list.
+5. The person compares them. **They match, join** pins the workspace key (as pairing with an account does), signs the
+   claim, sends it, and turns on **Allow from anywhere**, which Settings and a notification say. **They don't match**
+   cancels the request.
+
+The service carries every message but holds no key that grants anything. It cannot hand the Mac a workspace key of its
+own and still make the words match: the Mac's nonce is fixed (committed) before the service learns anything else, and
+the console's before it learns the Mac's. A request lasts 30 minutes. Remote management must be on.
+
+Pairing a console on the same network also offers **Also reach this Mac from anywhere**, ticked by default: when the
+console is signed in to an account, Allow from anywhere is on as soon as the pairing finishes.
 
 ## Planned: history
 

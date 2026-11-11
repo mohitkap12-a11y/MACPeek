@@ -1,6 +1,7 @@
 #if os(macOS)
 import Foundation
 import Combine
+import AppKit
 import RemoteAgent
 import RemoteCrypto
 
@@ -15,6 +16,8 @@ final class RemoteManagementController: ObservableObject {
     @Published private(set) var allowActions: Bool
     @Published private(set) var allowFromAnywhere: Bool
     @Published private(set) var relayStatus: RelayClient.Status = .off
+    /// "Add to my account" (AccountJoinFlow), shown in Settings while this Mac is in no account.
+    @Published private(set) var joinPhase: AccountJoinFlow.Phase = .idle
     @Published private(set) var snapshot: AgentState.Snapshot?
     @Published private(set) var listenerStatus: BonjourListener.Status = .stopped
     @Published private(set) var error: String?
@@ -25,6 +28,8 @@ final class RemoteManagementController: ObservableObject {
     private var relay: RelayClient?
     private var handler: RequestHandler?
     private var identity: DeviceIdentity?
+    private var joinFlow: AccountJoinFlow?
+    private var joinWork: Task<Void, Never>?
     private let notifications = NotificationService()
 
     init(defaults: UserDefaults = .standard) {
@@ -61,6 +66,60 @@ final class RemoteManagementController: ObservableObject {
         Task {
             await state?.update(settings)
             await refresh()
+        }
+    }
+
+    /// Starts "Add to my account": asks the service, opens the sign-in page in the browser, then checks every few seconds
+    /// until a console of the account approves (or the request ends).
+    func startJoin() {
+        guard isEnabled, let state, let identity else { return }
+        joinWork?.cancel()
+        let flow = AccountJoinFlow(state: state, identity: identity, name: Self.deviceName, http: URLSessionAccountHTTP()) { [weak self] phase in
+            let controller = self
+            Task { @MainActor in controller?.joinChanged(phase) }
+        }
+        joinFlow = flow
+        joinWork = Task {
+            await flow.start()
+            if case .signIn(let url) = await flow.phase { NSWorkspace.shared.open(url) }
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { return }
+                await flow.poll()
+                switch await flow.phase {
+                case .signIn, .waitingForApproval: continue
+                default: return
+                }
+            }
+        }
+    }
+
+    func openJoinPage(_ url: URL) { NSWorkspace.shared.open(url) }
+
+    /// The words matched: join with `role`.
+    func confirmJoin(role: ConsoleRole) {
+        guard let joinFlow else { return }
+        Task { await joinFlow.join(role: role) }
+    }
+
+    /// The words did not match, or the person changed their mind.
+    func cancelJoin() {
+        joinWork?.cancel()
+        joinWork = nil
+        let flow = joinFlow
+        joinFlow = nil
+        joinPhase = .idle
+        Task { await flow?.cancel() }
+    }
+
+    private func joinChanged(_ phase: AccountJoinFlow.Phase) {
+        guard joinFlow != nil else { return }
+        joinPhase = phase
+        if case .joined(let account) = phase {
+            // The point of adding a Mac from the Mac: its account reaches it from anywhere. Settings says so.
+            setAllowFromAnywhere(true)
+            notifications.notify(title: "This Mac is in \(account)'s account",
+                                 body: "Its devices can now reach it from anywhere through MacPeek's encrypted relay. Turn this off in MacPeek ▸ Settings ▸ Remote management.")
         }
     }
 
@@ -104,6 +163,7 @@ final class RemoteManagementController: ObservableObject {
         listener?.stop()
         listener = nil
         stopRelay()
+        cancelJoin()
         let settings = settings
         Task {
             await state?.update(settings)

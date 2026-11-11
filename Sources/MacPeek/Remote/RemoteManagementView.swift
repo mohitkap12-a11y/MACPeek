@@ -8,6 +8,8 @@ struct RemoteManagementView: View {
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var remote: RemoteManagementController
     @State private var pairingRole: ConsoleRole = .viewOnly
+    @State private var reachFromAnywhere = true
+    @State private var joinRole: ConsoleRole = .viewAndAct
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,7 +33,11 @@ struct RemoteManagementView: View {
                     }
                     anywhereSection(snapshot)
                     pairingSection(snapshot)
-                    if let membership = snapshot.membership { accountSection(membership, snapshot: snapshot) }
+                    if let membership = snapshot.membership {
+                        accountSection(membership, snapshot: snapshot)
+                    } else {
+                        joinSection()
+                    }
                     consolesSection(snapshot)
                     activitySection(snapshot)
                     Section("This Mac") {
@@ -93,6 +99,63 @@ struct RemoteManagementView: View {
         }
     }
 
+    /// "Add to my account": for a Mac that is not on the same network as a console. Its person signs in on the web, a
+    /// console of the account approves, and both screens show the same four words.
+    @ViewBuilder
+    private func joinSection() -> some View {
+        Section("Add to a MacPeek Remote account") {
+            switch remote.joinPhase {
+            case .idle:
+                Button("Add to my account…") {
+                    joinRole = .viewAndAct
+                    remote.startJoin()
+                }
+                Text("For a Mac away from your other Macs: sign in to your MacPeek Remote account in the browser, then approve this Mac in MacPeek Remote on your main Mac. No console is needed on this Mac. Or pair it from a console on the same network, above.")
+                    .font(.caption).foregroundStyle(.secondary)
+            case .starting:
+                ProgressView("Asking MacPeek Remote…").controlSize(.small)
+            case .signIn(let url):
+                Text("Sign in to your MacPeek Remote account in the browser window that opened, then choose Add.").font(.callout)
+                HStack {
+                    Button("Open the page again") { remote.openJoinPage(url) }
+                    Spacer()
+                    Button("Cancel", role: .cancel) { remote.cancelJoin() }
+                }
+            case .waitingForApproval(let account):
+                Label("Approve this Mac in MacPeek Remote, signed in as \(account.isEmpty ? "your account" : account).",
+                      systemImage: "hourglass")
+                    .font(.callout)
+                Text("MacPeek Remote shows the request on your main Mac. Keep this window open.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Cancel", role: .cancel) { remote.cancelJoin() }
+            case .confirm(let words, let account):
+                Text("Check that MacPeek Remote shows these words:").font(.callout)
+                Text(words.joined(separator: "  "))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .textSelection(.enabled)
+                Picker("Access", selection: $joinRole) {
+                    ForEach(ConsoleRole.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                HStack {
+                    Button("They don't match", role: .destructive) { remote.cancelJoin() }
+                    Spacer()
+                    Button("They match, join") { remote.confirmJoin(role: joinRole) }
+                        .keyboardShortcut(.defaultAction)
+                }
+                Text("This adds this Mac to \(account)'s MacPeek Remote account and turns on Allow from anywhere, so every device signed in to that account can reach it from any network, with the access you choose here.")
+                    .font(.caption).foregroundStyle(.secondary)
+            case .joining:
+                ProgressView("Joining…").controlSize(.small)
+            case .joined(let account):
+                Label("Added to \(account)'s account", systemImage: "checkmark.circle").foregroundStyle(.green)
+            case .failed(let message):
+                Text(message).font(.caption).foregroundStyle(.orange)
+                Button("Try again") { remote.startJoin() }
+            }
+        }
+    }
+
     @ViewBuilder
     private func pairingSection(_ snapshot: AgentState.Snapshot) -> some View {
         Section("Pair a console") {
@@ -105,11 +168,17 @@ struct RemoteManagementView: View {
                 Picker("Access", selection: $pairingRole) {
                     ForEach(ConsoleRole.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
+                Toggle("Also reach this Mac from anywhere", isOn: $reachFromAnywhere)
+                Text("On by default: when the console is signed in to an account, its devices keep reaching this Mac when they leave this network, through MacPeek's end-to-end encrypted relay. You can turn it off at any time under Access from anywhere.")
+                    .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button("They don't match", role: .destructive) { remote.resolvePairing(role: nil) }
                     Spacer()
-                    Button("They match") { remote.resolvePairing(role: pairingRole) }
-                        .keyboardShortcut(.defaultAction)
+                    Button("They match") {
+                        remote.resolvePairing(role: pairingRole)
+                        if reachFromAnywhere { remote.setAllowFromAnywhere(true) }
+                    }
+                    .keyboardShortcut(.defaultAction)
                 }
                 Text(pending.console == nil ? "Waiting for the console to confirm too." :
                         "\(pending.console?.name ?? "The console") confirmed.")
@@ -133,6 +202,7 @@ struct RemoteManagementView: View {
             } else {
                 Button("Show pairing code") {
                     pairingRole = .viewOnly
+                    reachFromAnywhere = true
                     remote.showPairingCode()
                 }
                 Text("A code works once, for five minutes.").font(.caption).foregroundStyle(.secondary)

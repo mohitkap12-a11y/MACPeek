@@ -196,6 +196,15 @@ public actor AgentState {
         return (true, try? MacClaim.sign(by: identity, workspaceID: grant.workspaceID, time: Self.milliseconds(clock())))
     }
 
+    /// "Add to my account" on this Mac (`AccountJoin`): its person signed in on the web, a console of the account approved
+    /// and the words matched, so this Mac joins that account with `roleCap`. Returns the claim to send to the service.
+    public func joinAccount(_ grant: WorkspaceGrant, roleCap: ConsoleRole) async throws -> MacClaim {
+        guard settings.isEnabled else { throw AgentRefusal("Remote management is turned off on this Mac.") }
+        guard grant.isValid() else { throw AgentRefusal("The account's certificate does not check out.") }
+        await join(grant, roleCap: roleCap, movedFrom: nil, event: "Added this Mac to \(grant.name)'s account from this Mac")
+        return try MacClaim.sign(by: identity, workspaceID: grant.workspaceID, time: Self.milliseconds(clock()))
+    }
+
     func pairingEnded(connectionID: UUID, declined: Bool) {
         guard pendingPairing?.connectionID == connectionID else { return }
         pendingPairing = nil

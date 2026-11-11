@@ -211,3 +211,7 @@ struct AgentRefusal: Error {
     let message: String
     init(_ message: String) { self.message = message }
 }
+
+extension AgentRefusal: LocalizedError {
+    var errorDescription: String? { message }
+}
