@@ -39,10 +39,13 @@ ditto "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
 # MacPeek is not sandboxed, so Sparkle's sandbox-only XPC helpers are not needed.
 rm -rf "$APP/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$APP/Contents/Frameworks/Sparkle.framework/XPCServices"
 EXE="$APP/Contents/MacOS/MacPeek"
-if ! otool -l "$EXE" | grep -q '@executable_path/../Frameworks'; then
+# Read otool's whole output (grep -c, not grep -q): with pipefail, grep -q stops at the first match, otool dies of
+# SIGPIPE (exit 141) and the pipeline reads as "not found" even though the rpath is there.
+has_frameworks_rpath() { otool -l "$EXE" | grep -c '@executable_path/../Frameworks' >/dev/null; }
+if ! has_frameworks_rpath; then
   install_name_tool -add_rpath "@executable_path/../Frameworks" "$EXE"
 fi
-otool -l "$EXE" | grep -q '@executable_path/../Frameworks' || { echo "error: rpath to Contents/Frameworks is missing; the app would not find Sparkle" >&2; exit 1; }
+has_frameworks_rpath || { echo "error: rpath to Contents/Frameworks is missing; the app would not find Sparkle" >&2; exit 1; }
 # App icon: drop a 1024x1024 PNG at Resources/AppIcon.png and it is converted to AppIcon.icns here.
 if [[ -f Resources/AppIcon.png ]]; then
   ICON_TMP="$(mktemp -d)"; trap 'rm -rf "$ICON_TMP"' EXIT
