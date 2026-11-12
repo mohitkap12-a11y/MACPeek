@@ -88,6 +88,9 @@ public actor RelaySession {
     private let identity: DeviceIdentity
     private var streams: [UInt32: (connection: AgentConnection, input: AsyncStream<Data>.Continuation)] = [:]
     private let onReady: (@Sendable () -> Void)?
+    /// When the relay last sent anything (a pong at least every ping interval): a socket quiet for longer is dead, as
+    /// after Wi-Fi went off and on, when the old TCP connection neither works nor fails.
+    private var lastHeard = Date()
 
     public init(socket: RelaySocket, state: AgentState, handler: RequestHandler, identity: DeviceIdentity,
                 onReady: (@Sendable () -> Void)? = nil) {
@@ -107,6 +110,7 @@ public actor RelaySession {
             try await authenticate()
             onReady?()
             while let message = try await socket.receive() {
+                lastHeard = Date()
                 try await handle(message)
             }
             await endAll()
@@ -128,6 +132,7 @@ public actor RelaySession {
         ])))
         while true {
             guard let message = try await socket.receive() else { throw RelayEnd.disconnected }
+            lastHeard = Date()
             guard case .text(let text) = message, let reply = RelayControl.decode(text) else { throw RelayEnd.protocolError }
             switch reply["type"] as? String {
             case "ready": return
@@ -207,8 +212,10 @@ public actor RelaySession {
         for entry in ended { entry.input.finish() }
     }
 
-    /// Keeps NAT and proxies from dropping a quiet connection; the relay answers without waking up.
-    func ping() async throws {
+    /// Keeps NAT and proxies from dropping a quiet connection; the relay answers without waking up. Throws when the
+    /// relay has been silent for `silence` seconds, so a dead socket is replaced instead of waited on forever.
+    func ping(silence: TimeInterval) async throws {
+        if Date().timeIntervalSince(lastHeard) > silence { throw RelayEnd.disconnected }
         try await socket.send(.text("ping"))
     }
 }
@@ -246,7 +253,10 @@ public actor RelayClient {
     }
 
     /// How often the Mac pings the relay while connected.
-    public static let pingInterval: TimeInterval = 30
+    public static let pingInterval: TimeInterval = 15
+    /// How long the relay may stay silent (no pong, nothing else) before the Mac gives up on the socket and connects
+    /// again: two pings and a bit.
+    public static let silenceLimit: TimeInterval = 40
     /// How long a Mac that is not in an account waits before asking again.
     public static let notInAccountRetry: TimeInterval = 15 * 60
 
@@ -324,7 +334,7 @@ public actor RelayClient {
                     group.addTask {
                         while !Task.isCancelled {
                             try await Task.sleep(nanoseconds: UInt64(Self.pingInterval * 1_000_000_000))
-                            try await session.ping()
+                            try await session.ping(silence: Self.silenceLimit)
                         }
                     }
                     // Whichever ends first (the session, or a ping that could not be sent) ends both.

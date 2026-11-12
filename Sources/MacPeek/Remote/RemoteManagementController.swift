@@ -26,6 +26,7 @@ final class RemoteManagementController: ObservableObject {
     private var state: AgentState?
     private var listener: BonjourListener?
     private var relay: RelayClient?
+    private var network: NetworkWatcher?
     private var handler: RequestHandler?
     private var identity: DeviceIdentity?
     private var joinFlow: AccountJoinFlow?
@@ -132,6 +133,7 @@ final class RemoteManagementController: ObservableObject {
                 Task { @MainActor in controller?.listenerStatus = status }
             }
             self.listener = listener
+            watchNetwork()
             Task {
                 await state.update(settings)
                 // Switched off (or restarted) while the settings were applied: never start a listener nothing can stop.
@@ -150,6 +152,8 @@ final class RemoteManagementController: ObservableObject {
     private func stop() {
         listener?.stop()
         listener = nil
+        network?.stop()
+        network = nil
         stopRelay()
         cancelJoin()
         let settings = settings
@@ -157,6 +161,24 @@ final class RemoteManagementController: ObservableObject {
             await state?.update(settings)
             await refresh()
         }
+    }
+
+    /// When the network comes back or changes, the relay connects again at once (its old socket may be on a network
+    /// that is gone, and its back-off may have grown while offline) and a listener that failed listens again.
+    private func watchNetwork() {
+        guard network == nil else { return }
+        let network = NetworkWatcher { [weak self] _ in
+            let controller = self
+            Task { @MainActor in controller?.networkChanged() }
+        }
+        self.network = network
+        network.start()
+    }
+
+    private func networkChanged() {
+        guard isEnabled else { return }
+        listener?.restartIfFailed()
+        if let relay { Task { await relay.reconnectNow() } }
     }
 
     private func makeState() throws -> AgentState {

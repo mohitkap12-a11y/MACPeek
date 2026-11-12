@@ -136,8 +136,10 @@ that account, with a trial or subscription in force. The code is `Sources/Remote
 - **Connection.** While the switch is on, the Mac keeps one outbound WebSocket (TLS) to
   `wss://relay.macpeekapp.com/relay/mac/<mac id>`, where the Mac id is the hex SHA-256 of its public key. The relay
   sends a fresh 32-byte challenge; the Mac signs `macpeek-relay-mac-v1`, its id and the challenge (lines joined with
-  `\n`) with its identity key. No account, token or password is stored on the Mac. A ping every 30 seconds keeps the
-  connection open; after a drop the Mac reconnects after 2 seconds, doubling to at most 5 minutes. A Mac the relay does
+  `\n`) with its identity key. No account, token or password is stored on the Mac. A ping every 15 seconds keeps the
+  connection open, and a relay silent for 40 seconds (no pong) counts as a drop: after Wi-Fi goes off and on, the old
+  socket neither works nor fails. After a drop the Mac reconnects after 2 seconds, doubling to at most 5 minutes; when
+  the network comes back or changes it reconnects at once. A local network listener that fails is started again. A Mac the relay does
   not know as part of an account asks again every 15 minutes.
 - **Streams.** Each console that connects through the relay becomes a numbered stream on that socket and gets its own
   connection in the agent, exactly like a TCP connection on the local network: the same frames, the same handshake

@@ -23,6 +23,10 @@ public final class BonjourListener: @unchecked Sendable {
     private let queue = DispatchQueue(label: "MacPeek.RemoteAgent.Listener")
     private let onStatus: @Sendable (Status) -> Void
     private var listener: NWListener?
+    /// Between `start()` and `stop()`: a listener that fails meanwhile is replaced.
+    private var running = false
+    /// How long after a failure the listener starts again (a network that went away, mDNSResponder restarting).
+    public static let restartDelay: TimeInterval = 3
     private var connections: [UUID: NWConnection] = [:]
 
     public init(state: AgentState, handler: RequestHandler, name: String, onStatus: @escaping @Sendable (Status) -> Void) {
@@ -34,33 +38,66 @@ public final class BonjourListener: @unchecked Sendable {
 
     public func start() {
         queue.async { [self] in
-            guard listener == nil else { return }
-            do {
-                let parameters = NWParameters.tcp
-                parameters.includePeerToPeer = false
-                let listener = try NWListener(using: parameters)
-                listener.service = NWListener.Service(name: name, type: Self.serviceType)
-                listener.stateUpdateHandler = { [weak self, weak listener] state in
-                    guard let self else { return }
-                    switch state {
-                    case .ready: self.onStatus(.listening(port: listener?.port?.rawValue ?? 0))
-                    case .failed(let error): self.onStatus(.failed(error.localizedDescription))
-                    case .cancelled: self.onStatus(.stopped)
-                    default: break
-                    }
-                }
-                listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
-                self.listener = listener
-                onStatus(.starting)
-                listener.start(queue: queue)
-            } catch {
-                onStatus(.failed(error.localizedDescription))
+            running = true
+            begin()
+        }
+    }
+
+    /// Listens afresh if the listener is not working now, for example after the network changed. Connections stay.
+    public func restartIfFailed() {
+        queue.async { [self] in
+            guard running, let listener else { return }
+            switch listener.state {
+            case .failed, .cancelled, .waiting:
+                listener.cancel()
+                self.listener = nil
+                begin()
+            default:
+                break
             }
+        }
+    }
+
+    private func begin() {
+        guard running, listener == nil else { return }
+        do {
+            let parameters = NWParameters.tcp
+            parameters.includePeerToPeer = false
+            let listener = try NWListener(using: parameters)
+            listener.service = NWListener.Service(name: name, type: Self.serviceType)
+            listener.stateUpdateHandler = { [weak self, weak listener] state in
+                guard let self else { return }
+                switch state {
+                case .ready: self.onStatus(.listening(port: listener?.port?.rawValue ?? 0))
+                case .failed(let error):
+                    self.onStatus(.failed(error.localizedDescription))
+                    // A failed listener stays failed: consoles on the local network would never find this Mac again
+                    // until MacPeek restarted. Start a new one shortly.
+                    self.queue.asyncAfter(deadline: .now() + Self.restartDelay) { [weak self] in
+                        guard let self, let listener, self.listener === listener else { return }
+                        listener.cancel()
+                        self.listener = nil
+                        self.begin()
+                    }
+                case .cancelled:
+                    // Not while a new listener replaces this one.
+                    if self.listener == nil || self.listener === listener { self.onStatus(.stopped) }
+                default: break
+                }
+            }
+            listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
+            self.listener = listener
+            onStatus(.starting)
+            listener.start(queue: queue)
+        } catch {
+            onStatus(.failed(error.localizedDescription))
+            queue.asyncAfter(deadline: .now() + Self.restartDelay) { [weak self] in self?.begin() }
         }
     }
 
     public func stop() {
         queue.async { [self] in
+            running = false
             listener?.cancel()
             listener = nil
             for connection in connections.values { connection.cancel() }
