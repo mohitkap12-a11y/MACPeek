@@ -618,6 +618,24 @@ final class RelayTests: XCTestCase {
         }
     }
 
+    /// After Wi-Fi went off and on, the old socket neither works nor fails: a relay that stopped answering pings ends
+    /// the session, so the client connects again instead of waiting forever.
+    func testGivesUpOnARelayThatWentSilent() async throws {
+        let harness = Harness()
+        let socket = FakeRelaySocket()
+        let session = RelaySession(socket: socket, state: harness.state, handler: harness.handler, identity: harness.macIdentity)
+        try await session.ping(silence: 60)
+        let pinged = try await socket.sent { message -> Bool? in message == .text("ping") ? true : nil }
+        XCTAssertTrue(pinged)
+        try await Task.sleep(nanoseconds: 50_000_000)
+        do {
+            try await session.ping(silence: 0.01)
+            XCTFail("a silent relay ends the session")
+        } catch {
+            XCTAssertEqual(error as? RelayEnd, .disconnected)
+        }
+    }
+
     func testBacksOffFromTwoSecondsToFiveMinutes() {
         XCTAssertEqual(RelayClient.backoff(after: 1, random: 1), 2)
         XCTAssertEqual(RelayClient.backoff(after: 2, random: 1), 4)
