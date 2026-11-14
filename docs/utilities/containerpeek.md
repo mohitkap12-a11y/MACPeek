@@ -22,6 +22,21 @@ by its full ID and refuses if it is gone, has been renamed, or is now in a state
 is one engine command with a fixed argument list and the full, validated ID (`docker stop <64 hex characters>`), run as your
 user, never through a shell. Remove is `docker rm <id>`: never `--force`, never `--volumes`, and images are untouched.
 
+## Images (MacPeek Remote)
+MacPeek Remote adds an **Images** list for the Docker engine on each Mac (Docker Desktop, or any Docker CLI that MacPeek
+finds). It is offered by the remote agent only, not shown in MacPeek itself.
+- **List**: `docker image ls --no-trunc --format '{{json .}}'`, one row per repository and tag, with size and age. An
+  image is marked *in use* when a container's image name matches it (best effort: Docker has the final say).
+- **Delete**: `docker image rm <repo:tag>`, or the image ID for an untagged image. Deleting a tag of an image that has
+  other tags only removes that tag. Never `--force`: if a container uses the image Docker refuses, and its message is shown.
+- **Run**: `docker run --detach --pull never [--name <name>] [--publish [127.0.0.1:]<host>:<container>/<tcp|udp>] <repo:tag>`.
+  The only choices are a name and up to 16 published ports; ports are published on this Mac only (`127.0.0.1`) unless
+  the person turns on *Expose to the network*. Nothing is pulled, and there are no volumes, environment variables,
+  privileges, host networking or command override.
+- Both actions need **Allow actions** on the Mac and a View and act console, are listed in the Mac's activity log, and
+  re-list the image first: they refuse if it is gone or is now a different image.
+- Pulling, loading and building images, and arbitrary `docker` commands, are not offered.
+
 ## How it works
 Fixed tool locations only (a menu-bar app has no shell PATH): `/opt/homebrew/bin`, `/usr/local/bin`, Docker Desktop's
 `Contents/Resources/bin`, `~/.orbstack/bin`, `~/.rd/bin`, `/opt/podman/bin` and Parallels' app bundle.
