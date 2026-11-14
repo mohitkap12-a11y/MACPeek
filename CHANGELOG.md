@@ -2,7 +2,7 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.3.3] - 2026-11-15
 ### Added
 - **An introduction to MacPeek Remote.** A row at the bottom of the launcher opens a window with four pictures of the
   console and a **Get MacPeek Remote** button that opens remote.macpeekapp.com. The window also opens by itself once
