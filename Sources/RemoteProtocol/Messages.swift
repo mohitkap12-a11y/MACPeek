@@ -58,6 +58,12 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let freePort: Operation = "ports.free"
     /// Starts, stops, restarts, pauses, resumes or removes one container. Body: `ContainerActionRequest`.
     public static let containerAction: Operation = "containers.action"
+    /// The Docker engine's images and which containers use them (ContainerPeek).
+    public static let images: Operation = "containers.images"
+    /// Deletes one image, or one of its tags. Body: `ImageRemoveRequest`.
+    public static let imageRemove: Operation = "images.remove"
+    /// Starts a container from an image, with a name and published ports only. Body: `ContainerRunRequest`.
+    public static let containerRun: Operation = "containers.run"
     public static let quitProcess: Operation = "processes.quit"
     /// Which workspace (account) this Mac belongs to, its revocation list number and a fresh claim.
     public static let workspaceStatus: Operation = "workspace.status"
@@ -67,8 +73,8 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
                                             .dnsConfiguration, .dnsProbe, .networkExtras, .dnsOverrides, .bluetooth,
-                                            .processOrigin, .processOpenFiles, .containers, .gpu, .models, .diskIO]
-    public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction]
+                                            .processOrigin, .processOpenFiles, .containers, .images, .gpu, .models, .diskIO]
+    public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction, .imageRemove, .containerRun]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceRevocations]
 
@@ -253,6 +259,42 @@ public struct ContainerActionResponse: Equatable, Codable, Sendable {
     public let result: ContainerActionResult
 
     public init(result: ContainerActionResult) {
+        self.result = result
+    }
+}
+
+/// `images.remove`: the image as the console saw it. The Mac lists images again and refuses if it is gone or changed.
+public struct ImageRemoveRequest: Equatable, Codable, Sendable {
+    public let image: ImageInfo
+
+    public init(image: ImageInfo) {
+        self.image = image
+    }
+}
+
+public struct ImageRemoveResponse: Equatable, Codable, Sendable {
+    public let result: ContainerActionResult
+
+    public init(result: ContainerActionResult) {
+        self.result = result
+    }
+}
+
+/// `containers.run`: start a container from an image the console saw, with only the options `ContainerRunOptions` allows.
+public struct ContainerRunRequest: Equatable, Codable, Sendable {
+    public let image: ImageInfo
+    public let options: ContainerRunOptions
+
+    public init(image: ImageInfo, options: ContainerRunOptions) {
+        self.image = image
+        self.options = options
+    }
+}
+
+public struct ContainerRunResponse: Equatable, Codable, Sendable {
+    public let result: ContainerRunResult
+
+    public init(result: ContainerRunResult) {
         self.result = result
     }
 }

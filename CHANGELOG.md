@@ -4,6 +4,12 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **Remote management: container images.** The remote agent lists the Docker engine's images (`containers.images`, a
+  read, with which containers use each) and, when **Allow actions** is on, deletes an image or one of its tags
+  (`images.remove`) and starts a container from an image (`containers.run`). Deleting is `docker image rm` (never
+  forced; Docker refuses an image a container uses). Running is `docker run --detach --pull never` with only an optional
+  name and published ports, bound to `127.0.0.1` unless the person chose to expose them to the network: no volumes,
+  environment, privileges or command override. Pulling and loading images are not offered.
 - **Remote management: Add to my account.** The only way to add a Mac to MacPeek Remote: sign in to your account in the
   browser from MacPeek, approve the Mac in MacPeek Remote on your main Mac, and it joins with View and act and **Allow
   from anywhere** on (and says so). Actions still need **Allow actions**.

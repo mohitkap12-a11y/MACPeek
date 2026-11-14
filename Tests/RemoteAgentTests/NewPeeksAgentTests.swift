@@ -27,6 +27,8 @@ final class NewPeeksAgentTests: XCTestCase {
                                             cpuPercent: 0, residentKB: 10, executable: "node")
     private static let container = ContainerInfo(id: String(repeating: "a", count: 64), name: "web", image: "nginx", state: .running,
                                                  status: "Up", ports: [], composeProject: nil, composeService: nil, createdAt: nil)
+    private static let image = ImageInfo(imageID: String(repeating: "b", count: 64), repository: "nginx", tag: "1.25", sizeText: "192MB",
+                                          sizeBytes: 192_000_000, createdSince: nil, createdAt: nil)
     private static let gpuSnapshot = GPUSnapshot(gpus: [], processes: [], power: PowerReading(cpuWatts: 1, gpuWatts: 2, neuralEngineWatts: 0, intervalSeconds: 1),
                                                  powerNote: nil, hasNeuralEngine: true)
 
@@ -44,6 +46,7 @@ final class NewPeeksAgentTests: XCTestCase {
             processOrigin: { _, _ in ProcessOrigin(kind: .other, job: nil, details: nil, viaPID: nil) },
             openFiles: { process in OpenFilesReport(pid: process.pid, files: [OpenFile(descriptor: "cwd", type: "DIR", name: "/tmp")], truncated: false, note: nil) },
             containers: { ContainerSnapshot(engines: [], virtualMachines: [], vmProcesses: [], notes: []) },
+            images: { ImageSnapshot(executable: "/usr/local/bin/docker", context: nil, status: .running, images: [Self.image]) },
             gpu: { Self.gpuSnapshot },
             models: { ModelSnapshot(runners: []) },
             volumeIO: { [VolumeIOCounters(path: "/Volumes/Backup", device: "disk4", bytesRead: 10, bytesWritten: 20)] })
@@ -51,6 +54,14 @@ final class NewPeeksAgentTests: XCTestCase {
                                    containerAction: { action, container, _ in
                                        await calls.add("\(action.rawValue) \(container.name)")
                                        return .done
+                                   },
+                                   imageRemove: { image in
+                                       await calls.add("rm \(image.target)")
+                                       return .done
+                                   },
+                                   containerRun: { image, options in
+                                       await calls.add("run \(image.target) \(options.name ?? "-")")
+                                       return .started(containerID: String(repeating: "c", count: 64))
                                    })
         return RequestHandler(readers: readers, actions: actions, agentVersion: "0.4.0")
     }
@@ -126,6 +137,63 @@ final class NewPeeksAgentTests: XCTestCase {
         XCTAssertEqual(try invalid.response.body(RemoteError.self).code, .invalidPayload)
         let after = await calls.actions
         XCTAssertEqual(after.count, 1)
+    }
+
+    func testImageOperationsAreListedAndImageActionsAreGated() async throws {
+        XCTAssertTrue(Operation.reads.contains(.images))
+        XCTAssertTrue(Operation.actions.contains(.imageRemove))
+        XCTAssertTrue(Operation.actions.contains(.containerRun))
+        XCTAssertFalse(Operation.reads.contains(.imageRemove))
+
+        let calls = Calls()
+        let handler = handler(calls)
+        let image = ImageInfo(imageID: String(repeating: "b", count: 64), repository: "nginx", tag: "1.25", sizeText: "192MB", sizeBytes: 192_000_000,
+                              createdSince: nil, createdAt: nil)
+        let remove = try Envelope.request(.imageRemove, body: ImageRemoveRequest(image: image))
+        let run = try Envelope.request(.containerRun, body: ContainerRunRequest(image: image, options: ContainerRunOptions(name: "web")))
+
+        // A read answers for a view-only console; the actions do not.
+        let listed = await handler.handle(.request(.images), from: console(.viewOnly), settings: allowed)
+        XCTAssertEqual(try listed.response.body(ImageSnapshot.self).images.count, 1)
+        for request in [remove, run] {
+            let viewOnly = await handler.handle(request, from: console(.viewOnly), settings: allowed)
+            XCTAssertEqual(try viewOnly.response.body(RemoteError.self).code, .notPermitted)
+            let off = await handler.handle(request, from: console(.viewAndAct), settings: RemoteSettings(isEnabled: true, allowActions: false))
+            XCTAssertEqual(try off.response.body(RemoteError.self).code, .actionsDisabled)
+        }
+        let none = await calls.actions
+        XCTAssertTrue(none.isEmpty)
+
+        let removed = await handler.handle(remove, from: console(.viewAndAct), settings: allowed)
+        XCTAssertEqual(try removed.response.body(ImageRemoveResponse.self).result, .done)
+        XCTAssertEqual(removed.record?.event, "Delete image nginx:1.25")
+        XCTAssertEqual(removed.record?.outcome, "Done")
+        let started = await handler.handle(run, from: console(.viewAndAct), settings: allowed)
+        XCTAssertEqual(try started.response.body(ContainerRunResponse.self).result, .started(containerID: String(repeating: "c", count: 64)))
+        XCTAssertEqual(started.record?.event, "Run container from nginx:1.25")
+        let performed = await calls.actions
+        XCTAssertEqual(performed, ["rm nginx:1.25", "run nginx:1.25 web"])
+    }
+
+    func testImageActionsRefuseInvalidInputBeforeRunningAnything() async throws {
+        let calls = Calls()
+        let handler = handler(calls)
+        let bad = ImageInfo(imageID: "--force", repository: "x", tag: "y", sizeText: "", sizeBytes: nil, createdSince: nil, createdAt: nil)
+        let good = ImageInfo(imageID: String(repeating: "b", count: 64), repository: "nginx", tag: "1.25", sizeText: "", sizeBytes: nil,
+                             createdSince: nil, createdAt: nil)
+        let requests: [Envelope] = [
+            try .request(.imageRemove, body: ImageRemoveRequest(image: bad)),
+            try .request(.containerRun, body: ContainerRunRequest(image: bad, options: ContainerRunOptions())),
+            try .request(.containerRun, body: ContainerRunRequest(image: good, options: ContainerRunOptions(name: "--privileged"))),
+            try .request(.containerRun, body: ContainerRunRequest(image: good, options: ContainerRunOptions(ports: [RunPort(hostPort: 0, containerPort: 80)]))),
+        ]
+        for request in requests {
+            let refused = await handler.handle(request, from: console(.viewAndAct), settings: allowed)
+            XCTAssertEqual(try refused.response.body(RemoteError.self).code, .invalidPayload)
+            XCTAssertEqual(refused.record?.outcome.hasPrefix("Refused"), true)
+        }
+        let performed = await calls.actions
+        XCTAssertTrue(performed.isEmpty)
     }
 
     func testIntervalSamplerPassesThePreviousState() async throws {

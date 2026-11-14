@@ -35,6 +35,7 @@ public struct AgentReaders: Sendable {
     public var processOrigin: @Sendable (_ process: ProcessEntry, _ snapshot: ProcessSnapshot) async throws -> ProcessOrigin
     public var openFiles: @Sendable (_ process: ProcessEntry) async throws -> OpenFilesReport
     public var containers: @Sendable () async throws -> ContainerSnapshot
+    public var images: @Sendable () async throws -> ImageSnapshot
     public var gpu: @Sendable () async throws -> GPUSnapshot
     public var models: @Sendable () async throws -> ModelSnapshot
     public var volumeIO: @Sendable () throws -> [VolumeIOCounters]
@@ -64,6 +65,7 @@ public struct AgentReaders: Sendable {
                     throw RemoteError(.unavailable, "This Mac does not report that.")
                 },
                 containers: @escaping @Sendable () async throws -> ContainerSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
+                images: @escaping @Sendable () async throws -> ImageSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
                 gpu: @escaping @Sendable () async throws -> GPUSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
                 models: @escaping @Sendable () async throws -> ModelSnapshot = { throw RemoteError(.unavailable, "This Mac does not report that.") },
                 volumeIO: @escaping @Sendable () throws -> [VolumeIOCounters] = { throw RemoteError(.unavailable, "This Mac does not report that.") }) {
@@ -86,6 +88,7 @@ public struct AgentReaders: Sendable {
         self.processOrigin = processOrigin
         self.openFiles = openFiles
         self.containers = containers
+        self.images = images
         self.gpu = gpu
         self.models = models
         self.volumeIO = volumeIO
@@ -118,7 +121,8 @@ public struct AgentReaders: Sendable {
                             dnsOverrides: { overrides.overrides() }, bluetooth: { try await bluetooth.bluetooth() },
                             processOrigin: { entry, snapshot in await insight.origin(of: entry, in: snapshot) },
                             openFiles: { entry in try await insight.openFiles(of: entry, limit: 300) },
-                            containers: { try await containers.read() }, gpu: { try await gpu.read() },
+                            containers: { try await containers.read() }, images: { try await SystemImageReader().snapshot() },
+                            gpu: { try await gpu.read() },
                             models: { try await models.read() }, volumeIO: { try volumeIO.read() })
     }
 }
@@ -129,27 +133,39 @@ public struct AgentActions: Sendable {
     public var freePort: @Sendable (PortInfo, _ force: Bool) async -> TerminationResult
     public var quitProcess: @Sendable (ProcessEntry, _ force: Bool) async -> TerminationResult
     public var containerAction: @Sendable (ContainerAction, ContainerInfo, ContainerEngineKind) async -> ContainerActionResult
+    public var imageRemove: @Sendable (ImageInfo) async -> ContainerActionResult
+    public var containerRun: @Sendable (ImageInfo, ContainerRunOptions) async -> ContainerRunResult
 
     public init(freePort: @escaping @Sendable (PortInfo, Bool) async -> TerminationResult,
                 quitProcess: @escaping @Sendable (ProcessEntry, Bool) async -> TerminationResult,
                 containerAction: @escaping @Sendable (ContainerAction, ContainerInfo, ContainerEngineKind) async -> ContainerActionResult = { _, _, _ in
                     .failed("This Mac does not manage containers.")
+                },
+                imageRemove: @escaping @Sendable (ImageInfo) async -> ContainerActionResult = { _ in
+                    .failed("This Mac does not manage images.")
+                },
+                containerRun: @escaping @Sendable (ImageInfo, ContainerRunOptions) async -> ContainerRunResult = { _, _ in
+                    .failed("This Mac does not manage containers.")
                 }) {
         self.freePort = freePort
         self.quitProcess = quitProcess
         self.containerAction = containerAction
+        self.imageRemove = imageRemove
+        self.containerRun = containerRun
     }
 
     public static func system() -> AgentActions {
         let kill = KillService(discovery: LsofPortDiscovery()), terminator = ProcessTerminator()
-        let containers = SystemContainerController()
+        let containers = SystemContainerController(), images = SystemImageController()
         return AgentActions(freePort: { port, force in force ? await kill.forceTerminate(port) : await kill.terminate(port) },
                             quitProcess: { entry, force in
                                 force ? await terminator.forceTerminate(entry) : await terminator.terminate(entry)
                             },
                             containerAction: { action, container, engine in
                                 await containers.perform(action, on: container, engine: engine)
-                            })
+                            },
+                            imageRemove: { image in await images.remove(image) },
+                            containerRun: { image, options in await images.run(image, options: options) })
     }
 }
 
@@ -224,6 +240,7 @@ public struct RequestHandler: Sendable {
         case .dnsOverrides: return try request.response(try await readers.dnsOverrides())
         case .bluetooth: return try request.response(try await readers.bluetooth())
         case .containers: return try request.response(try await readers.containers())
+        case .images: return try request.response(try await readers.images())
         case .gpu: return try request.response(try await readers.gpu())
         case .models: return try request.response(try await readers.models())
         case .processOrigin, .processOpenFiles:
@@ -281,6 +298,35 @@ public struct RequestHandler: Sendable {
                 case .failed(let reason): outcome = "Failed: \(reason)"
                 }
                 return (try request.response(ContainerActionResponse(result: result)), ActionRecord(event: event, outcome: outcome))
+            case .imageRemove:
+                let body = try request.body(ImageRemoveRequest.self)
+                event = "Delete image \(body.image.displayName)"
+                if let refusal = refusal(console: console, settings: settings) {
+                    return (request.failure(refusal), ActionRecord(event: event, outcome: "Refused: \(refusal.message)"))
+                }
+                guard SystemImageController.problem(with: body.image) == nil else {
+                    return (request.failure(RemoteError(.invalidPayload, "That is not an image.")),
+                            ActionRecord(event: event, outcome: "Refused: not an image"))
+                }
+                let result = await actions.imageRemove(body.image)
+                return (try request.response(ImageRemoveResponse(result: result)), ActionRecord(event: event, outcome: Self.outcome(result)))
+            case .containerRun:
+                let body = try request.body(ContainerRunRequest.self)
+                event = "Run container from \(body.image.displayName)"
+                if let refusal = refusal(console: console, settings: settings) {
+                    return (request.failure(refusal), ActionRecord(event: event, outcome: "Refused: \(refusal.message)"))
+                }
+                if let problem = SystemImageController.problem(with: body.image) ?? ImageReference.problem(with: body.options) {
+                    return (request.failure(RemoteError(.invalidPayload, problem)), ActionRecord(event: event, outcome: "Refused: \(problem)"))
+                }
+                let result = await actions.containerRun(body.image, body.options)
+                let outcome: String
+                switch result {
+                case .started: outcome = "Done"
+                case .changed(let reason): outcome = "Refused: \(reason)"
+                case .failed(let reason): outcome = "Failed: \(reason)"
+                }
+                return (try request.response(ContainerRunResponse(result: result)), ActionRecord(event: event, outcome: outcome))
             default:
                 return (request.failure(RemoteError(.unknownOperation, "This Mac does not know \(request.operation.rawValue).")), nil)
             }
@@ -295,6 +341,14 @@ public struct RequestHandler: Sendable {
         guard console.role.mayAct else { return RemoteError(.notPermitted, "This device has view-only access to this Mac.") }
         guard settings.allowActions else { return RemoteError(.actionsDisabled, "Actions are turned off on this Mac.") }
         return nil
+    }
+
+    static func outcome(_ result: ContainerActionResult) -> String {
+        switch result {
+        case .done: return "Done"
+        case .changed(let reason): return "Refused: \(reason)"
+        case .failed(let reason): return "Failed: \(reason)"
+        }
     }
 
     static func outcome(_ result: TerminationResult) -> String {
