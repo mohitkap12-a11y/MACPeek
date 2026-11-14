@@ -4,6 +4,10 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 
 ## [Unreleased]
 ### Added
+- **An introduction to MacPeek Remote.** A row at the bottom of the launcher opens a window with four pictures of the
+  console and a **Get MacPeek Remote** button that opens remote.macpeekapp.com. The window also opens by itself once
+  after this update; **Remind Me Later** (or closing it) brings it back in a week, and **Never show this again** or
+  following the link stops that. The pictures are in the app: nothing is fetched or sent.
 - **Remote management: container images.** The remote agent lists the Docker engine's images (`containers.images`, a
   read, with which containers use each) and, when **Allow actions** is on, deletes an image or one of its tags
   (`images.remove`) and starts a container from an image (`containers.run`). Deleting is `docker image rm` (never

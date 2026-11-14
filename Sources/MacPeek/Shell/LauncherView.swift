@@ -61,6 +61,7 @@ struct LauncherView: View {
                     .padding(.bottom, 12)
                 }
             }
+            RemoteIntroRow()
             footer
         }
         .background(PeekTheme.ground)

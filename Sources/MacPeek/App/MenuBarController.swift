@@ -15,7 +15,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var remoteObserver: AnyCancellable?
 
     init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService,
-         remote: RemoteManagementController) {
+         remote: RemoteManagementController, remoteIntro: RemoteIntroController) {
         self.router = router
         self.registry = registry
         super.init()
@@ -31,6 +31,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(settings)
                 .environmentObject(updater)
                 .environmentObject(remote)
+                .environmentObject(remoteIntro)
         )
 
         // The popover window does not reliably follow NSApp.appearance, so apply the chosen theme to it directly.
