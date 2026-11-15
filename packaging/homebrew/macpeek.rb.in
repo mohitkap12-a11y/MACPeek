@@ -1,0 +1,30 @@
+cask "macpeek" do
+  version "__VERSION__"
+  sha256 "__SHA256__"
+
+  url "https://github.com/mohitkap12-a11y/MACPeek/releases/download/v#{version}/MacPeek-#{version}.dmg",
+      verified: "github.com/mohitkap12-a11y/MACPeek/"
+  name "MacPeek"
+  desc "Menu-bar utilities for ports, processes, memory, disks, displays, USB and more"
+  homepage "https://www.macpeekapp.com/"
+
+  livecheck do
+    url "https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/appcast.xml"
+    strategy :sparkle, &:short_version
+  end
+
+  # MacPeek updates itself with Sparkle, so `brew upgrade` leaves it alone unless run with --greedy.
+  auto_updates true
+  depends_on macos: ">= :ventura"
+
+  app "MacPeek.app"
+
+  uninstall quit: "app.macpeek.MacPeek"
+
+  zap trash: [
+    "~/Library/Application Support/MacPeek",
+    "~/Library/Caches/app.macpeek.MacPeek",
+    "~/Library/HTTPStorages/app.macpeek.MacPeek",
+    "~/Library/Preferences/app.macpeek.MacPeek.plist",
+  ]
+end

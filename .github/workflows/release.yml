@@ -6,6 +6,7 @@ on:
 # Required repository secrets (never commit these):
 #   DEVELOPER_ID_CERT_P12_BASE64, DEVELOPER_ID_CERT_PASSWORD, DEVELOPER_ID_IDENTITY
 #   NOTARY_API_KEY_P8_BASE64, NOTARY_API_KEY_ID, NOTARY_API_ISSUER_ID
+# Optional: HOMEBREW_TAP_TOKEN updates the Homebrew cask in mohitkap12-a11y/homebrew-tap (see docs/release.md, Homebrew).
 # Also required for stable (non-hyphenated) tags: VERCEL_DEPLOY_HOOK_URL (a historical name: it now holds the Cloudflare
 # Workers Builds Deploy Hook URL), which rebuilds the website so it shows the new
 # version (see docs/release.md). Missing it fails the release before anything is built or published.
@@ -146,6 +147,35 @@ jobs:
             dist/appcast.xml
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Update Homebrew tap (brew install --cask mohitkap12-a11y/tap/macpeek)
+        # Writes Casks/macpeek.rb in github.com/mohitkap12-a11y/homebrew-tap with this version and the DMG's SHA-256.
+        # Needs secret HOMEBREW_TAP_TOKEN: a fine-grained token with Contents read and write on that repository only.
+        # The release is already public here, so a missing token or failed push warns instead of failing the job.
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set, so the Homebrew cask was not updated (see docs/release.md, Homebrew)."
+            exit 0
+          fi
+          SHA="$(shasum -a 256 "dist/MacPeek-${VERSION}.dmg" | cut -d' ' -f1)"
+          TAP="$RUNNER_TEMP/homebrew-tap"
+          if ! git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/mohitkap12-a11y/homebrew-tap.git" "$TAP"; then
+            echo "::warning::Could not clone mohitkap12-a11y/homebrew-tap; the cask was not updated. Run scripts/render-homebrew-cask.sh ${VERSION} ${SHA} and commit the output as Casks/macpeek.rb there."
+            exit 0
+          fi
+          mkdir -p "$TAP/Casks"
+          scripts/render-homebrew-cask.sh "$VERSION" "$SHA" > "$TAP/Casks/macpeek.rb"
+          cd "$TAP"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/macpeek.rb
+          if git diff --cached --quiet; then echo "Cask already at ${VERSION}"; exit 0; fi
+          git commit -m "macpeek ${VERSION}"
+          git push origin HEAD || echo "::warning::Pushing the cask to homebrew-tap failed. Run scripts/render-homebrew-cask.sh ${VERSION} ${SHA} and commit the output as Casks/macpeek.rb there."
 
       - name: Rebuild website (shows the new version)
         # Releases created with GITHUB_TOKEN do not trigger other workflows, so the hook is called here. The release is

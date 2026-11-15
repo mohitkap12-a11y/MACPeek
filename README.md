@@ -47,7 +47,13 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
 - No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks). ModelPeek asks Ollama's and LM Studio's APIs on 127.0.0.1 while they run, which never leaves your Mac. Remote management, for the separate MacPeek Remote console, is off unless you turn it on
 
 ## Install
-Download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
+With [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask mohitkap12-a11y/tap/macpeek
+```
+
+Or download `MacPeek-x.y.z.dmg` from [Releases](../../releases/latest), drag **MacPeek** to **Applications**,
 launch it and look for the icon in the menu bar. Releases are Developer ID signed and notarized; verify the
 download against the published `SHA256SUMS`.
 

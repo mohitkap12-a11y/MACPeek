@@ -7,6 +7,7 @@ MacPeek is distributed directly (Developer ID signed, notarized DMG) from GitHub
 - [Quick reference](#quick-reference)
 - [One-time setup](#one-time-setup)
 - [Sparkle (in-app updates)](#sparkle-in-app-updates)
+- [Homebrew](#homebrew)
 - [Every release](#every-release)
 - [What the workflow does](#what-the-workflow-does)
 - [Troubleshooting](#troubleshooting)
@@ -135,6 +136,38 @@ mkdir sparkle && tar -xJf Sparkle.tar.xz -C sparkle
 - Do not rename the DMG asset: the appcast points at `MacPeek-X.Y.Z.dmg` in the release.
 - The version number must keep increasing (the app compares it with the installed one).
 - Never re-sign or modify a published DMG: the signature in `appcast.xml` would no longer match.
+
+## Homebrew
+
+MacPeek is installed with `brew install --cask mohitkap12-a11y/tap/macpeek`. The cask lives in its own tap,
+[mohitkap12-a11y/homebrew-tap](https://github.com/mohitkap12-a11y/homebrew-tap) (`Casks/macpeek.rb`), and is rendered
+from `packaging/homebrew/macpeek.rb.in` by `scripts/render-homebrew-cask.sh <version> <sha256>`.
+
+### One-time setup
+
+1. Create a **public** repository named exactly `homebrew-tap` under `mohitkap12-a11y` (the `homebrew-` prefix is what
+   lets `mohitkap12-a11y/tap/macpeek` work). Commit the current cask as `Casks/macpeek.rb`.
+2. Create a fine-grained personal access token: Repository access **only** `homebrew-tap`, permission
+   **Contents: Read and write**. Save it in this repository as the secret `HOMEBREW_TAP_TOKEN`.
+
+### Every release
+
+Nothing to do. For a stable tag the workflow computes the DMG's SHA-256, rewrites `Casks/macpeek.rb` in the tap and
+pushes it. Pre-release tags never touch the cask. Without the token, or if the push fails, the release still succeeds
+and the job prints a warning with the exact command to update the cask by hand.
+
+### Updates for Homebrew users
+
+The cask says `auto_updates true`, so Sparkle stays in charge: a Homebrew install updates itself in the app like a DMG
+install, and `brew upgrade` skips it (`brew upgrade --greedy` upgrades it anyway). Both write the same
+`/Applications/MacPeek.app`, so they never conflict. Homebrew's recorded version can lag behind after a Sparkle update;
+that only affects what `brew list --versions` shows.
+
+### The official homebrew-cask repository
+
+Homebrew/homebrew-cask accepts an app once it is notable enough: at the time of writing at least 75 GitHub stars (or
+30 forks or watchers), and more when the author submits it. Once MacPeek is there, `brew install --cask macpeek` works
+without the tap, and Homebrew's autobump bot follows new releases from the `livecheck` block (the Sparkle appcast).
 
 ## Every release
 
