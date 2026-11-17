@@ -8,6 +8,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 scripts/check-toolchain.sh
 VERSION="${1:-0.1.0}"
+# CFBundleVersion (what Sparkle compares) must not contain a hyphen: Sparkle ignores everything after the first "-", so
+# 0.4.0-beta.1, 0.4.0-beta.2 and 0.4.0 would all compare equal. 0.4.0-beta.1 -> 0.4.0b1; any other suffix loses its "-"
+# and "." (0.4.0-rc1 -> 0.4.0rc1). Sparkle then orders 0.3.9 < 0.4.0b1 < 0.4.0b2 < 0.4.0rc1 < 0.4.0.
+bundle_version() {
+  local v="$1" base suffix
+  [[ "$v" == *-* ]] || { echo "$v"; return; }
+  base="${v%%-*}"; suffix="${v#*-}"
+  if [[ "$suffix" =~ ^beta\.([0-9]+)$ ]]; then echo "${base}b${BASH_REMATCH[1]}"; else echo "${base}${suffix//[-.]/}"; fi
+}
+BUNDLE_VERSION="$(bundle_version "$VERSION")"
 APP="build/MacPeek.app"
 # MACPEEK_ENV=staging builds a MacPeek whose "Add to my account" and relay use the staging service
 # (api.staging.macpeekapp.com), like MacPeek Remote's script; MACPEEK_API_URL sets any other address. Default: production.
@@ -67,7 +77,7 @@ if [[ -n "${SIGN_IDENTITY:-}" && -z "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
   echo "error: SPARKLE_PUBLIC_ED_KEY is required for a signed/release build (see docs/release.md, Sparkle setup)" >&2
   exit 1
 fi
-sed -e "s/__VERSION__/${VERSION}/g" -e "s#__API_URL__#${API_URL}#g" -e "s#__SPARKLE_PUBLIC_ED_KEY__#${SPARKLE_PUBLIC_ED_KEY:-__SPARKLE_PUBLIC_ED_KEY__}#" \
+sed -e "s/__BUNDLE_VERSION__/${BUNDLE_VERSION}/g" -e "s/__VERSION__/${VERSION}/g" -e "s#__API_URL__#${API_URL}#g" -e "s#__SPARKLE_PUBLIC_ED_KEY__#${SPARKLE_PUBLIC_ED_KEY:-__SPARKLE_PUBLIC_ED_KEY__}#" \
   Resources/Info.plist > "$APP/Contents/Info.plist"
 
 FW="$APP/Contents/Frameworks/Sparkle.framework"

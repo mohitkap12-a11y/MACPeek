@@ -7,6 +7,7 @@ MacPeek is distributed directly (Developer ID signed, notarized DMG) from GitHub
 - [Quick reference](#quick-reference)
 - [One-time setup](#one-time-setup)
 - [Sparkle (in-app updates)](#sparkle-in-app-updates)
+- [Preview builds (beta)](#preview-builds-beta)
 - [Every release](#every-release)
 - [What the workflow does](#what-the-workflow-does)
 - [Troubleshooting](#troubleshooting)
@@ -19,6 +20,9 @@ MacPeek is distributed directly (Developer ID signed, notarized DMG) from GitHub
 # 1. Update CHANGELOG.md on main (rename [Unreleased] to the new version), merge it.
 git checkout main && git pull origin main
 
+# Preview for opted-in Macs only: published to the preview feed (appcast-beta.xml), never to appcast.xml.
+git tag v0.4.0-beta.1 && git push origin v0.4.0-beta.1
+
 # 2. Optional dry run (published as a pre-release; never "latest"; no website rebuild).
 git tag v0.1.0-rc1 && git push origin v0.1.0-rc1
 
@@ -29,7 +33,8 @@ git tag v0.1.0 && git push origin v0.1.0
 - The tag **must** start with `v` (`v0.1.1`, not `macpeek-v0.1.1`); the workflow only triggers on `v*`.
 - **Never create the release by hand** in the GitHub UI: a manual release has only the auto-generated source archives, no
   DMG. The workflow creates the release and attaches the files.
-- A tag containing a hyphen (`v0.2.0-rc1`, `v1.0.0-beta.1`) is a pre-release. Delete a dry run afterwards:
+- `vX.Y.Z-beta.N` is a preview (see [Preview builds](#preview-builds-beta)). Any other tag with a hyphen (`v0.2.0-rc1`)
+  is a dry run. Both are GitHub pre-releases (never "latest", no website rebuild). Delete a dry run afterwards:
   delete the release on GitHub, then `git push origin :refs/tags/v0.1.0-rc1 && git tag -d v0.1.0-rc1`.
 
 ## One-time setup
@@ -136,6 +141,54 @@ mkdir sparkle && tar -xJf Sparkle.tar.xz -C sparkle
 - The version number must keep increasing (the app compares it with the installed one).
 - Never re-sign or modify a published DMG: the signature in `appcast.xml` would no longer match.
 
+## Preview builds (beta)
+
+Try a fix in the real, signed and notarized app on your own Mac before everyone gets it. Same idea as MacPeek Remote.
+
+| | Stable `v0.4.0` | Preview `v0.4.0-beta.1` |
+|---|---|---|
+| Feed | `appcast.xml` (on the release) and `appcast-beta.xml` | `appcast-beta.xml` only |
+| Who is offered it | everyone | Macs opted in with `receivePreviewBuilds` |
+| GitHub release | release ("latest") | pre-release |
+| Website rebuild | yes | no |
+
+The preview feed lives on a fixed pre-release with the tag `preview-feed`
+(`https://github.com/mohitkap12-a11y/MACPeek/releases/download/preview-feed/appcast-beta.xml`, `MacPeekPreviewFeedURL`
+in `Resources/Info.plist`). The workflow creates it on the first beta or stable release and replaces its
+`appcast-beta.xml` every time. **Do not delete it** or publish it as a normal release.
+
+**Opt in your Mac (once):**
+
+```bash
+defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES
+```
+
+Quit and reopen MacPeek. Settings ▸ Updates shows **Preview builds** while it is on. **Back to stable** there (or
+`defaults delete app.macpeek.MacPeek receivePreviewBuilds`) leaves the preview feed.
+
+**Ship a preview:**
+
+1. Merge the fix to `main`.
+2. `git tag v0.4.0-beta.1 && git push origin v0.4.0-beta.1` (next one `-beta.2`, and so on).
+3. On your Mac: Settings ▸ **Check for Updates…** (or wait for the daily check).
+4. Verify. Found a problem? Fix on `main`, tag `-beta.2`.
+5. Happy: tag `v0.4.0`. Everyone gets it, and opted-in Macs move on to it too.
+
+Sparkle compares `CFBundleVersion` and ignores everything after a hyphen, so `scripts/build-app.sh` writes a hyphen-free
+build number: `0.4.0-beta.1` becomes build `0.4.0b1` (other suffixes lose `-` and `.`: `0.4.0-rc1` → `0.4.0rc1`).
+Sparkle orders `0.3.9 < 0.4.0b1 < 0.4.0b2 < 0.4.0 < 0.4.1`. The version people see stays `0.4.0-beta.1`.
+
+Rules and caveats:
+
+- Previews use the **production** MacPeek Remote service. Keep backend changes compatible with the stable app.
+- Sparkle never downgrades. Leaving the preview feed keeps the preview installed until a newer stable release; to undo a
+  bad preview, ship a higher `-beta.N` with the fix.
+- Pick the preview's number from the release it leads to: `0.4.0-beta.1` comes after `0.3.x` and before `0.4.0`.
+- A stable release overwrites `appcast-beta.xml` with itself. A preview newer than it (say `0.5.0-beta.1` before a
+  `0.4.1` hotfix) drops out of the preview feed then; Macs that installed it keep it. Tag the next `-beta.N` to offer it again.
+- Tag previews on `main`, like every release: the workflow runs with the signing secrets.
+- While the workflow replaces `appcast-beta.xml` there are a few seconds without it; a check then just finds nothing.
+
 ## Every release
 
 1. Update `CHANGELOG.md` (rename `[Unreleased]` to the version and date) and merge to `main`.
@@ -156,8 +209,8 @@ Local, unsigned build for testing: `scripts/build-app.sh 0.1.0 && scripts/make-d
 
 On a `v*` tag: (stable tags only) require `VERCEL_DEPLOY_HOOK_URL` → require the Sparkle keys → test → import certificate into a temporary keychain →
 build a universal app and sign it (Developer ID, hardened runtime) → DMG → notarize with `notarytool --wait --timeout 30m`
-→ staple + validate + `spctl` check → sign the DMG with the Sparkle key and write `appcast.xml` → add a versionless `MacPeek.dmg` and write `SHA256SUMS` for both → publish the GitHub
-release (hyphenated tags as a pre-release) → (stable tags only) call the website's deploy hook (Cloudflare). Any failed step aborts the
+→ staple + validate + `spctl` check → sign the DMG with the Sparkle key and write `appcast.xml` and `appcast-beta.xml` (`sparkle:version` is the hyphen-free build number) → add a versionless `MacPeek.dmg` and write `SHA256SUMS` for both → publish the GitHub
+release (hyphenated tags as a pre-release) → (stable and `-beta.N` tags) replace `appcast-beta.xml` on the `preview-feed` pre-release → (stable tags only) call the website's deploy hook (Cloudflare). Any failed step aborts the
 release; an unsigned or un-notarized build is never published.
 
 Assets: `MacPeek-X.Y.Z.dmg`, `appcast.xml`, `MacPeek.dmg` (a never-changing link,

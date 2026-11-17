@@ -11,7 +11,13 @@ on:
 # version (see docs/release.md). Missing it fails the release before anything is built or published.
 # Sparkle in-app updates: repository secret SPARKLE_ED_PRIVATE_KEY (signs the update) and repository VARIABLE
 # SPARKLE_PUBLIC_ED_KEY (the matching public key baked into the app). See docs/release.md, "Sparkle setup".
-# Tags containing a hyphen (v0.1.0-rc1) are published as pre-releases: never "latest", no website rebuild.
+#
+# Tags (docs/release.md):
+#   v0.4.0         stable: GitHub release ("latest", so releases/latest/download/appcast.xml offers it to everyone),
+#                  website rebuild, and its item also replaces the preview feed so opted-in Macs move on to it.
+#   v0.4.0-beta.1  preview: GitHub pre-release, and appcast-beta.xml is replaced on the fixed `preview-feed` pre-release.
+#                  Only Macs opted in with `defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES` read it.
+#   v0.4.0-rc1     dry run (any other hyphenated tag): GitHub pre-release only; no feed is touched, no website rebuild.
 permissions:
   contents: write
 
@@ -23,7 +29,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          # CHANNEL: stable -> appcast.xml (everyone); beta -> appcast-beta.xml (opted-in Macs); dryrun -> no feed.
+          # Sparkle orders 0.4.0-beta.1 < 0.4.0-beta.2 < 0.4.0 (build numbers 0.4.0b1 < 0.4.0b2 < 0.4.0, see build-app.sh).
+          if [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then CHANNEL=stable
+          elif [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then CHANNEL=beta
+          elif [[ "$GITHUB_REF_NAME" == *-* ]]; then CHANNEL=dryrun
+          else echo "::error::Tag $GITHUB_REF_NAME is not vX.Y.Z, vX.Y.Z-beta.N or a hyphenated dry run (docs/release.md)."; exit 1; fi
+          echo "CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
+          echo "Channel: $CHANNEL"
+
+      - name: Check the preview feed address matches the app
+        run: |
+          PREVIEW="$(/usr/libexec/PlistBuddy -c 'Print :MacPeekPreviewFeedURL' Resources/Info.plist)"
+          WANT="https://github.com/${GITHUB_REPOSITORY}/releases/download/preview-feed/appcast-beta.xml"
+          test "$PREVIEW" = "$WANT" || { echo "::error::MacPeekPreviewFeedURL in Resources/Info.plist ($PREVIEW) is not $WANT. Change them together."; exit 1; }
 
       - name: Require website deploy hook for stable releases
         if: ${{ !contains(github.ref_name, '-') }}
@@ -89,7 +110,7 @@ jobs:
           spctl --assess --type open --context context:primary-signature -v "dist/MacPeek-${VERSION}.dmg"
           rm "$RUNNER_TEMP/notary.p8"
 
-      - name: Sign update and write appcast.xml (Sparkle)
+      - name: Sign update and write the feed (Sparkle)
         # Sign the final, stapled DMG, then describe it in the update feed the app reads
         # (releases/latest/download/appcast.xml always resolves to the newest stable release's feed).
         env:
@@ -104,17 +125,21 @@ jobs:
           SIG="$(printf '%s' "$SPARKLE_PRIVATE" | "$SIGN_UPDATE" --ed-key-file - -p "$DMG")"
           test -n "$SIG" || { echo "::error::sign_update produced no signature"; exit 1; }
           LENGTH="$(stat -f%z "$DMG")"
+          # What Sparkle compares: the built app's CFBundleVersion (hyphen-free, 0.4.0-beta.1 -> 0.4.0b1; see build-app.sh).
+          BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "build/MacPeek.app/Contents/Info.plist")"
+          [[ -n "$BUILD" && "$BUILD" != *-* ]] || { echo "::error::CFBundleVersion '$BUILD' is empty or has a hyphen; Sparkle would ignore what follows it."; exit 1; }
+          TITLE="MacPeek"; [ "$CHANNEL" = beta ] && TITLE="MacPeek (preview)"
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/MacPeek-${VERSION}.dmg"
           NOTES="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
           cat > dist/appcast.xml <<XML
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
             <channel>
-              <title>MacPeek</title>
+              <title>${TITLE}</title>
               <item>
                 <title>MacPeek ${VERSION}</title>
                 <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:version>${BUILD}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
                 <sparkle:releaseNotesLink>${NOTES}</sparkle:releaseNotesLink>
@@ -125,6 +150,10 @@ jobs:
           XML
           xmllint --noout dist/appcast.xml
           cat dist/appcast.xml
+          # The preview feed has the same item: a beta publishes it as appcast-beta.xml; a stable release does too, so
+          # opted-in Macs move on to it. (A dry run publishes neither: its appcast.xml sits on a pre-release, never "latest".)
+          sed "s#<title>MacPeek</title>#<title>MacPeek (preview)</title>#" dist/appcast.xml > dist/appcast-beta.xml
+          xmllint --noout dist/appcast-beta.xml
 
       - name: Add versionless DMG and checksums
         # The website's Download button links to releases/latest/download/MacPeek.dmg, a name that never changes,
@@ -146,6 +175,22 @@ jobs:
             dist/appcast.xml
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Publish the preview feed (appcast-beta.xml on the preview-feed pre-release)
+        # A fixed pre-release (tag `preview-feed`, never "latest", never matches v* so it starts no workflow) whose one
+        # asset is replaced each time: MacPeekPreviewFeedURL in Info.plist points at it. Created on first use. It runs
+        # after the versioned release is public, so the feed never points at a DMG that is not there yet.
+        if: ${{ env.CHANNEL != 'dryrun' }}
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: preview-feed
+          target_commitish: ${{ github.sha }}
+          name: Preview feed (do not delete)
+          body: Holds appcast-beta.xml, the update feed for Macs opted in to MacPeek preview builds. Replaced by every stable and -beta.N release. See docs/release.md, "Preview builds".
+          prerelease: true
+          make_latest: false
+          files: dist/appcast-beta.xml
+          overwrite_files: true
 
       - name: Rebuild website (shows the new version)
         # Releases created with GITHUB_TOKEN do not trigger other workflows, so the hook is called here. The release is

@@ -43,6 +43,14 @@ struct SettingsView: View {
                         Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
                         Button("Check for Updates…") { updater.checkForUpdates() }
                             .disabled(!updater.canCheckForUpdates)
+                        if updater.receivesPreviewBuilds {
+                            LabeledContent("Preview builds") {
+                                Button("Back to stable") { updater.stopPreviewBuilds() }
+                                    .help("Stop receiving previews. The installed preview stays until a newer stable release.")
+                            }
+                            Text("This Mac receives preview releases before everyone else.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         Text("About once a day MacPeek asks GitHub whether a newer release exists. Nothing about you or your Mac is sent beyond what any web request includes. Updates are verified with a signature before they are installed.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {

@@ -9,12 +9,15 @@
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>__VERSION__</string>
-    <key>CFBundleVersion</key><string>__VERSION__</string>
+    <key>CFBundleVersion</key><string>__BUNDLE_VERSION__</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <!-- Sparkle in-app updates. The public key is substituted by scripts/build-app.sh (SPARKLE_PUBLIC_ED_KEY);
          without a real key the app runs with updates switched off. -->
     <key>SUFeedURL</key><string>https://github.com/mohitkap12-a11y/MACPeek/releases/latest/download/appcast.xml</string>
+    <!-- Preview (beta) feed, read instead of SUFeedURL only by Macs opted in with `receivePreviewBuilds`
+         (docs/release.md, "Preview builds"). A fixed pre-release, so it is never "latest". -->
+    <key>MacPeekPreviewFeedURL</key><string>https://github.com/mohitkap12-a11y/MACPeek/releases/download/preview-feed/appcast-beta.xml</string>
     <key>SUPublicEDKey</key><string>__SPARKLE_PUBLIC_ED_KEY__</string>
     <key>SUEnableAutomaticChecks</key><true/>
     <key>SUScheduledCheckInterval</key><integer>86400</integer>
