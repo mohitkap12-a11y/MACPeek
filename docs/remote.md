@@ -142,8 +142,8 @@ network. It is part of MacPeek Remote Pro (macpeek-remote docs/PRO.md §5).
   with Close, and the icon's tooltip counts them. Narrowing **Allow tunnels** closes tunnels it no longer allows;
   revoking a device or turning Remote management off ends them like any session.
 - **Logged:** opening (and each refusal) and closing, with the port, route, bytes each way and how long it was open.
-- `agent.capabilities` lists `tunnel.open`, and `tunnels`: what this console may reach on this route (`off` for a
-  viewer or a relay stream that is not a tunnel stream).
+- `agent.capabilities` lists `tunnel.open`, and `tunnels`: what this console may reach (`off` for a viewer), the same
+  on every route. Through the relay each tunnel opens its own tunnel stream; a plain stream's `tunnel.open` is refused.
 
 ## Activity log
 `~/Library/Application Support/MacPeek/Remote/activity-log.json` (mode 0600), newest 500 entries. Each entry stores the

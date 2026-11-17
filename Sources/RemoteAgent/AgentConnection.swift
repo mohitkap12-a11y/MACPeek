@@ -130,9 +130,9 @@ public actor AgentConnection {
                 throw AgentRefusal("This device was removed from the account.")
             }
             guard !isClosed else { return }
-            var settings = await state.settings
-            // What this route lets tunnels reach: nothing on a relay stream the relay did not open as a tunnel.
-            if !routeAllowsTunnels { settings.tunnels = .off }
+            // Capabilities report what the person allows whatever the route, so a console connected through the relay
+            // knows it can open tunnels: each opens its own tunnel stream, and `openTunnel` refuses a plain relay stream.
+            let settings = await state.settings
             if request.operation == .tunnelOpen {
                 try await openTunnel(request, channel: channel, console: console, chain: chain, device: device, settings: settings)
                 return

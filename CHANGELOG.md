@@ -8,7 +8,7 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   ports, any port), lets devices of the Mac's MacPeek Remote account with View and act reach a port on this Mac's own
   127.0.0.1, such as its SSH server or a dev server, end-to-end encrypted, on the local network or (with MacPeek Remote
   Pro) through the relay. Open tunnels are listed in Settings and the menu-bar icon's right-click menu with Close, and
-  each one is recorded in the activity log.
+  each one is recorded in the activity log. What it allows is reported to the account's consoles on every route.
 - **Remote management: the user name for SSH.** `device.info` also reports the short name of the person MacPeek runs
   as (for example `asha`), only to the consoles of the Mac's account, so MacPeek Remote can open `ssh asha@…` to this
   Mac. Older consoles ignore it.
