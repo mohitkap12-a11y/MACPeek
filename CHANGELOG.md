@@ -3,6 +3,8 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-11-17
 ### Added
 - **Preview builds.** A Mac opted in with `defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES` reads a
   preview update feed and is offered `vX.Y.Z-beta.N` releases before everyone else; Settings ▸ Updates then shows
