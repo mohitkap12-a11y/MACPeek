@@ -4,6 +4,7 @@ import Combine
 import AppKit
 import RemoteAgent
 import RemoteCrypto
+import RemoteProtocol
 
 /// The app's side of Remote management. Off by default: until the person turns it on nothing is created, nothing
 /// listens and nothing is advertised. Turning it off stops the listener and ends every connection at once.
@@ -15,6 +16,8 @@ final class RemoteManagementController: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var allowActions: Bool
     @Published private(set) var allowFromAnywhere: Bool
+    /// "Allow tunnels" (Pro): off until the person turns it on, then SSH only until they choose more.
+    @Published private(set) var tunnels: TunnelPolicy
     @Published private(set) var relayStatus: RelayClient.Status = .off
     /// "Add to my account" (AccountJoinFlow), shown in Settings while this Mac is in no account.
     @Published private(set) var joinPhase: AccountJoinFlow.Phase = .idle
@@ -38,11 +41,12 @@ final class RemoteManagementController: ObservableObject {
         isEnabled = defaults.bool(forKey: "remote.enabled")
         allowActions = defaults.bool(forKey: "remote.allowActions")
         allowFromAnywhere = defaults.bool(forKey: "remote.allowFromAnywhere")
+        tunnels = defaults.data(forKey: "remote.tunnels").flatMap { try? JSONDecoder().decode(TunnelPolicy.self, from: $0) } ?? .off
         if isEnabled { start() }
     }
 
     var settings: RemoteSettings {
-        RemoteSettings(isEnabled: isEnabled, allowActions: allowActions, allowFromAnywhere: allowFromAnywhere)
+        RemoteSettings(isEnabled: isEnabled, allowActions: allowActions, allowFromAnywhere: allowFromAnywhere, tunnels: tunnels)
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -57,6 +61,19 @@ final class RemoteManagementController: ObservableObject {
         defaults.set(allow, forKey: "remote.allowActions")
         let settings = settings
         Task { await state?.update(settings) }
+    }
+
+    func setTunnels(_ policy: TunnelPolicy) {
+        guard policy != tunnels else { return }
+        tunnels = policy
+        defaults.set(try? JSONEncoder().encode(policy), forKey: "remote.tunnels")
+        let settings = settings
+        Task { await state?.update(settings) }
+    }
+
+    /// Closes one open tunnel (Settings, or the menu bar icon's menu).
+    func closeTunnel(_ id: UUID) {
+        Task { await state?.closeTunnel(id) }
     }
 
     func setAllowFromAnywhere(_ allow: Bool) {

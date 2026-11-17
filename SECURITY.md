@@ -23,7 +23,9 @@ credit reporters who want it once a fix ships (responsible disclosure).
   (X25519, HKDF-SHA256, ChaCha20-Poly1305 with counter nonces). Adding a Mac relies on MacPeek Remote's service to hand
   it the right account key; after that the service cannot read or change anything. Actions need the Mac's **Allow
   actions** switch, go through the same safe-termination service as the app, and are recorded in a hash-chained
-  activity log. The Mac's private key is in the Keychain (this device only). The menu-bar icon carries a dot while it is
+  activity log. **Allow tunnels**, also off by default, lets devices that may act reach chosen ports on the Mac's own
+  127.0.0.1 (never other hosts); open tunnels are listed with Close in Settings and the menu-bar menu, and logged. The
+  Mac's private key is in the Keychain (this device only). The menu-bar icon carries a dot while it is
   on. Protocol and threat model: [docs/remote.md](docs/remote.md).
 - **No privilege elevation.** MacPeek runs as your user and sends signals only to processes your
   user may signal. It never prompts for, stores or requests administrator rights. When npm is refused permission to

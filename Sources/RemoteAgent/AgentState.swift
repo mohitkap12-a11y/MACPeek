@@ -17,6 +17,8 @@ public actor AgentState {
         public let log: ActivityLog
         /// The account this Mac belongs to, if any.
         public let membership: WorkspaceMembership?
+        /// The tunnels open now, oldest first.
+        public let tunnels: [OpenTunnel]
     }
 
     public static let localActor = "This Mac"
@@ -34,6 +36,8 @@ public actor AgentState {
     private var connectionConsoles: [UUID: Data] = [:]
     /// The account chain of each authenticated connection.
     private var connectionChains: [UUID: WorkspaceChain] = [:]
+    /// The connections that are tunnels now, by connection id.
+    private var tunnels: [UUID: OpenTunnel] = [:]
 
     public init(identity: DeviceIdentity, store: AgentStoring, settings: RemoteSettings = RemoteSettings(),
                 clock: @escaping @Sendable () -> Date = { Date() }) {
@@ -51,7 +55,7 @@ public actor AgentState {
 
     public func snapshot() -> Snapshot {
         Snapshot(settings: settings, identity: identity.publicIdentity, connectedConsoles: Set(connectionConsoles.values),
-                 log: log, membership: membership)
+                 log: log, membership: membership, tunnels: tunnels.values.sorted { $0.openedAt < $1.openedAt })
     }
 
     // MARK: Settings
@@ -61,6 +65,7 @@ public actor AgentState {
         guard newSettings != settings else { return }
         let wasEnabled = settings.isEnabled
         let wasAnywhere = settings.allowFromAnywhere
+        let oldTunnels = settings.tunnels
         settings = newSettings
         if !newSettings.isEnabled {
             await closeAll(reason: "Remote management was turned off on this Mac.")
@@ -73,6 +78,13 @@ public actor AgentState {
             record(actor: Self.localActor, fingerprint: nil,
                    event: newSettings.allowFromAnywhere ? "Turned Allow from anywhere on" : "Turned Allow from anywhere off",
                    outcome: "Done")
+        }
+        if oldTunnels != newSettings.tunnels {
+            record(actor: Self.localActor, fingerprint: nil, event: "Set Allow tunnels to \(Self.describe(newSettings.tunnels))", outcome: "Done")
+            // Tunnels to ports no longer allowed close at once.
+            for (id, open) in tunnels where !newSettings.tunnels.allows(open.port) {
+                await connections[id]?.close(reason: "Tunnels to port \(open.port) were turned off on this Mac.")
+            }
         }
         changed()
     }
@@ -215,11 +227,49 @@ public actor AgentState {
     func unregister(_ connectionID: UUID) {
         connections[connectionID] = nil
         connectionChains[connectionID] = nil
+        if tunnels.removeValue(forKey: connectionID) != nil { changed() }
         if connectionConsoles.removeValue(forKey: connectionID) != nil { changed() }
     }
 
     public func closeAll(reason: String) async {
         for connection in connections.values { await connection.close(reason: reason) }
+    }
+
+    // MARK: Tunnels
+
+    func tunnelOpened(_ tunnel: OpenTunnel, by console: PairedConsole) {
+        tunnels[tunnel.id] = tunnel
+        record(actor: console.identity.name, fingerprint: console.identity.fingerprint,
+               event: "Opened tunnel to port \(tunnel.port)", outcome: tunnel.viaRelay ? "Through the relay" : "On the local network")
+        changed()
+    }
+
+    func tunnelClosed(id: UUID, port: Int, consoleName: String, fingerprint: String, openedAt: Date, bytesIn: Int, bytesOut: Int,
+                      reason: String?) {
+        tunnels[id] = nil
+        let minutes = max(0, Int(clock().timeIntervalSince(openedAt) / 60))
+        let amounts = "\(Self.bytes(bytesIn)) in, \(Self.bytes(bytesOut)) out, \(minutes == 1 ? "1 minute" : "\(minutes) minutes")"
+        record(actor: consoleName, fingerprint: fingerprint, event: "Closed tunnel to port \(port)",
+               outcome: reason.map { "\(amounts). \($0)" } ?? amounts)
+        changed()
+    }
+
+    /// Closes one tunnel from this Mac (its menu or Settings).
+    public func closeTunnel(_ id: UUID) async {
+        await connections[id]?.close(reason: "Closed on this Mac.")
+    }
+
+    static func describe(_ policy: TunnelPolicy) -> String {
+        switch policy.mode {
+        case .off: return "Off"
+        case .ssh: return "SSH only"
+        case .sshAndPorts: return "SSH and ports \(policy.ports.map(String.init).joined(separator: ", "))"
+        case .anyPort: return "Any port"
+        }
+    }
+
+    static func bytes(_ count: Int) -> String {
+        ByteCountFormatter.string(fromByteCount: Int64(count), countStyle: .file)
     }
 
     // MARK: Activity log

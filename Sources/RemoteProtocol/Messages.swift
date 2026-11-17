@@ -69,6 +69,9 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let workspaceStatus: Operation = "workspace.status"
     /// Hands the Mac a newer revocation list for its workspace.
     public static let workspaceRevocations: Operation = "workspace.revocations"
+    /// Turns this connection into a tunnel to a TCP port on the Mac's own `127.0.0.1` (Pro, macpeek-remote docs/PRO.md §5).
+    /// Body: `TunnelOpenRequest`. After its answer the connection carries only that port's bytes (`TunnelFraming`).
+    public static let tunnelOpen: Operation = "tunnel.open"
 
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
@@ -77,6 +80,8 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction, .imageRemove, .containerRun]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceRevocations]
+    /// Answered by the connection itself, which becomes the tunnel; gated by "Allow tunnels", not "Allow actions".
+    public static let tunnels: [Operation] = [.tunnelOpen]
 
     public var isAction: Bool { Self.actions.contains(self) }
 }
@@ -155,15 +160,95 @@ public struct Capabilities: Equatable, Codable, Sendable {
     public let operations: [Operation]
     /// Whether this console may run actions right now: it is paired to act and the person at the Mac allows actions.
     public let actionsAllowed: Bool
+    /// The ports this console may open tunnels to on this connection's route: what the person at the Mac allows, or
+    /// `.off` when this console may not (view only, or a route that does not carry tunnels). Nil from a MacPeek without
+    /// tunnels.
+    public let tunnels: TunnelPolicy?
 
     public init(protocolVersion: Int = RemoteProtocolVersion.current, agentVersion: String, device: DeviceInfo,
-                operations: [Operation], actionsAllowed: Bool) {
+                operations: [Operation], actionsAllowed: Bool, tunnels: TunnelPolicy? = nil) {
         self.protocolVersion = protocolVersion
         self.agentVersion = agentVersion
         self.device = device
         self.operations = operations
         self.actionsAllowed = actionsAllowed
+        self.tunnels = tunnels
     }
+}
+
+/// What the person at the Mac lets tunnels reach ("Allow tunnels"): nothing (the default), its SSH server only, SSH and
+/// a list of ports, or any port. Tunnels only ever connect to the Mac's own `127.0.0.1`, never onward to other hosts.
+public struct TunnelPolicy: Equatable, Codable, Sendable {
+    public enum Mode: String, Codable, Sendable, CaseIterable {
+        case off
+        case ssh
+        case sshAndPorts
+        case anyPort
+    }
+
+    public static let sshPort = 22
+    public static let off = TunnelPolicy(mode: .off)
+    public static let sshOnly = TunnelPolicy(mode: .ssh)
+
+    public var mode: Mode
+    /// The ports allowed besides SSH in `.sshAndPorts`; ignored otherwise.
+    public var ports: [Int]
+
+    public init(mode: Mode, ports: [Int] = []) {
+        self.mode = mode
+        self.ports = Array(Set(ports.filter(TunnelPolicy.isPort))).sorted()
+    }
+
+    public static func isPort(_ port: Int) -> Bool { (1...65_535).contains(port) }
+
+    public var isOn: Bool { mode != .off }
+
+    public func allows(_ port: Int) -> Bool {
+        guard Self.isPort(port) else { return false }
+        switch mode {
+        case .off: return false
+        case .ssh: return port == Self.sshPort
+        case .sshAndPorts: return port == Self.sshPort || ports.contains(port)
+        case .anyPort: return true
+        }
+    }
+
+    /// "1234, 5432" → [1234, 5432]; nil when any item is not a port number.
+    public static func parsePorts(_ text: String) -> [Int]? {
+        let items = text.split(whereSeparator: { $0 == "," || $0 == " " }).map(String.init)
+        var ports: [Int] = []
+        for item in items {
+            guard let port = Int(item), isPort(port) else { return nil }
+            ports.append(port)
+        }
+        return ports
+    }
+}
+
+/// `tunnel.open`: the TCP port on the Mac's `127.0.0.1` to connect to.
+public struct TunnelOpenRequest: Equatable, Codable, Sendable {
+    public let port: Int
+
+    public init(port: Int) {
+        self.port = port
+    }
+}
+
+/// The answer to `tunnel.open`: the tunnel is open, and from the next frame on the connection carries its bytes.
+public struct TunnelOpenResponse: Equatable, Codable, Sendable {
+    public let port: Int
+
+    public init(port: Int) {
+        self.port = port
+    }
+}
+
+/// A connection after `tunnel.open` succeeded: each frame (`Framing`) is one `SecureChannel.seal` of a piece of the TCP
+/// stream, with no JSON around it. A sealed empty piece means that side's TCP connection ended; then the connection
+/// closes. Either side may also just close the transport.
+public enum TunnelFraming {
+    /// The most bytes of the stream in one frame.
+    public static let chunkSize = 32 * 1024
 }
 
 /// `dns.probe`: which of the Mac's DNS servers to ask, and for which name. The Mac only asks servers in its own

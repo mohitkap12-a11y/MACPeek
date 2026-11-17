@@ -33,10 +33,19 @@ private final class MemoryStore: AgentStoring, @unchecked Sendable {
 private actor Outbox {
     private var reader = Framing.Reader()
     private(set) var messages: [WireMessage] = []
+    /// Frames that are not messages: a tunnel's sealed bytes.
+    private(set) var raw: [Data] = []
     private(set) var closed = false
 
     func append(_ bytes: Data) throws {
-        for frame in try reader.append(bytes) { messages.append(try WireMessage.decoded(from: frame)) }
+        for frame in try reader.append(bytes) {
+            if let message = try? WireMessage.decoded(from: frame) { messages.append(message) } else { raw.append(frame) }
+        }
+    }
+
+    func takeRaw() -> [Data] {
+        defer { raw.removeAll() }
+        return raw
     }
 
     func markClosed() { closed = true }
@@ -90,15 +99,16 @@ private final class Harness {
     let handler: RequestHandler
     let macIdentity = DeviceIdentity(name: "Studio")
 
-    init(settings: RemoteSettings = RemoteSettings(isEnabled: true, allowActions: true)) {
+    init(settings: RemoteSettings = RemoteSettings(isEnabled: true, allowActions: true),
+         tunnelDialer: TunnelDialing = UnavailableTunnelDialer()) {
         state = AgentState(identity: macIdentity, store: store, settings: settings)
-        handler = RequestHandler(readers: readers(), actions: actions(counter), agentVersion: "0.3.0")
+        handler = RequestHandler(readers: readers(), actions: actions(counter), agentVersion: "0.3.0", tunnelDialer: tunnelDialer)
     }
 
-    func connect() async -> (AgentConnection, Outbox) {
+    func connect(allowsTunnels: Bool = true, viaRelay: Bool = false) async -> (AgentConnection, Outbox) {
         let outbox = Outbox()
         let connection = AgentConnection(state: state, handler: handler, send: { try? await outbox.append($0) },
-                                         onClose: { await outbox.markClosed() })
+                                         onClose: { await outbox.markClosed() }, allowsTunnels: allowsTunnels, viaRelay: viaRelay)
         await connection.start()
         return (connection, outbox)
     }
@@ -115,9 +125,10 @@ private func join(_ harness: Harness, _ account: Account, roleCap: ConsoleRole =
 }
 
 /// A device of `account` connected to the harness's Mac. The Mac must have joined the account.
-private func accountDevice(_ harness: Harness, _ account: Account, name: String = "Laptop", role: WorkspaceRole = .owner) async throws -> Session {
+private func accountDevice(_ harness: Harness, _ account: Account, name: String = "Laptop", role: WorkspaceRole = .owner,
+                           allowsTunnels: Bool = true) async throws -> Session {
     let identity = DeviceIdentity(name: name)
-    return try await Session(harness, identity: identity, chain: try account.chain(for: identity, role: role))
+    return try await Session(harness, identity: identity, chain: try account.chain(for: identity, role: role), allowsTunnels: allowsTunnels)
 }
 
 /// A console session over the handshake, sending requests and reading responses.
@@ -126,8 +137,8 @@ private final class Session {
     let outbox: Outbox
     var channel: SecureChannel
 
-    init(_ harness: Harness, identity: DeviceIdentity, chain: WorkspaceChain? = nil) async throws {
-        (connection, outbox) = await harness.connect()
+    init(_ harness: Harness, identity: DeviceIdentity, chain: WorkspaceChain? = nil, allowsTunnels: Bool = true) async throws {
+        (connection, outbox) = await harness.connect(allowsTunnels: allowsTunnels, viaRelay: !allowsTunnels)
         var handshake = ConsoleHandshake(identity: identity, chain: chain)
         try await deliver(.hello(handshake.hello()), to: connection)
         guard case .reply(let reply)? = await outbox.take().first else { throw Unreadable() }
@@ -853,5 +864,215 @@ final class AccountJoinTests: XCTestCase {
         XCTAssertEqual(AccountService.relayURL(for: URL(string: "https://api.staging.macpeekapp.com")!).absoluteString,
                        "wss://relay.staging.macpeekapp.com")
         XCTAssertEqual(AccountService.relayURL(for: URL(string: "http://localhost:8787")!).absoluteString, "ws://localhost:8787")
+    }
+}
+
+
+// MARK: Tunnels (Pro)
+
+/// A TCP connection on the Mac, in memory: what the tunnel sent it, and bytes to hand back.
+private final class FakeTunnelSocket: TunnelSocket, @unchecked Sendable {
+    private let lock = NSLock()
+    private var sentData: [Data] = []
+    private var isClosed = false
+    private let incoming: AsyncStream<Data>
+    private let feed: AsyncStream<Data>.Continuation
+    private var iterator: AsyncStream<Data>.AsyncIterator
+
+    init() {
+        (incoming, feed) = AsyncStream<Data>.makeStream()
+        iterator = incoming.makeAsyncIterator()
+    }
+
+    var sent: Data { lock.lock(); defer { lock.unlock() }; return sentData.reduce(Data(), +) }
+    var closed: Bool { lock.lock(); defer { lock.unlock() }; return isClosed }
+
+    /// The service on the Mac writes `data`.
+    func deliver(_ data: Data) { feed.yield(data) }
+    /// The service on the Mac closes its side.
+    func end() { feed.finish() }
+
+    func send(_ data: Data) async throws {
+        lock.lock(); defer { lock.unlock() }
+        sentData.append(data)
+    }
+
+    func receive() async throws -> Data? {
+        var copy = iterator
+        let next = await copy.next()
+        iterator = copy
+        return next
+    }
+
+    func close() {
+        lock.lock()
+        isClosed = true
+        lock.unlock()
+        feed.finish()
+    }
+}
+
+/// Ports something listens on, each answering with a fresh socket the test can reach.
+private final class FakeTunnelDialer: TunnelDialing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let listening: Set<Int>
+    private var sockets: [Int: FakeTunnelSocket] = [:]
+
+    init(listening: Set<Int>) { self.listening = listening }
+
+    func socket(_ port: Int) -> FakeTunnelSocket? { lock.lock(); defer { lock.unlock() }; return sockets[port] }
+
+    func dial(port: Int) async throws -> TunnelSocket {
+        guard listening.contains(port) else { throw TunnelUnavailable(port: port) }
+        let socket = FakeTunnelSocket()
+        lock.lock(); sockets[port] = socket; lock.unlock()
+        return socket
+    }
+}
+
+/// Waits up to two seconds for `check`.
+private func eventually(_ what: String, _ check: () async -> Bool) async throws {
+    for _ in 0..<200 {
+        if await check() { return }
+        try await Task.sleep(nanoseconds: 10_000_000)
+    }
+    XCTFail("Timed out waiting for \(what)")
+}
+
+private func openTunnel(_ session: Session, port: Int) async throws -> Envelope {
+    try unwrapped(try await session.send(try .request(.tunnelOpen, body: TunnelOpenRequest(port: port))))
+}
+
+final class AgentTunnelTests: XCTestCase {
+    func testPolicyAllowsOnlyWhatThePersonChose() throws {
+        XCTAssertFalse(TunnelPolicy.off.allows(22))
+        XCTAssertTrue(TunnelPolicy.sshOnly.allows(22))
+        XCTAssertFalse(TunnelPolicy.sshOnly.allows(3000))
+        let some = TunnelPolicy(mode: .sshAndPorts, ports: [3000, 5432, 3000, 0, 70_000])
+        XCTAssertEqual(some.ports, [3000, 5432], "Duplicates and non-ports are dropped")
+        XCTAssertTrue(some.allows(22) && some.allows(5432))
+        XCTAssertFalse(some.allows(8080))
+        XCTAssertTrue(TunnelPolicy(mode: .anyPort).allows(8080))
+        XCTAssertFalse(TunnelPolicy(mode: .anyPort).allows(0))
+        XCTAssertEqual(TunnelPolicy.parsePorts("3000, 5432 8080"), [3000, 5432, 8080])
+        XCTAssertNil(TunnelPolicy.parsePorts("3000, ssh"))
+        // Settings saved before tunnels keep them off.
+        let old = try JSONDecoder().decode(RemoteSettings.self, from: Data(#"{"isEnabled":true,"allowActions":true,"allowFromAnywhere":true}"#.utf8))
+        XCTAssertEqual(old.tunnels, .off)
+        XCTAssertEqual(RemoteSettings().tunnels, .off)
+        let saved = RemoteSettings(isEnabled: true, tunnels: some)
+        XCTAssertEqual(try JSONDecoder().decode(RemoteSettings.self, from: JSONEncoder().encode(saved)).tunnels, some)
+    }
+
+    func testATunnelCarriesBytesBothWaysToAnAllowedPort() async throws {
+        let dialer = FakeTunnelDialer(listening: [22, 3000])
+        let harness = Harness(settings: RemoteSettings(isEnabled: true, allowActions: false, tunnels: .sshOnly), tunnelDialer: dialer)
+        let account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+
+        let capabilities = try unwrapped(try await session.send(.request(.capabilities))).body(Capabilities.self)
+        XCTAssertEqual(capabilities.tunnels, .sshOnly)
+        XCTAssertTrue(capabilities.operations.contains(.tunnelOpen))
+
+        // Not allowed, though something listens there; the connection stays usable.
+        let refused = try await openTunnel(session, port: 3000)
+        XCTAssertEqual(try refused.body(RemoteError.self).code, .notPermitted)
+
+        let opened = try await openTunnel(session, port: 22).body(TunnelOpenResponse.self)
+        XCTAssertEqual(opened.port, 22)
+        let socket = try unwrapped(dialer.socket(22))
+
+        // Console to Mac.
+        await session.connection.receive(Framing.frame(try session.channel.seal(Data("SSH-2.0-client\r\n".utf8))))
+        try await eventually("bytes on the Mac") { socket.sent == Data("SSH-2.0-client\r\n".utf8) }
+
+        // Mac to console, sealed in order.
+        socket.deliver(Data("SSH-2.0-OpenSSH_9.8\r\n".utf8))
+        var received = Data()
+        try await eventually("bytes at the console") {
+            for frame in await session.outbox.takeRaw() { received += (try? session.channel.open(frame)) ?? Data() }
+            return received == Data("SSH-2.0-OpenSSH_9.8\r\n".utf8)
+        }
+
+        let snapshot = await harness.state.snapshot()
+        XCTAssertEqual(snapshot.tunnels.map(\.port), [22])
+        XCTAssertEqual(snapshot.tunnels.first?.consoleName, "Laptop")
+        XCTAssertEqual(snapshot.tunnels.first?.viaRelay, false)
+
+        // Closed from the Mac: the socket and the connection end, and the log says so.
+        await harness.state.closeTunnel(try unwrapped(snapshot.tunnels.first).id)
+        XCTAssertTrue(socket.closed)
+        let closed = await session.outbox.closed
+        XCTAssertTrue(closed)
+        let tunnels = await harness.state.snapshot().tunnels
+        XCTAssertTrue(tunnels.isEmpty)
+        let events = await harness.state.log.entries.map(\.event)
+        XCTAssertTrue(events.contains("Open tunnel to port 3000"))
+        XCTAssertTrue(events.contains("Opened tunnel to port 22"))
+        XCTAssertTrue(events.contains("Closed tunnel to port 22"))
+    }
+
+    func testTheServiceClosingItsSideEndsTheTunnel() async throws {
+        let dialer = FakeTunnelDialer(listening: [22])
+        let harness = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer)
+        let account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+        _ = try await openTunnel(session, port: 22).body(TunnelOpenResponse.self)
+        try unwrapped(dialer.socket(22)).end()
+        try await eventually("the connection to close") { await session.outbox.closed }
+        // The console was told with an empty piece first.
+        let last = try unwrapped(await session.outbox.takeRaw().last)
+        XCTAssertEqual(try session.channel.open(last), Data())
+    }
+
+    func testViewersRelayStreamsWithoutTunnelsAndSwitchedOffMacsAreRefused() async throws {
+        let dialer = FakeTunnelDialer(listening: [22])
+
+        let viewOnly = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer), viewAccount = Account()
+        try await join(viewOnly, viewAccount, roleCap: .viewOnly)
+        let viewer = try await accountDevice(viewOnly, viewAccount)
+        let viewerCapabilities = try unwrapped(try await viewer.send(.request(.capabilities))).body(Capabilities.self)
+        XCTAssertEqual(viewerCapabilities.tunnels, .off)
+        let viewerRefusal = try await openTunnel(viewer, port: 22).body(RemoteError.self)
+        XCTAssertEqual(viewerRefusal.code, .notPermitted)
+
+        let relayed = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer), relayAccount = Account()
+        try await join(relayed, relayAccount)
+        let plain = try await accountDevice(relayed, relayAccount, allowsTunnels: false)
+        let plainCapabilities = try unwrapped(try await plain.send(.request(.capabilities))).body(Capabilities.self)
+        XCTAssertEqual(plainCapabilities.tunnels, .off, "A relay stream not opened as a tunnel carries none")
+        let relayRefusal = try await openTunnel(plain, port: 22).body(RemoteError.self)
+        XCTAssertEqual(relayRefusal.code, .notPermitted)
+        XCTAssertTrue(relayRefusal.message.contains("Pro"))
+
+        let off = Harness(settings: RemoteSettings(isEnabled: true), tunnelDialer: dialer), offAccount = Account()
+        try await join(off, offAccount)
+        let device = try await accountDevice(off, offAccount)
+        let offRefusal = try await openTunnel(device, port: 22).body(RemoteError.self)
+        XCTAssertTrue(offRefusal.message.contains("turned off"))
+
+        let nothing = Harness(settings: RemoteSettings(isEnabled: true, tunnels: TunnelPolicy(mode: .anyPort)), tunnelDialer: dialer)
+        let nothingAccount = Account()
+        try await join(nothing, nothingAccount)
+        let other = try await accountDevice(nothing, nothingAccount)
+        let unavailable = try await openTunnel(other, port: 9999).body(RemoteError.self)
+        XCTAssertEqual(unavailable.code, .unavailable, "Nothing listens there")
+    }
+
+    func testTurningTunnelsOffClosesOpenOnes() async throws {
+        let dialer = FakeTunnelDialer(listening: [22])
+        let harness = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer)
+        let account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+        _ = try await openTunnel(session, port: 22).body(TunnelOpenResponse.self)
+        await harness.state.update(RemoteSettings(isEnabled: true, tunnels: .off))
+        XCTAssertTrue(try unwrapped(dialer.socket(22)).closed)
+        let closed = await session.outbox.closed
+        XCTAssertTrue(closed)
+        let events = await harness.state.log.entries.map(\.event)
+        XCTAssertTrue(events.contains("Set Allow tunnels to Off"))
     }
 }
