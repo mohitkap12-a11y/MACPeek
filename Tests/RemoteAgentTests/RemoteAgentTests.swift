@@ -1061,6 +1061,21 @@ final class AgentTunnelTests: XCTestCase {
         XCTAssertEqual(unavailable.code, .unavailable, "Nothing listens there")
     }
 
+    func testLoweringTheAccountToViewOnlyClosesTunnels() async throws {
+        let dialer = FakeTunnelDialer(listening: [22])
+        let harness = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer)
+        let account = Account()
+        try await join(harness, account)
+        let session = try await accountDevice(harness, account)
+        _ = try await openTunnel(session, port: 22).body(TunnelOpenResponse.self)
+        await harness.state.setWorkspaceRoleCap(.viewOnly)
+        XCTAssertTrue(try unwrapped(dialer.socket(22)).closed)
+        let closed = await session.outbox.closed
+        XCTAssertTrue(closed)
+        let tunnels = await harness.state.snapshot().tunnels
+        XCTAssertTrue(tunnels.isEmpty)
+    }
+
     func testTurningTunnelsOffClosesOpenOnes() async throws {
         let dialer = FakeTunnelDialer(listening: [22])
         let harness = Harness(settings: RemoteSettings(isEnabled: true, tunnels: .sshOnly), tunnelDialer: dialer)

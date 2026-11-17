@@ -123,13 +123,18 @@ public actor AgentState {
     }
 
     /// The most a device of the account may do here.
-    public func setWorkspaceRoleCap(_ role: ConsoleRole) {
+    public func setWorkspaceRoleCap(_ role: ConsoleRole) async {
         guard var membership, membership.roleCap != role else { return }
         membership.roleCap = role
         self.membership = membership
         try? store.saveMembership(membership)
         record(actor: Self.localActor, fingerprint: nil, event: "Changed \(membership.name)'s account to \(role.label)",
                outcome: "Done")
+        // A tunnel carries bytes, not requests, so nothing rechecks the role on it: devices that may no longer act lose
+        // their tunnels now.
+        if !role.mayAct {
+            for id in tunnels.keys { await connections[id]?.close(reason: "This Mac changed the account's access to View only.") }
+        }
         changed()
     }
 

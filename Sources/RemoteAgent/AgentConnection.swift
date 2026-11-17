@@ -205,6 +205,17 @@ public actor AgentConnection {
             socket.close()
             return
         }
+        // The person may have narrowed Allow tunnels, or lowered the account's access, while this connected: check again
+        // now, since a change made then found no open tunnel to close.
+        let now = await state.settings
+        guard now.isEnabled, now.tunnels.allows(port), await state.authorize(console, chain: chain)?.role.mayAct == true else {
+            socket.close()
+            return try await refuse(RemoteError(.notPermitted, "Tunnels to port \(port) were turned off on this Mac while it connected."), port: port)
+        }
+        guard case .open = phase else {
+            socket.close()
+            return
+        }
         let sealed = try channel.seal(try JSONEncoder().encode(try request.response(TunnelOpenResponse(port: port))))
         phase = .tunnel(console: console, chain: chain)
         tunnel = TunnelState(channel: channel, socket: socket, port: port, consoleName: device.identity.name,
