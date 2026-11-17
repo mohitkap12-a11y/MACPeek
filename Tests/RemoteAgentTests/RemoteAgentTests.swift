@@ -1042,7 +1042,8 @@ final class AgentTunnelTests: XCTestCase {
         try await join(relayed, relayAccount)
         let plain = try await accountDevice(relayed, relayAccount, allowsTunnels: false)
         let plainCapabilities = try unwrapped(try await plain.send(.request(.capabilities))).body(Capabilities.self)
-        XCTAssertEqual(plainCapabilities.tunnels, .off, "A relay stream not opened as a tunnel carries none")
+        XCTAssertEqual(plainCapabilities.tunnels, .sshOnly,
+                       "What the person allows, so a console on the relay knows to open a tunnel stream; this stream itself carries none")
         let relayRefusal = try await openTunnel(plain, port: 22).body(RemoteError.self)
         XCTAssertEqual(relayRefusal.code, .notPermitted)
         XCTAssertTrue(relayRefusal.message.contains("Pro"))

@@ -160,9 +160,9 @@ public struct Capabilities: Equatable, Codable, Sendable {
     public let operations: [Operation]
     /// Whether this console may run actions right now: it is paired to act and the person at the Mac allows actions.
     public let actionsAllowed: Bool
-    /// The ports this console may open tunnels to on this connection's route: what the person at the Mac allows, or
-    /// `.off` when this console may not (view only, or a route that does not carry tunnels). Nil from a MacPeek without
-    /// tunnels.
+    /// The ports this console may open tunnels to: what the person at the Mac allows, or `.off` for a view-only device.
+    /// The same on every route: through the relay each tunnel is its own tunnel stream, which the relay opens only for
+    /// Pro and the trial. Nil from a MacPeek without tunnels.
     public let tunnels: TunnelPolicy?
 
     public init(protocolVersion: Int = RemoteProtocolVersion.current, agentVersion: String, device: DeviceInfo,
