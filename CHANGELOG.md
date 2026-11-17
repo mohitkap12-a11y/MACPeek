@@ -7,6 +7,16 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
 - **Remote management: the user name for SSH.** `device.info` also reports the short name of the person MacPeek runs
   as (for example `asha`), only to the consoles of the Mac's account, so MacPeek Remote can open `ssh asha@…` to this
   Mac. Older consoles ignore it.
+  
+## [0.4.0] - 2026-11-17
+### Added
+- **Preview builds.** A Mac opted in with `defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES` reads a
+  preview update feed and is offered `vX.Y.Z-beta.N` releases before everyone else; Settings ▸ Updates then shows
+  **Preview builds** with **Back to stable**. Everyone else sees no change. See docs/release.md, "Preview builds".
+
+### Changed
+- The bundle's build number (`CFBundleVersion`) is now hyphen-free (`0.4.0-beta.1` → `0.4.0b1`), so Sparkle orders
+  previews before their release.
 
 ## [0.3.3] - 2026-11-15
 ### Added
