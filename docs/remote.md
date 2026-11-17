@@ -93,7 +93,8 @@ certified the member with their own key; an admin cannot certify an owner, and n
 
 ## Requests
 Inside a sealed frame is an `Envelope` (`version`, `id`, `kind`, `operation`, JSON `payload`). Reads return the Kits'
-own models: `agent.capabilities`, `device.info`, `cpu.topology`, `cpu.snapshot`, `memory.stats`, `process.usage`,
+own models: `agent.capabilities`, `device.info` (names, model, macOS version, boot time and the short name of the
+person MacPeek runs as, which a console uses for SSH), `cpu.topology`, `cpu.snapshot`, `memory.stats`, `process.usage`,
 `disk.volumes`, `network.counters`, `network.snapshot`, `ports.list`, `processes.list`, `sleep.snapshot`,
 `dns.configuration` and `dns.probe` (only to a server in the Mac's own DNS configuration, for a valid host name),
 `network.extras` (proxy, VPN, Tailscale, remembered Wi-Fi networks), `dns.overrides` (`/etc/hosts`, `/etc/resolver`),

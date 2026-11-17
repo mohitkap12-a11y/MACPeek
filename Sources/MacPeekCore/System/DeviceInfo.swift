@@ -18,13 +18,18 @@ public struct DeviceInfo: Equatable, Codable, Sendable {
     /// "26.1", or "26.1.2" when there is a patch version.
     public let macOSVersion: String
     public let bootTime: Date?
+    /// The short name of the person MacPeek runs as, e.g. "asha", which a console uses for `ssh asha@…`. Nil from a
+    /// MacPeek before 0.3.4 (and in JSON it wrote).
+    public let userName: String?
 
-    public init(computerName: String?, localHostName: String?, modelIdentifier: String?, macOSVersion: String, bootTime: Date?) {
+    public init(computerName: String?, localHostName: String?, modelIdentifier: String?, macOSVersion: String, bootTime: Date?,
+                userName: String? = nil) {
         self.computerName = computerName
         self.localHostName = localHostName
         self.modelIdentifier = modelIdentifier
         self.macOSVersion = macOSVersion
         self.bootTime = bootTime
+        self.userName = userName
     }
 
     /// The computer name, else the Bonjour name, else "This Mac".
@@ -57,7 +62,8 @@ public protocol DeviceInfoReading: Sendable {
     func read() -> DeviceInfo
 }
 
-/// Reads the names with SystemConfiguration, `hw.model`, `kern.boottime` and the macOS version from `ProcessInfo`.
+/// Reads the names with SystemConfiguration, `hw.model`, `kern.boottime`, the macOS version from `ProcessInfo` and the
+/// short user name from `NSUserName()`.
 /// On Linux (CI only) the boot time comes from `/proc/stat` and the names and model are not reported.
 public struct SystemDeviceInfoReader: DeviceInfoReading {
     public init() {}
@@ -68,7 +74,7 @@ public struct SystemDeviceInfoReader: DeviceInfoReading {
                           modelIdentifier: Self.modelIdentifier(),
                           macOSVersion: DeviceInfo.versionLabel(major: version.majorVersion, minor: version.minorVersion,
                                                                 patch: version.patchVersion),
-                          bootTime: Self.bootTime())
+                          bootTime: Self.bootTime(), userName: Self.nonEmpty(NSUserName()))
     }
 
     private static func computerName() -> String? {
