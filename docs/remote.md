@@ -121,6 +121,30 @@ Errors: `unsupportedVersion`, `unknownOperation`, `invalidPayload`, `notPermitte
 **On the Mac**, Settings ▸ Remote management shows the account, the access its devices get, the devices that connected
 and **Remove from account**. Every change is in the activity log.
 
+## Tunnels
+
+**Allow tunnels** (Settings ▸ Remote management ▸ Tunnels) lets devices of the account with View and act reach a TCP
+port on the Mac's own `127.0.0.1` as if it were on theirs: SSH, a dev server, a database. It is a fourth switch, off by
+default and separate from **Allow actions**: *Off*, *SSH only* (port 22, what turning it on suggests), *SSH and these
+ports*, or *Any port*. A tunnel never connects anywhere but `127.0.0.1`, so it cannot reach other computers on the Mac's
+network. It is part of MacPeek Remote Pro (macpeek-remote docs/PRO.md §5).
+
+- **Opening:** on an open session, the console sends `tunnel.open` with `{ "port": 22 }`. The Mac checks the device may
+  act, the route carries tunnels (the local network does; a relay stream only when the relay opened it as a tunnel
+  stream, `{"type":"open","stream":…,"tunnel":true}`, which it does for Pro accounts with tunnel allowance left), and
+  that **Allow tunnels** allows the port, then connects to it. Refusals are ordinary error answers (`notPermitted`,
+  `unavailable` when nothing listens), and the session stays as it was.
+- **Carrying bytes:** after the answer the connection carries only that TCP connection: each frame is one
+  `SecureChannel.seal` of up to 32 KiB of the stream, with no JSON around it, in both directions, with the same counters
+  as before. A sealed empty piece means that side's TCP connection ended; then the connection closes. A console opens
+  one connection per tunnelled TCP connection.
+- **Seen and stopped on the Mac:** open tunnels are listed in Settings and in the menu-bar icon's right-click menu, each
+  with Close, and the icon's tooltip counts them. Narrowing **Allow tunnels** closes tunnels it no longer allows;
+  revoking a device or turning Remote management off ends them like any session.
+- **Logged:** opening (and each refusal) and closing, with the port, route, bytes each way and how long it was open.
+- `agent.capabilities` lists `tunnel.open`, and `tunnels`: what this console may reach on this route (`off` for a
+  viewer or a relay stream that is not a tunnel stream).
+
 ## Activity log
 `~/Library/Application Support/MacPeek/Remote/activity-log.json` (mode 0600), newest 500 entries. Each entry stores the
 SHA-256 of its fields and the previous entry's hash, so an edited, removed or reordered entry is shown as tampered. It

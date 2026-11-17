@@ -1,5 +1,6 @@
 import Foundation
 import RemoteCrypto
+import RemoteProtocol
 
 /// What the person at this Mac allows. Everything is off until they turn it on: while `isEnabled` is false MacPeek does
 /// not listen, does not advertise itself and connects nowhere.
@@ -10,21 +11,26 @@ public struct RemoteSettings: Equatable, Codable, Sendable {
     /// "Allow from anywhere": keeps a connection to the MacPeek Remote relay so devices of this Mac's account reach it
     /// from any network. Off by default, separate from `allowActions`, and only used while the Mac is in an account.
     public var allowFromAnywhere: Bool
+    /// "Allow tunnels": which ports of this Mac's `127.0.0.1` devices of the account (with View and act) may open a
+    /// tunnel to. Off by default and separate from `allowActions`; turning it on starts with SSH only.
+    public var tunnels: TunnelPolicy
 
-    public init(isEnabled: Bool = false, allowActions: Bool = false, allowFromAnywhere: Bool = false) {
+    public init(isEnabled: Bool = false, allowActions: Bool = false, allowFromAnywhere: Bool = false, tunnels: TunnelPolicy = .off) {
         self.isEnabled = isEnabled
         self.allowActions = allowActions
         self.allowFromAnywhere = allowFromAnywhere
+        self.tunnels = tunnels
     }
 
-    private enum CodingKeys: String, CodingKey { case isEnabled, allowActions, allowFromAnywhere }
+    private enum CodingKeys: String, CodingKey { case isEnabled, allowActions, allowFromAnywhere, tunnels }
 
-    // Settings saved before the relay existed have no allowFromAnywhere: it stays off.
+    // Settings saved before the relay existed have no allowFromAnywhere, and before tunnels no tunnels: both stay off.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
         allowActions = try container.decode(Bool.self, forKey: .allowActions)
         allowFromAnywhere = try container.decodeIfPresent(Bool.self, forKey: .allowFromAnywhere) ?? false
+        tunnels = try container.decodeIfPresent(TunnelPolicy.self, forKey: .tunnels) ?? .off
     }
 }
 

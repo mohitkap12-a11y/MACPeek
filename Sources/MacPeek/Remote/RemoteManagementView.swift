@@ -2,6 +2,7 @@
 import SwiftUI
 import RemoteAgent
 import RemoteCrypto
+import RemoteProtocol
 
 /// Settings ▸ Remote management: the off-by-default switch, adding this Mac to a MacPeek Remote account (or the account
 /// it belongs to), access from anywhere, and the activity log.
@@ -32,6 +33,7 @@ struct RemoteManagementView: View {
                     if let membership = snapshot.membership {
                         accountSection(membership, snapshot: snapshot)
                         anywhereSection(snapshot)
+                        TunnelsSection(snapshot: snapshot)
                     } else {
                         joinSection()
                     }
@@ -175,6 +177,65 @@ struct RemoteManagementView: View {
                 Text("The activity log has been changed outside MacPeek.").font(.caption).foregroundStyle(.orange)
             }
         }
+    }
+}
+/// Settings ▸ Remote management ▸ Tunnels (Pro): which ports of this Mac the account's devices may reach through a
+/// tunnel, and the tunnels open now, each with Close.
+private struct TunnelsSection: View {
+    @EnvironmentObject private var remote: RemoteManagementController
+    let snapshot: AgentState.Snapshot
+    @State private var portsText = ""
+    @State private var portsProblem: String?
+
+    var body: some View {
+        Section("Tunnels") {
+            Picker("Allow tunnels", selection: Binding(get: { remote.tunnels.mode }, set: setMode)) {
+                Text("Off").tag(TunnelPolicy.Mode.off)
+                Text("SSH only").tag(TunnelPolicy.Mode.ssh)
+                Text("SSH and these ports").tag(TunnelPolicy.Mode.sshAndPorts)
+                Text("Any port").tag(TunnelPolicy.Mode.anyPort)
+            }
+            if remote.tunnels.mode == .sshAndPorts {
+                TextField("Ports, e.g. 3000, 5432", text: $portsText)
+                    .onSubmit(savePorts)
+                    .onAppear { portsText = remote.tunnels.ports.map(String.init).joined(separator: ", ") }
+                if let portsProblem { Text(portsProblem).font(.caption).foregroundStyle(.orange) }
+            }
+            Text("Lets your account's devices with View and act reach a port on this Mac, such as its SSH server or a dev server, as if it were on theirs: on the local network, or from anywhere with MacPeek Remote Pro. Tunnels only reach this Mac itself, never other computers on its network. Each one is shown here and in the menu bar while it is open, and recorded below.")
+                .font(.caption).foregroundStyle(.secondary)
+            if remote.tunnels.allows(TunnelPolicy.sshPort) {
+                Text("SSH needs Remote Login on in System Settings ▸ General ▸ Sharing.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(snapshot.tunnels) { tunnel in
+                HStack {
+                    Image(systemName: "arrow.left.arrow.right").foregroundStyle(.green)
+                    VStack(alignment: .leading) {
+                        Text("Port \(tunnel.port) · \(tunnel.consoleName)").font(.callout)
+                        Text("\(tunnel.viaRelay ? "Through the relay" : "On the local network") · since \(tunnel.openedAt.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Close") { remote.closeTunnel(tunnel.id) }
+                }
+            }
+        }
+    }
+
+    private func setMode(_ mode: TunnelPolicy.Mode) {
+        portsProblem = nil
+        let ports = mode == .sshAndPorts ? (TunnelPolicy.parsePorts(portsText) ?? remote.tunnels.ports) : remote.tunnels.ports
+        remote.setTunnels(TunnelPolicy(mode: mode, ports: ports))
+    }
+
+    private func savePorts() {
+        guard let ports = TunnelPolicy.parsePorts(portsText) else {
+            portsProblem = "Use port numbers from 1 to 65535, separated by commas."
+            return
+        }
+        portsProblem = nil
+        remote.setTunnels(TunnelPolicy(mode: .sshAndPorts, ports: ports))
+        portsText = TunnelPolicy(mode: .sshAndPorts, ports: ports).ports.map(String.init).joined(separator: ", ")
     }
 }
 #endif

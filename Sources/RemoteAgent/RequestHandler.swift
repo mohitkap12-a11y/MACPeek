@@ -180,11 +180,24 @@ public struct RequestHandler: Sendable {
     let readers: AgentReaders
     let actions: AgentActions
     let agentVersion: String
+    /// Connects tunnels to this Mac's 127.0.0.1 (`tunnel.open`, answered by `AgentConnection`).
+    let tunnelDialer: TunnelDialing
 
-    public init(readers: AgentReaders, actions: AgentActions, agentVersion: String) {
+    public init(readers: AgentReaders, actions: AgentActions, agentVersion: String,
+                tunnelDialer: TunnelDialing = RequestHandler.systemTunnelDialer) {
         self.readers = readers
         self.actions = actions
         self.agentVersion = agentVersion
+        self.tunnelDialer = tunnelDialer
+    }
+
+    /// Network.framework on macOS; none where it is missing.
+    public static var systemTunnelDialer: TunnelDialing {
+        #if canImport(Network)
+        return LoopbackTunnelDialer()
+        #else
+        return UnavailableTunnelDialer()
+        #endif
     }
 
     public func handle(_ request: Envelope, from console: PairedConsole, settings: RemoteSettings) async
@@ -210,10 +223,12 @@ public struct RequestHandler: Sendable {
     private func read(_ request: Envelope, console: PairedConsole, settings: RemoteSettings) async throws -> Envelope {
         switch request.operation {
         case .capabilities:
+            // `settings.tunnels` is already what this connection's route allows (AgentConnection); a viewer gets none.
             return try request.response(Capabilities(protocolVersion: RemoteProtocolVersion.features, agentVersion: agentVersion,
                                                      device: readers.device(),
-                                                     operations: Operation.reads + Operation.actions + Operation.workspace,
-                                                     actionsAllowed: settings.allowActions && console.role.mayAct))
+                                                     operations: Operation.reads + Operation.actions + Operation.workspace + Operation.tunnels,
+                                                     actionsAllowed: settings.allowActions && console.role.mayAct,
+                                                     tunnels: console.role.mayAct ? settings.tunnels : .off))
         case .deviceInfo: return try request.response(readers.device())
         case .cpuTopology: return try request.response(readers.cpuTopology())
         case .cpuSnapshot: return try request.response(try readers.cpuSnapshot())

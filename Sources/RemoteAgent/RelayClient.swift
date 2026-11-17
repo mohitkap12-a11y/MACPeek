@@ -64,6 +64,12 @@ enum RelayControl {
         return UInt32(value)
     }
 
+    /// A JSON `true` (Bool on Linux, NSNumber on Apple platforms).
+    static func flag(_ value: Any?) -> Bool {
+        if let bool = value as? Bool { return bool }
+        return (value as? NSNumber)?.boolValue ?? false
+    }
+
     static func header(_ stream: UInt32) -> Data {
         Data([UInt8(stream >> 24), UInt8((stream >> 16) & 0xff), UInt8((stream >> 8) & 0xff), UInt8(stream & 0xff)])
     }
@@ -153,7 +159,8 @@ public actor RelaySession {
             switch control["type"] as? String {
             case "open":
                 guard let stream = RelayControl.stream(control) else { return }
-                await open(stream)
+                // A tunnel stream: the relay checked the plan includes Pro and the account has tunnel allowance left.
+                await open(stream, tunnel: RelayControl.flag(control["tunnel"]))
             case "close":
                 guard let stream = RelayControl.stream(control) else { return }
                 // The console went away: its connection ends as a dropped TCP connection does.
@@ -172,7 +179,7 @@ public actor RelaySession {
         }
     }
 
-    private func open(_ stream: UInt32) async {
+    private func open(_ stream: UInt32, tunnel: Bool) async {
         if let old = streams.removeValue(forKey: stream) { old.input.finish() }
         let socket = self.socket
         let header = RelayControl.header(stream)
@@ -188,7 +195,8 @@ public actor RelaySession {
                     offset = end
                 }
             },
-            onClose: { [weak self] in await self?.closed(stream) })
+            onClose: { [weak self] in await self?.closed(stream) },
+            allowsTunnels: tunnel, viaRelay: true)
         // Bytes are handed to the connection in order, one piece at a time, without holding up other streams.
         let (input, continuation) = AsyncStream<Data>.makeStream()
         streams[stream] = (connection, continuation)

@@ -13,11 +13,14 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let registry: UtilityRegistry
     private var appearanceObserver: AnyCancellable?
     private var remoteObserver: AnyCancellable?
+    private var tunnelObserver: AnyCancellable?
+    private let remote: RemoteManagementController
 
     init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService,
          remote: RemoteManagementController, remoteIntro: RemoteIntroController) {
         self.router = router
         self.registry = registry
+        self.remote = remote
         super.init()
 
         popover.behavior = .transient
@@ -49,13 +52,24 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             button.toolTip = "MacPeek"
         }
 
-        // While Remote management is on, the icon carries a dot and the tooltip says so: it is never on unseen.
-        remoteObserver = remote.$isEnabled.sink { [weak self] enabled in
-            guard let button = self?.statusItem.button else { return }
-            button.image = MenuBarController.makeIcon(remote: enabled)
-            button.image?.accessibilityDescription = enabled ? "MacPeek, Remote management on" : "MacPeek"
-            button.toolTip = enabled ? "MacPeek — Remote management is on" : "MacPeek"
+        // While Remote management is on, the icon carries a dot and the tooltip says so: it is never on unseen. Open
+        // tunnels are said too, and listed in the right-click menu with Close.
+        remoteObserver = remote.$isEnabled.sink { [weak self] _ in
+            Task { @MainActor in self?.updateRemoteIndicator() }
         }
+        tunnelObserver = remote.$snapshot.sink { [weak self] _ in
+            Task { @MainActor in self?.updateRemoteIndicator() }
+        }
+    }
+
+    private func updateRemoteIndicator() {
+        guard let button = statusItem.button else { return }
+        let enabled = remote.isEnabled
+        let tunnels = enabled ? remote.snapshot?.tunnels.count ?? 0 : 0
+        button.image = MenuBarController.makeIcon(remote: enabled)
+        let tunnelText = tunnels == 0 ? "" : tunnels == 1 ? ", 1 tunnel open" : ", \(tunnels) tunnels open"
+        button.image?.accessibilityDescription = enabled ? "MacPeek, Remote management on\(tunnelText)" : "MacPeek"
+        button.toolTip = enabled ? "MacPeek — Remote management is on\(tunnelText)" : "MacPeek"
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
@@ -77,6 +91,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func showContextMenu() {
         let menu = NSMenu()
+        let tunnels = remote.isEnabled ? remote.snapshot?.tunnels ?? [] : []
+        if !tunnels.isEmpty {
+            menu.addItem(withTitle: tunnels.count == 1 ? "1 tunnel open" : "\(tunnels.count) tunnels open", action: nil, keyEquivalent: "")
+            for tunnel in tunnels {
+                let item = menu.addItem(withTitle: "Close port \(tunnel.port) (\(tunnel.consoleName))", action: #selector(closeTunnel(_:)),
+                                        keyEquivalent: "")
+                item.target = self
+                item.representedObject = tunnel.id
+            }
+            menu.addItem(.separator())
+        }
         menu.addItem(withTitle: "Refresh", action: #selector(refreshNow), keyEquivalent: "r").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit MacPeek", action: #selector(quit), keyEquivalent: "q").target = self
@@ -86,6 +111,10 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     @objc private func refreshNow() { registry.refreshSummaries() }
+    @objc private func closeTunnel(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        remote.closeTunnel(id)
+    }
     @objc private func quit() { NSApp.terminate(nil) }
 
     // MARK: NSPopoverDelegate — utilities refresh only while their screen is visible.
