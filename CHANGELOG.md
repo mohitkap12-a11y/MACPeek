@@ -2,6 +2,16 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Added
+- **Preview builds.** A Mac opted in with `defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES` reads a
+  preview update feed and is offered `vX.Y.Z-beta.N` releases before everyone else; Settings ▸ Updates then shows
+  **Preview builds** with **Back to stable**. Everyone else sees no change. See docs/release.md, "Preview builds".
+
+### Changed
+- The bundle's build number (`CFBundleVersion`) is now hyphen-free (`0.4.0-beta.1` → `0.4.0b1`), so Sparkle orders
+  previews before their release.
+
 ## [0.3.3] - 2026-11-15
 ### Added
 - **An introduction to MacPeek Remote.** A row at the bottom of the launcher opens a window with four pictures of the

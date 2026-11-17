@@ -8,8 +8,21 @@ import Sparkle
 ///
 /// Sparkle only runs from a packaged release build that carries a real public key. `swift run` builds and local
 /// ad-hoc builds have none, so the updater stays off there and the UI says so instead of failing.
+///
+/// Preview builds: a Mac with the hidden `receivePreviewBuilds` default reads the preview feed (`MacPeekPreviewFeedURL`
+/// in Info.plist, `appcast-beta.xml`) instead of `SUFeedURL`, so `v*-beta.N` tags reach only opted-in Macs
+/// (docs/release.md, "Preview builds").
+///
+///     defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES     # opt in
+///     defaults delete app.macpeek.MacPeek receivePreviewBuilds              # back to stable
 @MainActor
-final class UpdaterService: NSObject, ObservableObject, SPUStandardUserDriverDelegate {
+final class UpdaterService: NSObject, ObservableObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+    /// The hidden opt-in for preview (beta) builds. Not shown in the UI until it is set.
+    nonisolated static let previewBuildsKey = "receivePreviewBuilds"
+
+    /// True when this Mac reads the preview feed. Settings shows it only while true, with a way back to stable.
+    @Published private(set) var receivesPreviewBuilds = UserDefaults.standard.bool(forKey: UpdaterService.previewBuildsKey)
+
     /// True when this build can check for updates (packaged app with a real `SUPublicEDKey`).
     let isAvailable: Bool
     @Published private(set) var canCheckForUpdates = false
@@ -27,7 +40,7 @@ final class UpdaterService: NSObject, ObservableObject, SPUStandardUserDriverDel
         automaticallyChecks = false
         super.init()
         guard isAvailable else { return }
-        let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: self)
+        let controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: self)
         self.controller = controller
         automaticallyChecks = controller.updater.automaticallyChecksForUpdates
         cancellable = controller.updater.publisher(for: \.canCheckForUpdates)
@@ -37,6 +50,22 @@ final class UpdaterService: NSObject, ObservableObject, SPUStandardUserDriverDel
 
     func checkForUpdates() {
         controller?.checkForUpdates(nil)
+    }
+
+    /// Leave the preview feed. Sparkle never downgrades, so the preview stays installed until a newer stable release.
+    func stopPreviewBuilds() {
+        UserDefaults.standard.removeObject(forKey: Self.previewBuildsKey)
+        receivesPreviewBuilds = false
+    }
+
+    // MARK: SPUUpdaterDelegate
+
+    /// nil keeps `SUFeedURL` (stable). With the opt-in set, the preview feed from `MacPeekPreviewFeedURL`.
+    nonisolated func feedURLString(for updater: SPUUpdater) -> String? {
+        guard UserDefaults.standard.bool(forKey: Self.previewBuildsKey),
+              let preview = Bundle.main.object(forInfoDictionaryKey: "MacPeekPreviewFeedURL") as? String,
+              preview.hasPrefix("https://") else { return nil }
+        return preview
     }
 
     // MARK: SPUStandardUserDriverDelegate
