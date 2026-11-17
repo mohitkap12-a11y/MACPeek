@@ -2,6 +2,12 @@
 
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+### Added
+- **Remote management: the user name for SSH.** `device.info` also reports the short name of the person MacPeek runs
+  as (for example `asha`), only to the consoles of the Mac's account, so MacPeek Remote can open `ssh asha@…` to this
+  Mac. Older consoles ignore it.
+  
 ## [0.4.0] - 2026-11-17
 ### Added
 - **Preview builds.** A Mac opted in with `defaults write app.macpeek.MacPeek receivePreviewBuilds -bool YES` reads a

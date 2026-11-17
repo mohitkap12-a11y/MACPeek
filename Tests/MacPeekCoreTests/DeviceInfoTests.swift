@@ -41,7 +41,19 @@ final class DeviceInfoTests: XCTestCase {
 
     func testDeviceInfoRoundTrips() throws {
         let info = DeviceInfo(computerName: "Design Studio 01", localHostName: "Design-Studio-01", modelIdentifier: "Mac16,7",
-                              macOSVersion: "26.1", bootTime: boot)
+                              macOSVersion: "26.1", bootTime: boot, userName: "asha")
         XCTAssertEqual(try JSONDecoder().decode(DeviceInfo.self, from: try JSONEncoder().encode(info)), info)
+    }
+
+    func testDeviceInfoFromAnOlderMacPeekHasNoUserName() throws {
+        // What MacPeek 0.3.3 and earlier send: no userName. It still decodes, so a newer console reads an older agent.
+        let old = Data(#"{"computerName":"Studio","localHostName":"studio","modelIdentifier":"Mac16,7","macOSVersion":"26.1"}"#.utf8)
+        let info = try JSONDecoder().decode(DeviceInfo.self, from: old)
+        XCTAssertEqual(info.displayName, "Studio")
+        XCTAssertNil(info.userName)
+    }
+
+    func testReaderReportsTheUserName() {
+        XCTAssertEqual(SystemDeviceInfoReader().read().userName, NSUserName())
     }
 }
