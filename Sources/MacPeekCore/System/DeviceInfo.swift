@@ -19,7 +19,7 @@ public struct DeviceInfo: Equatable, Codable, Sendable {
     public let macOSVersion: String
     public let bootTime: Date?
     /// The short name of the person MacPeek runs as, e.g. "asha", which a console uses for `ssh asha@…`. Nil from a
-    /// MacPeek before 0.3.4 (and in JSON it wrote).
+    /// MacPeek before 0.4.0 (and in JSON it wrote).
     public let userName: String?
 
     public init(computerName: String?, localHostName: String?, modelIdentifier: String?, macOSVersion: String, bootTime: Date?,
