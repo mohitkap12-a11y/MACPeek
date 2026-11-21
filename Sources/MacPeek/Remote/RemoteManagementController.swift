@@ -199,11 +199,23 @@ final class RemoteManagementController: ObservableObject {
     }
 
     private func makeState() throws -> AgentState {
-        let identity = try KeychainIdentityStore().loadOrCreate(name: Self.deviceName)
+        let loaded = try KeychainIdentityStore().loadOrCreateForThisMac(name: Self.deviceName)
+        let identity = loaded.identity
         self.identity = identity
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MacPeek/Remote", isDirectory: true)
-        let state = AgentState(identity: identity, store: FileAgentStore(directory: directory))
+        let store = FileAgentStore(directory: directory)
+        if loaded.replacedCopiedIdentity {
+            // This Mac was set up from another one (Migration Assistant, a Time Machine restore), which copied that Mac's
+            // key and its account. The account is the other Mac's: this one has its own key now and is added on its own.
+            let previous = try? store.loadMembership()
+            try? store.saveMembership(nil)
+            if let previous {
+                notifications.notify(title: "Add this Mac to your account",
+                                     body: "This Mac was set up from another Mac, so it was using that Mac's identity. It has its own now: choose Add to my account in MacPeek ▸ Settings ▸ Remote management to add it to \(previous.name)'s account.")
+            }
+        }
+        let state = AgentState(identity: identity, store: store)
         Task {
             await state.setOnChange { [weak self] in
                 let controller = self
