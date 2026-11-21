@@ -34,7 +34,11 @@ public struct KeychainIdentityStore: Sendable {
     }
 
     /// The stored identity if it was made on this Mac, else a new one saved for next time.
-    public func loadOrCreateForThisMac(name: String) throws -> Loaded {
+    ///
+    /// `beforeReplacing` runs when the stored key was copied from another Mac, before the new key is saved: it clears
+    /// what came with the copy (its account). If it throws, the copied key stays, so the next launch tries again; once
+    /// the new key is saved, it counts as this Mac's and nothing would retry.
+    public func loadOrCreateForThisMac(name: String, beforeReplacing: () throws -> Void = {}) throws -> Loaded {
         let current = hardwareID()
         if let stored = try load(), let identity = try? DeviceIdentity(name: name, privateKeyData: stored.key) {
             switch HardwareBinding.decide(stored: stored.hardware, current: current) {
@@ -45,6 +49,7 @@ public struct KeychainIdentityStore: Sendable {
                 try? bind(to: hardware)
                 return Loaded(identity: identity, replacedCopiedIdentity: false)
             case .replace(let hardware):
+                try beforeReplacing()
                 let fresh = DeviceIdentity(name: name)
                 try save(fresh.privateKeyData, hardware: hardware)
                 return Loaded(identity: fresh, replacedCopiedIdentity: true)

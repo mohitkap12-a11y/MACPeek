@@ -199,21 +199,22 @@ final class RemoteManagementController: ObservableObject {
     }
 
     private func makeState() throws -> AgentState {
-        let loaded = try KeychainIdentityStore().loadOrCreateForThisMac(name: Self.deviceName)
-        let identity = loaded.identity
-        self.identity = identity
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("MacPeek/Remote", isDirectory: true)
         let store = FileAgentStore(directory: directory)
-        if loaded.replacedCopiedIdentity {
-            // This Mac was set up from another one (Migration Assistant, a Time Machine restore), which copied that Mac's
-            // key and its account. The account is the other Mac's: this one has its own key now and is added on its own.
-            let previous = try? store.loadMembership()
-            try? store.saveMembership(nil)
-            if let previous {
-                notifications.notify(title: "Add this Mac to your account",
-                                     body: "This Mac was set up from another Mac, so it was using that Mac's identity. It has its own now: choose Add to my account in MacPeek ▸ Settings ▸ Remote management to add it to \(previous.name)'s account.")
-            }
+        // This Mac was set up from another one (Migration Assistant, a Time Machine restore), which copied that Mac's key
+        // and its account. The account is the other Mac's: it is dropped before this Mac's own key is saved, so a failure
+        // here keeps the copied key and the next launch tries again.
+        var copiedAccount: WorkspaceMembership?
+        let loaded = try KeychainIdentityStore().loadOrCreateForThisMac(name: Self.deviceName) {
+            copiedAccount = try? store.loadMembership()
+            try store.saveMembership(nil)
+        }
+        let identity = loaded.identity
+        self.identity = identity
+        if loaded.replacedCopiedIdentity, let copiedAccount {
+            notifications.notify(title: "Add this Mac to your account",
+                                 body: "This Mac was set up from another Mac, so it was using that Mac's identity. It has its own now: choose Add to my account in MacPeek ▸ Settings ▸ Remote management to add it to \(copiedAccount.name)'s account.")
         }
         let state = AgentState(identity: identity, store: store)
         Task {
