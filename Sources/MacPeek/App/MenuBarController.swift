@@ -86,10 +86,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
             button.imagePosition = .imageOnly
         } else {
             let items = MenuBarReadout.items(for: metrics, sample: monitor.latest)
-            statusItem.length = NSStatusItem.variableLength
-            button.attributedTitle = Self.readoutTitle(items)
-            if settings.menuBarShowsIcon || enabled {
-                // The Remote dot must stay visible while Remote management is on, so the icon stays then too.
+            // Fixed width, sized for the widest possible readout, so the item (and the popover under it) never moves.
+            let showsIcon = settings.menuBarShowsIcon
+            let remoteDot = enabled && !showsIcon
+            let widest = Self.readoutTitle(MenuBarReadout.widestItems(for: metrics), remoteDot: remoteDot).size().width
+            statusItem.length = ceil(widest) + (showsIcon ? icon.size.width + 6 : 0) + 14
+            button.attributedTitle = Self.readoutTitle(items, remoteDot: remoteDot)
+            if showsIcon {
                 button.image = icon
                 button.imagePosition = .imageLeading
             } else {
@@ -104,12 +107,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
 
     /// "CPU 42%  MEM 61%  ↓1.2M ↑30K  58°": labels small, values in a readable monospaced-digit font, warning and
     /// critical values in orange and red.
-    static func readoutTitle(_ items: [ReadoutItem]) -> NSAttributedString {
+    static func readoutTitle(_ items: [ReadoutItem], remoteDot: Bool = false) -> NSAttributedString {
         let title = NSMutableAttributedString()
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
         let labelFont = NSFont.systemFont(ofSize: 9, weight: .semibold)
+        if remoteDot { title.append(NSAttributedString(string: "● ", attributes: [.font: labelFont])) }
         for (index, item) in items.enumerated() {
-            if index > 0 { title.append(NSAttributedString(string: "  ", attributes: [.font: valueFont])) }
+            if index > 0 {
+                title.append(NSAttributedString(string: " │ ", attributes: [.font: valueFont, .foregroundColor: NSColor.tertiaryLabelColor]))
+            }
             if let label = item.label {
                 title.append(NSAttributedString(string: label + " ", attributes: [.font: labelFont, .baselineOffset: 1]))
             }

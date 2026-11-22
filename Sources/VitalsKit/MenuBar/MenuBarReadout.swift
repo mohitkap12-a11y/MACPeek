@@ -72,6 +72,19 @@ public enum MenuBarReadout {
         }
     }
 
+    /// The widest value each metric can show, used to size the menu-bar item once so it never resizes as digits change.
+    public static func widestItems(for metrics: [MenuBarMetric]) -> [ReadoutItem] {
+        metrics.map { metric in
+            switch metric {
+            case .cpu: return ReadoutItem(metric: .cpu, label: "CPU", value: "100%")
+            case .memory: return ReadoutItem(metric: .memory, label: "MEM", value: "100%")
+            case .network: return ReadoutItem(metric: .network, label: nil, value: "↓999M ↑999M")
+            case .gpu: return ReadoutItem(metric: .gpu, label: "GPU", value: "100%")
+            case .temperature: return ReadoutItem(metric: .temperature, label: nil, value: "100°")
+            }
+        }
+    }
+
     /// The whole readout as one line, for the accessibility label and the tooltip.
     public static func spokenText(_ items: [ReadoutItem]) -> String {
         items.map { item in

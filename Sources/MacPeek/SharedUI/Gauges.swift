@@ -50,23 +50,71 @@ struct HistoryChart: View {
         let values: [Double]
         let color: Color
         var filled = true
+        /// Time of each value, for the hover readout.
+        var times: [Date] = []
+        var name: String? = nil
     }
 
     let series: [Series]
     let maximum: Double
+    /// Formats a value for the hover readout; hover is off when nil.
+    var format: ((Double) -> String)? = nil
+    @State private var hover: CGFloat?
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 ForEach(Array(series.enumerated()), id: \.offset) { _, line in
                     if line.filled {
                         area(line.values, in: proxy.size).fill(line.color.opacity(0.2))
                     }
                     path(line.values, in: proxy.size).stroke(line.color, lineWidth: 1.5)
                 }
+                if let format, let x = hover, let first = series.first, first.values.count > 1 {
+                    let fraction = min(max(x / max(proxy.size.width, 1), 0), 1)
+                    let index = Int((fraction * CGFloat(first.values.count - 1)).rounded())
+                    let px = CGFloat(index) * proxy.size.width / CGFloat(first.values.count - 1)
+                    Path { p in
+                        p.move(to: CGPoint(x: px, y: 0))
+                        p.addLine(to: CGPoint(x: px, y: proxy.size.height))
+                    }
+                    .stroke(Color.secondary.opacity(0.6), lineWidth: 1)
+                    let label = tooltip(index: index, format: format)
+                    // Sits beside the guide line, on whichever side has more room, so it never leaves the chart
+                    // whatever its width; one line per entry keeps it narrow.
+                    let onRight = px < proxy.size.width / 2
+                    Text(label)
+                        .font(.system(size: 10.5, weight: .medium).monospacedDigit())
+                        .multilineTextAlignment(onRight ? .leading : .trailing)
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
+                        .fixedSize()
+                        .padding(onRight ? .leading : .trailing, onRight ? px + 6 : proxy.size.width - px + 6)
+                        .frame(width: proxy.size.width, alignment: onRight ? .topLeading : .topTrailing)
+                        .allowsHitTesting(false)
+                }
+            }
+            .contentShape(Rectangle())
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location): hover = location.x
+                case .ended: hover = nil
+                }
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func tooltip(index: Int, format: (Double) -> String) -> String {
+        var lines: [String] = []
+        if let time = series.first(where: { $0.times.indices.contains(index) })?.times[index] {
+            lines.append(time.formatted(date: .omitted, time: .standard))
+        }
+        for line in series where line.values.indices.contains(index) {
+            let value = format(line.values[index])
+            lines.append(line.name.map { "\($0) \(value)" } ?? value)
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func points(_ values: [Double], in size: CGSize) -> [CGPoint] {

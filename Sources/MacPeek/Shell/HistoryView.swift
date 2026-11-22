@@ -86,6 +86,7 @@ private struct MetricChart: View {
     private static let colors = [PeekTheme.accent, PeekTheme.teal]
 
     private func values(_ metric: VitalsMetric) -> [Double] { points.compactMap { $0.value(metric) } }
+    private func times(_ metric: VitalsMetric) -> [Date] { points.compactMap { $0.value(metric) == nil ? nil : $0.time } }
 
     var body: some View {
         let all = metrics.flatMap(values)
@@ -96,8 +97,9 @@ private struct MetricChart: View {
             SectionLabel(text: title, trailing: "avg \(format(average)) · peak \(format(peak))")
             VStack(alignment: .leading, spacing: 4) {
                 HistoryChart(series: metrics.enumerated().map { index, metric in
-                    HistoryChart.Series(values: values(metric), color: Self.colors[index % Self.colors.count], filled: index == 0)
-                }, maximum: scale)
+                    HistoryChart.Series(values: values(metric), color: Self.colors[index % Self.colors.count], filled: index == 0,
+                                        times: times(metric), name: legend.indices.contains(index) ? legend[index] : nil)
+                }, maximum: scale, format: format)
                 .frame(height: 56)
                 if !legend.isEmpty {
                     HStack(spacing: 10) {
