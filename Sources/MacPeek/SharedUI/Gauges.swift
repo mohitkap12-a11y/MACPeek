@@ -80,12 +80,17 @@ struct HistoryChart: View {
                     }
                     .stroke(Color.secondary.opacity(0.6), lineWidth: 1)
                     let label = tooltip(index: index, format: format)
+                    // Sits beside the guide line, on whichever side has more room, so it never leaves the chart
+                    // whatever its width; one line per entry keeps it narrow.
+                    let onRight = px < proxy.size.width / 2
                     Text(label)
                         .font(.system(size: 10.5, weight: .medium).monospacedDigit())
+                        .multilineTextAlignment(onRight ? .leading : .trailing)
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 5))
                         .fixedSize()
-                        .position(x: min(max(px, 70), max(proxy.size.width - 70, 70)), y: 10)
+                        .padding(onRight ? .leading : .trailing, onRight ? px + 6 : proxy.size.width - px + 6)
+                        .frame(width: proxy.size.width, alignment: onRight ? .topLeading : .topTrailing)
                         .allowsHitTesting(false)
                 }
             }
@@ -109,7 +114,7 @@ struct HistoryChart: View {
             let value = format(line.values[index])
             lines.append(line.name.map { "\($0) \(value)" } ?? value)
         }
-        return lines.joined(separator: " · ")
+        return lines.joined(separator: "\n")
     }
 
     private func points(_ values: [Double], in size: CGSize) -> [CGPoint] {
