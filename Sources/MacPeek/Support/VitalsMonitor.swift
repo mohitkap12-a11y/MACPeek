@@ -127,6 +127,8 @@ final class VitalsMonitor: ObservableObject {
         processSampler = ProcessCPUSampler()
         lastProcessScan = nil
         latest = nil
+        // Nothing was watched while stopped, so no condition may count time from before.
+        engine = AlertEngine()
     }
 
     /// Saves the history now (when MacPeek quits).
@@ -248,6 +250,10 @@ final class VitalsMonitor: ObservableObject {
                                                thermal: sample.thermal)
             let events = engine.evaluate(observation, settings: settings.alertSettings)
             if !events.isEmpty { raise(events) }
+        } else {
+            // Alerts off while history or the readout keeps the monitor running: forget every episode, so turning
+            // alerts back on starts each condition's clock afresh instead of alerting from an old start time.
+            engine = AlertEngine()
         }
     }
 
