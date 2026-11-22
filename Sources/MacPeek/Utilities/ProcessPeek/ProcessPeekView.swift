@@ -3,6 +3,7 @@ import SwiftUI
 import MacPeekCore
 import ProcessPeekKit
 import PortPeekKit
+import VitalsKit
 
 /// ProcessPeek's screen: a searchable process list; open a row for its identity and relationships.
 struct ProcessPeekView: View {
@@ -55,9 +56,20 @@ struct ProcessPeekView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(store.visible) { entry in
-                            ProcessRow(entry: entry).id(entry.pid)
-                            Divider().opacity(0.4)
+                        if store.isGrouping {
+                            ForEach(store.visibleGroups) { item in
+                                if item.family == nil, let entry = item.entries.first {
+                                    ProcessRow(entry: entry).id(entry.pid)
+                                } else {
+                                    ProcessGroupRow(item: item)
+                                }
+                                Divider().opacity(0.4)
+                            }
+                        } else {
+                            ForEach(store.visible) { entry in
+                                ProcessRow(entry: entry).id(entry.pid)
+                                Divider().opacity(0.4)
+                            }
                         }
                     }
                 }
@@ -91,6 +103,54 @@ struct ProcessPeekView: View {
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+}
+
+/// An app and its helper processes ("Google Chrome · 23 processes · 2.1 GB"). Opening it lists them; a search lists
+/// every process on its own.
+private struct ProcessGroupRow: View {
+    @EnvironmentObject private var store: ProcessStore
+    let item: ProcessGroupItem
+    @State private var expanded = false
+
+    private var containsSelection: Bool { item.entries.contains { $0.pid == store.selectedPID } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.stack.3d.up")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.family?.name ?? "").font(.system(size: 13, weight: .medium)).lineLimit(1)
+                    Text("\(item.entries.count) processes").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                StatusBadge(text: ByteCountLabel.kilobytes(item.residentKB))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(expanded || containsSelection ? 90 : 0))
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() } }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(expanded ? "Hides its processes" : "Shows its processes")
+
+            if expanded || containsSelection {
+                if let hint = item.family?.tabHint {
+                    Text(hint).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 28).padding(.bottom, 4)
+                }
+                ForEach(item.entries) { entry in
+                    ProcessRow(entry: entry).id(entry.pid).padding(.leading, 16)
+                }
+            }
+        }
     }
 }
 

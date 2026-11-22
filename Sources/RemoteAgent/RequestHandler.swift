@@ -13,6 +13,8 @@ import ContainerPeekKit
 import GPUPeekKit
 import ModelPeekKit
 import RemoteProtocol
+import VitalsKit
+import SensorsKit
 
 /// Where the agent's answers come from. `system()` uses the same readers as MacPeek's own utilities; tests pass fakes.
 public struct AgentReaders: Sendable {
@@ -39,6 +41,14 @@ public struct AgentReaders: Sendable {
     public var gpu: @Sendable () async throws -> GPUSnapshot
     public var models: @Sendable () async throws -> ModelSnapshot
     public var volumeIO: @Sendable () throws -> [VolumeIOCounters]
+    /// Temperatures, fans and power.
+    public var sensors: @Sendable () throws -> SensorSnapshot = { SystemSensorShared.reader.read() }
+    /// The app's 24-hour history (`VitalsMonitor`); unavailable unless the app provides it.
+    public var vitalsHistory: @Sendable (_ since: Date, _ maximumCount: Int) async throws -> [VitalsPoint] = { _, _ in
+        throw RemoteError(.unavailable, "This Mac does not keep history.")
+    }
+    /// The alerts the app raised; unavailable unless the app provides them.
+    public var alerts: @Sendable () async throws -> [AlertEvent] = { throw RemoteError(.unavailable, "This Mac does not raise alerts.") }
 
     public init(device: @escaping @Sendable () -> DeviceInfo, cpuTopology: @escaping @Sendable () -> CPUTopology,
                 cpuSnapshot: @escaping @Sendable () throws -> CPUSnapshot, memory: @escaping @Sendable () throws -> MemoryStats,
@@ -258,6 +268,12 @@ public struct RequestHandler: Sendable {
         case .images: return try request.response(try await readers.images())
         case .gpu: return try request.response(try await readers.gpu())
         case .models: return try request.response(try await readers.models())
+        case .sensors: return try request.response(try readers.sensors())
+        case .vitalsHistory:
+            let body = try request.body(VitalsHistoryRequest.self)
+            let count = min(max(body.maximumCount, 1), 1_440)
+            return try request.response(try await readers.vitalsHistory(body.since, count))
+        case .alerts: return try request.response(try await readers.alerts())
         case .processOrigin, .processOpenFiles:
             let body = try request.body(ProcessRequest.self)
             // Answer only about the process the console saw: the PID must still belong to it (same start time).
@@ -410,6 +426,11 @@ final class IntervalSampler<State: Sendable, Value: Sendable>: @unchecked Sendab
         state = next
         last = date
     }
+}
+
+/// One sensor reader for the agent (it holds the SMC connection), created on first use.
+enum SystemSensorShared {
+    static let reader: SensorReading = SystemSensorReader()
 }
 
 /// One power sampler for the agent, created on first use (it subscribes to macOS's energy counters).

@@ -60,6 +60,8 @@ let package = Package(
         .library(name: "ContainerPeekKit", targets: ["ContainerPeekKit"]),
         .library(name: "GPUPeekKit", targets: ["GPUPeekKit"]),
         .library(name: "ModelPeekKit", targets: ["ModelPeekKit"]),
+        .library(name: "VitalsKit", targets: ["VitalsKit"]),
+        .library(name: "SensorsKit", targets: ["SensorsKit"]),
         .library(name: "RemoteCrypto", targets: ["RemoteCrypto"]),
         .library(name: "RemoteProtocol", targets: ["RemoteProtocol"]),
         .library(name: "RemoteAgent", targets: ["RemoteAgent"]),
@@ -85,13 +87,18 @@ let package = Package(
         .target(name: "GPUPeekKit", dependencies: ["MacPeekCore"], path: "Sources/GPUPeekKit"),
         .target(name: "ModelPeekKit", dependencies: ["MacPeekCore", "GPUPeekKit"], path: "Sources/ModelPeekKit"),
         .target(name: "RemoteCrypto", dependencies: cryptoTargetDependencies, path: "Sources/RemoteCrypto"),
+        // The background monitor's logic: alerts, the 24-hour history, the menu-bar readout and grouping helper processes
+        // under their app. UI-free; the app samples, VitalsKit decides.
+        .target(name: "VitalsKit", dependencies: ["MacPeekCore", "MemoryPeekKit", "CPUPeekKit"], path: "Sources/VitalsKit"),
+        // Temperatures, fans and power (HID event system and SMC, read-only). Decoding is tested anywhere.
+        .target(name: "SensorsKit", path: "Sources/SensorsKit"),
         .target(name: "RemoteProtocol", dependencies: ["RemoteCrypto", "MacPeekCore", "PortPeekKit", "ProcessPeekKit", "ContainerPeekKit"],
                 path: "Sources/RemoteProtocol"),
         .target(
             name: "RemoteAgent",
             dependencies: ["RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit", "DiskPeekKit",
                            "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit", "USBPeekKit",
-                           "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit"],
+                           "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit"],
             path: "Sources/RemoteAgent"
         ),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
@@ -100,7 +107,7 @@ let package = Package(
             dependencies: ["MacPeekCore", "PortPeekKit", "FileLockPeekKit", "DisplayPeekKit", "USBPeekKit", "SleepPeekKit",
                            "ProcessPeekKit", "DiskPeekKit", "EnvPeekKit", "DNSPeekKit", "NetPeekKit",
                            "SoundPeekKit", "UpdatePeekKit", "MemoryPeekKit", "CPUPeekKit", "ContainerPeekKit", "GPUPeekKit",
-                           "ModelPeekKit", "RemoteAgent", "RemoteCrypto",
+                           "ModelPeekKit", "VitalsKit", "SensorsKit", "RemoteAgent", "RemoteCrypto",
                            "RemoteProtocol"] + sparkleTargetDependencies,
             path: "Sources/MacPeek"
         ),
@@ -177,6 +184,9 @@ let package = Package(
             path: "Tests/ModelPeekKitTests",
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "VitalsKitTests", dependencies: ["VitalsKit", "MemoryPeekKit", "CPUPeekKit", "MacPeekCore"],
+                    path: "Tests/VitalsKitTests"),
+        .testTarget(name: "SensorsKitTests", dependencies: ["SensorsKit"], path: "Tests/SensorsKitTests"),
         .testTarget(name: "RemoteCryptoTests", dependencies: ["RemoteCrypto"], path: "Tests/RemoteCryptoTests"),
         .testTarget(name: "RemoteProtocolTests", dependencies: ["RemoteProtocol", "RemoteCrypto", "MacPeekCore", "PortPeekKit",
                                                        "ProcessPeekKit"], path: "Tests/RemoteProtocolTests"),
@@ -184,7 +194,7 @@ let package = Package(
             name: "RemoteAgentTests",
             dependencies: ["RemoteAgent", "RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit",
                            "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit",
-                           "USBPeekKit", "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit"],
+                           "USBPeekKit", "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit"],
             path: "Tests/RemoteAgentTests"
         ),
     ]

@@ -11,6 +11,8 @@
   Launcher · Router · Manager       ProcessTerminationService
   Settings · About · SharedUI       PermissionService · ShellCommand
             |                       UtilityCatalog · UtilitySelection
+            |                       VitalsKit (alerts · history · readout · grouping)
+            |                       SensorsKit (temperatures · fans · power)
             |
    Utilities/<Name>  ──uses──▶  Sources/<Name>Kit (models · parsers · services)
 ```
@@ -30,6 +32,12 @@
   the launcher itself is on screen (`startGaugeUpdates()` / `stopGaugeUpdates()`, driven by the router).
 - **Disabled = zero work.** A utility switched off in *Manage utilities* is not summarized, shown or started. The
   *disabled* set is persisted (not the enabled set), so utilities shipped later appear enabled by default.
+
+## Background monitor
+Utilities never work in the background. The exception is `VitalsMonitor` (app) with `VitalsKit` (logic) and `SensorsKit`
+(temperatures, fans, power), which run only while alerts, the 24-hour history or the menu-bar readout is on: a few cheap
+reads every 5 seconds, a per-process scan every 10 seconds for the process alerts, the GPU every 30. See
+[alerts-and-history.md](alerts-and-history.md).
 
 ## Remote management
 `RemoteCrypto` (account certificates, joining an account, handshake, encrypted channel), `RemoteProtocol` (envelopes, operations, framing) and

@@ -3,6 +3,35 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- **Alerts**, on by default: a process stuck at high CPU (≥ 90 % of a core for 5 min), a process whose memory keeps
+  growing (≥ 2 GB in 15 min without giving any back), memory pressure (critical at once, raised for 10 min), swap growing
+  ≥ 2 GB in 30 min, network traffic ≥ 5 MB/s for 5 min, and a serious or critical thermal state. Each has its own switch
+  and threshold (Settings ▸ Alerts); one alert per episode, not repeated within an hour. Alerts appear in Notification
+  Center, with **Don't Alert About This App** for process alerts, and under a new bell in the launcher (the last 50 are
+  kept). See docs/alerts-and-history.md.
+- **Menu-bar readout**, off by default (Settings ▸ Menu bar): CPU, memory, network ↓↑, GPU and temperature next to the icon
+  or instead of it, in a readable 12 pt monospaced-digit font, orange and red when they need attention.
+- **24-hour history**, on by default: CPU, memory (with pressure), swap, network, GPU, temperature and power, averaged into
+  10-second points for the last hour and one-minute points for the day, kept in
+  `~/Library/Application Support/MacPeek/vitals-history.json`. A chart button in the launcher opens 1, 6 and 24-hour charts.
+- **Temperatures, fans and power** in CPUPeek (hottest and average per part of the chip, every sensor on request, fan speed
+  in its range, whole-Mac power) and GPUPeek (GPU and Neural Engine). Apple silicon temperatures come from the HID event
+  system, fans and power from the SMC (read-only), Intel temperatures from the SMC; all undocumented interfaces loaded at
+  run time.
+- **App helpers grouped** in CPUPeek and ProcessPeek (Settings ▸ Behavior ▸ Group app helper processes, on by default):
+  Chrome, Brave, Edge, Chromium, Vivaldi, Opera, Arc, Firefox, WebKit's helpers and any "<App> Helper" process listed under
+  their app, with where the browser shows which tab is busy.
+- **Hidden icon**: the first launch opens MacPeek; when macOS hides its icon (a full menu bar, the notch) a window says so,
+  how to make room (including Ice) and opens MacPeek, at most once a week. Launching MacPeek again opens it under its icon,
+  or in a window when the icon is hidden.
+- **Remote management**: `sensors.snapshot`, `vitals.history` (the Mac's own 24-hour history) and `alerts.recent` (the
+  alerts the Mac raised) for MacPeek Remote. All three are reads; history and alerts are unavailable while the person has
+  them off.
+
+### Changed
+- CI runs once per pull request, when it is marked **Ready for review** (and on later pushes), not on drafts.
+
 ### Fixed
 - **Remote management: a Mac set up from another Mac gets its own identity.** Migration Assistant and Time Machine
   restores copied the old Mac's Remote management key, so MacPeek Remote saw both Macs as one and adding the new one

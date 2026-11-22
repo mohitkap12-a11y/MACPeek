@@ -47,3 +47,8 @@ Neural Engine "working/idle" is MacPeek's reading of its power draw (≥ 10 mW =
 **Not yet verified on a Mac.** The `ioreg` keys and the IOReport channel names follow what open-source tools (for example
 `macmon` and `asitop`) document; fixtures in `Tests/GPUPeekKitTests/Fixtures/` are constructed. `scripts/capture-fixtures.sh`
 captures the real `ioreg` output. Check on the oldest and newest supported macOS and on an Intel Mac before release.
+
+## Temperatures
+Since 0.5.0 GPUPeek also shows the GPU's and the Neural Engine's temperatures (hottest and average), read with the same
+HID event system interface CPUPeek uses (see [CPUPeek ▸ Sensors](cpupeek.md#sensors)), only while GPUPeek is open. Macs
+that do not name GPU sensors show no temperature section.

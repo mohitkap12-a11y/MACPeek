@@ -2,6 +2,7 @@
 import Foundation
 import MacPeekCore
 import GPUPeekKit
+import SensorsKit
 
 /// Observable state for GPUPeek. Reads the GPU statistics, its clients, Metal's facts and (on Apple silicon) the power
 /// counters every `refreshInterval` seconds while the screen is open; per-process GPU time and power need two readings, so
@@ -16,15 +17,19 @@ final class GPUStore: ObservableObject {
     /// The highest Neural Engine power seen since the screen opened: the scale for its ring and chart line, since macOS
     /// publishes no maximum.
     @Published private(set) var neuralEnginePeakWatts = 0.0
+    /// GPU and Neural Engine temperatures and whole-Mac power, when the Mac shares them.
+    @Published private(set) var sensors: SensorSnapshot?
 
     private let reader: GPUReading
     private let settings: AppSettings
+    private let sensorReader: SensorReading?
     private var task: Task<Void, Never>?
     private var previousClients: [GPUClient]?
     private var previousDate: Date?
 
-    init(reader: GPUReading, settings: AppSettings) {
+    init(reader: GPUReading, sensors: SensorReading? = nil, settings: AppSettings) {
         self.reader = reader
+        self.sensorReader = sensors
         self.settings = settings
     }
 
@@ -53,6 +58,10 @@ final class GPUStore: ObservableObject {
             if let watts = result.power?.neuralEngineWatts {
                 neuralEngineHistory.append(watts)
                 neuralEnginePeakWatts = max(neuralEnginePeakWatts, watts)
+            }
+            if let sensorReader {
+                let reading = await Task.detached(priority: .utility) { sensorReader.read() }.value
+                if !Task.isCancelled { sensors = reading }
             }
         } catch {
             if Task.isCancelled { return }

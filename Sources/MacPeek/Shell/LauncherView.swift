@@ -1,6 +1,7 @@
 #if os(macOS)
 import SwiftUI
 import MacPeekCore
+import VitalsKit
 
 /// The main screen: ring tiles for CPU, Memory and Disk, then every other enabled utility as a row, grouped by
 /// category, with a search field. The values are the one-shot readings taken when the popover opened; the last ones
@@ -9,6 +10,7 @@ struct LauncherView: View {
     @EnvironmentObject private var registry: UtilityRegistry
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var monitor: VitalsMonitor
     @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
 
@@ -77,6 +79,12 @@ struct LauncherView: View {
                 .accessibilityHidden(true)
             Text("MacPeek").font(.system(size: 17, weight: .semibold))
             Spacer()
+            if settings.historyEnabled {
+                HeaderButton(symbol: "chart.xyaxis.line", label: "History") { router.go(.history) }
+            }
+            HeaderButton(symbol: monitor.hasUnseenAlerts ? "bell.badge" : "bell",
+                         label: monitor.hasUnseenAlerts ? "Alerts, new" : "Alerts",
+                         tint: monitor.hasUnseenAlerts ? PeekTheme.red : nil) { router.go(.alerts) }
             HeaderButton(symbol: colorScheme == .dark ? "sun.max" : "moon",
                          label: colorScheme == .dark ? "Switch to light appearance" : "Switch to dark appearance") {
                 settings.appearance = colorScheme == .dark ? .light : .dark
@@ -110,12 +118,14 @@ struct LauncherView: View {
 private struct HeaderButton: View {
     let symbol: String
     let label: String
+    var tint: Color? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(tint ?? Color.primary)
                 .frame(width: 32, height: 32)
                 .themedCard(radius: 9, padding: 0)
                 .contentShape(Rectangle())

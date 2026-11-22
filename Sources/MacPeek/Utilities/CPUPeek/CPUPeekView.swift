@@ -1,6 +1,7 @@
 #if os(macOS)
 import SwiftUI
 import CPUPeekKit
+import VitalsKit
 
 /// CPUPeek's screen: how busy the CPU is, whether macOS is holding it back to cool down, and which processes are
 /// using it, sampled while this screen is open.
@@ -32,6 +33,7 @@ struct CPUPeekView: View {
                     HistorySection(usage: usage)
                     DetailsSection(usage: usage)
                     LoadSection()
+                    SensorsSection(snapshot: store.sensors)
                     ProcessesSection()
                 }
                 .padding(14)
@@ -194,6 +196,7 @@ private struct LoadSection: View {
 
 private struct ProcessesSection: View {
     @EnvironmentObject private var store: CPUStore
+    @EnvironmentObject private var settings: AppSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -204,21 +207,83 @@ private struct ProcessesSection: View {
                 Text("Measuring… the busiest processes appear after the next sample.").font(.caption).foregroundStyle(PeekTheme.muted)
             } else if store.processes.isEmpty {
                 Text("None of your processes used the CPU during the last interval.").font(.caption).foregroundStyle(PeekTheme.muted)
-            } else {
-                ForEach(store.processes) { row in
-                    HStack(spacing: 8) {
-                        Text(row.name).lineLimit(1)
-                        Spacer(minLength: 4)
-                        Text(PercentText.ofOneCore(row.percent)).font(.system(size: 12.5, design: .monospaced))
+            } else if settings.groupAppHelpers {
+                ForEach(store.processGroups, id: \.stableID) { group in
+                    if group.family == nil, let row = group.items.first {
+                        CPUProcessRow(row: row)
+                    } else {
+                        CPUProcessGroupRow(group: group)
                     }
-                    .font(.system(size: 13))
-                    .padding(.vertical, 3)
-                    .overlay(alignment: .bottom) { Rectangle().fill(PeekTheme.hairline).frame(height: 1) }
-                    .help("PID \(row.pid)")
-                    .accessibilityElement(children: .combine)
                 }
+            } else {
+                ForEach(store.processes) { row in CPUProcessRow(row: row) }
+            }
+            if store.processError == nil, !store.isMeasuringProcesses, !store.processes.isEmpty {
                 Text("100 % is one core fully busy, as in Activity Monitor, so a busy app can show more than 100 %.")
                     .font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted).padding(.top, 2)
+            }
+        }
+    }
+}
+
+extension ProcessGrouping.Group where Item == ProcessCPURow {
+    /// The app's name for a group, the PID for a process on its own: stays the same from one sample to the next.
+    var stableID: String { family.map { "app:" + $0.name } ?? "pid:\(items.first?.pid ?? 0)" }
+}
+
+private struct CPUProcessRow: View {
+    let row: ProcessCPURow
+    var indent: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(row.name).lineLimit(1)
+            Spacer(minLength: 4)
+            Text(PercentText.ofOneCore(row.percent)).font(.system(size: 12.5, design: .monospaced))
+        }
+        .font(.system(size: indent > 0 ? 12 : 13))
+        .padding(.leading, indent)
+        .padding(.vertical, 3)
+        .overlay(alignment: .bottom) { Rectangle().fill(PeekTheme.hairline).frame(height: 1) }
+        .help("PID \(row.pid)")
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// An app's processes under one row ("Google Chrome · 14 processes · 183 %"); open it for each process and, for a
+/// browser, where to see which tab is busy.
+private struct CPUProcessGroupRow: View {
+    let group: ProcessGrouping.Group<ProcessCPURow>
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                        .foregroundStyle(PeekTheme.muted)
+                    Text(group.title).lineLimit(1)
+                    Text("\(group.items.count) processes").font(.system(size: 11)).foregroundStyle(PeekTheme.muted)
+                    Spacer(minLength: 4)
+                    Text(PercentText.ofOneCore(group.total)).font(.system(size: 12.5, design: .monospaced))
+                }
+                .font(.system(size: 13, weight: .medium))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, 3)
+            .overlay(alignment: .bottom) { Rectangle().fill(PeekTheme.hairline).frame(height: 1) }
+            .accessibilityLabel("\(group.title), \(group.items.count) processes, \(PercentText.ofOneCore(group.total))")
+            .accessibilityHint(expanded ? "Hides its processes" : "Shows its processes")
+            if expanded {
+                if let hint = group.family?.tabHint {
+                    Text(hint).font(.system(size: 10.5)).foregroundStyle(PeekTheme.muted).padding(.leading, 16).padding(.vertical, 3)
+                }
+                ForEach(group.items) { row in CPUProcessRow(row: row, indent: 16) }
             }
         }
     }

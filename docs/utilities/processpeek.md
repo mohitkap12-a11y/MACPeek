@@ -62,3 +62,18 @@ Opening a process now also shows:
   inference from what MacPeek can see and is labelled so; the Kill button and its safety checks are unchanged.
 launchd job labels are passed to `launchctl print` only if they cannot be read as an option (no leading `-`, no `/` or
 spaces). MacPeek never loads, unloads or changes a launchd job.
+
+## Grouping app helpers
+Browsers and Electron apps run every tab, extension and GPU job in its own helper process, so an unfiltered list shows one
+browser as dozens of rows. With **Group app helper processes** on (Settings ▸ Behavior, on by default) the list shows one
+row per app with its process count and total memory; opening it lists the processes, each with the usual details and
+Quit. Grouping is by process name only:
+
+- Known browsers: Google Chrome, Brave, Microsoft Edge, Chromium, Vivaldi, Opera, Arc, Firefox (`plugin-container`), and
+  WebKit's helpers (`com.apple.WebKit.*`), listed as "Safari and web views" because they also serve Mail, the App Store and
+  every app with a web view.
+- Any process named "<App> Helper" or "<App> Helper (…)" goes under <App>, with the app's own process when one is listed.
+- A group needs at least two processes; a search always lists processes one by one.
+
+MacPeek cannot see which page a helper shows. Chromium browsers say it in their Task Manager (Shift-Esc), Firefox in
+`about:processes`, Safari's tabs in Activity Monitor; the group row says which.

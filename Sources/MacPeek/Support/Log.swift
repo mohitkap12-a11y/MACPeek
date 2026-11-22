@@ -26,5 +26,6 @@ enum Log {
     static let modelPeek = Logger(subsystem: subsystem, category: "MacPeek.ModelPeek")
     // EnvPeek deliberately never logs variable names or values, only that a read failed.
     static let envPeek = Logger(subsystem: subsystem, category: "MacPeek.EnvPeek")
+    static let vitals = Logger(subsystem: subsystem, category: "MacPeek.Vitals")
 }
 #endif

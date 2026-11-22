@@ -42,6 +42,7 @@ struct GPUPeekView: View {
                         GPUHistorySection(gpuID: gpu.id)
                         GPUDetailsSection(gpu: gpu, facts: facts(for: gpu, in: snapshot))
                         GPUPowerSection(snapshot: snapshot)
+                        SensorsSection(snapshot: store.sensors, groups: [.gpu, .neuralEngine], showsFans: false, showsPower: false)
                         GPUProcessesSection(processes: snapshot.processes)
                     }
                     .padding(14)

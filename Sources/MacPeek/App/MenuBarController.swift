@@ -4,72 +4,131 @@ import SwiftUI
 import Combine
 import MacPeekCore
 import PortPeekKit
+import VitalsKit
 
 @MainActor
-final class MenuBarController: NSObject, NSPopoverDelegate {
+final class MenuBarController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
     private let router: UtilityRouter
     private let registry: UtilityRegistry
-    private var appearanceObserver: AnyCancellable?
-    private var remoteObserver: AnyCancellable?
-    private var tunnelObserver: AnyCancellable?
+    private let settings: AppSettings
+    private let monitor: VitalsMonitor
+    private var observers: Set<AnyCancellable> = []
     private let remote: RemoteManagementController
+    /// The launcher in a window: used when macOS hides the menu-bar icon (a full menu bar, or the notch), so MacPeek
+    /// can still be opened by launching it again.
+    private var window: NSWindow?
+    private let makeContent: () -> AnyView
 
     init(router: UtilityRouter, registry: UtilityRegistry, settings: AppSettings, updater: UpdaterService,
-         remote: RemoteManagementController, remoteIntro: RemoteIntroController) {
+         remote: RemoteManagementController, remoteIntro: RemoteIntroController, monitor: VitalsMonitor) {
         self.router = router
         self.registry = registry
+        self.settings = settings
         self.remote = remote
-        super.init()
-
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
-        popover.contentSize = NSSize(width: 380, height: 640)
-        popover.contentViewController = NSHostingController(
-            rootView: MainPopoverView()
+        self.monitor = monitor
+        makeContent = {
+            AnyView(MainPopoverView()
                 .environmentObject(router)
                 .environmentObject(registry)
                 .environmentObject(settings)
                 .environmentObject(updater)
                 .environmentObject(remote)
                 .environmentObject(remoteIntro)
-        )
+                .environmentObject(monitor))
+        }
+        super.init()
+
+        popover.behavior = .transient
+        popover.animates = true
+        popover.delegate = self
+        popover.contentSize = NSSize(width: 380, height: 640)
+        popover.contentViewController = NSHostingController(rootView: makeContent())
 
         // The popover window does not reliably follow NSApp.appearance, so apply the chosen theme to it directly.
         popover.appearance = settings.appearance.nsAppearance
-        appearanceObserver = settings.$appearance.sink { [weak self] mode in
+        settings.$appearance.sink { [weak self] mode in
             self?.popover.appearance = mode.nsAppearance
+            self?.window?.appearance = mode.nsAppearance
         }
+        .store(in: &observers)
 
         if let button = statusItem.button {
-            button.image = MenuBarController.makeIcon()
-            button.image?.accessibilityDescription = "MacPeek"
             button.target = self
             button.action = #selector(statusItemClicked(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "MacPeek"
         }
 
         // While Remote management is on, the icon carries a dot and the tooltip says so: it is never on unseen. Open
-        // tunnels are said too, and listed in the right-click menu with Close.
-        remoteObserver = remote.$isEnabled.sink { [weak self] _ in
-            Task { @MainActor in self?.updateRemoteIndicator() }
-        }
-        tunnelObserver = remote.$snapshot.sink { [weak self] _ in
-            Task { @MainActor in self?.updateRemoteIndicator() }
-        }
+        // tunnels are said too, and listed in the right-click menu with Close. The readout follows the monitor.
+        remote.$isEnabled.sink { [weak self] _ in Task { @MainActor in self?.updateButton() } }.store(in: &observers)
+        remote.$snapshot.sink { [weak self] _ in Task { @MainActor in self?.updateButton() } }.store(in: &observers)
+        monitor.$latest.sink { [weak self] _ in Task { @MainActor in self?.updateButton() } }.store(in: &observers)
+        settings.objectWillChange.sink { [weak self] _ in Task { @MainActor in self?.updateButton() } }.store(in: &observers)
+        updateButton()
     }
 
-    private func updateRemoteIndicator() {
+    // MARK: - The button
+
+    private func updateButton() {
         guard let button = statusItem.button else { return }
         let enabled = remote.isEnabled
         let tunnels = enabled ? remote.snapshot?.tunnels.count ?? 0 : 0
-        button.image = MenuBarController.makeIcon(remote: enabled)
+        let icon = MenuBarController.makeIcon(remote: enabled)
+        let metrics = settings.menuBarMetrics
         let tunnelText = tunnels == 0 ? "" : tunnels == 1 ? ", 1 tunnel open" : ", \(tunnels) tunnels open"
-        button.image?.accessibilityDescription = enabled ? "MacPeek, Remote management on\(tunnelText)" : "MacPeek"
+        var description = enabled ? "MacPeek, Remote management on\(tunnelText)" : "MacPeek"
+        if metrics.isEmpty {
+            statusItem.length = NSStatusItem.squareLength
+            button.attributedTitle = NSAttributedString(string: "")
+            button.image = icon
+            button.imagePosition = .imageOnly
+        } else {
+            let items = MenuBarReadout.items(for: metrics, sample: monitor.latest)
+            statusItem.length = NSStatusItem.variableLength
+            button.attributedTitle = Self.readoutTitle(items)
+            if settings.menuBarShowsIcon || enabled {
+                // The Remote dot must stay visible while Remote management is on, so the icon stays then too.
+                button.image = icon
+                button.imagePosition = .imageLeading
+            } else {
+                button.image = nil
+                button.imagePosition = .noImage
+            }
+            description += ". " + MenuBarReadout.spokenText(items)
+        }
+        button.setAccessibilityLabel(description)
         button.toolTip = enabled ? "MacPeek — Remote management is on\(tunnelText)" : "MacPeek"
+    }
+
+    /// "CPU 42%  MEM 61%  ↓1.2M ↑30K  58°": labels small, values in a readable monospaced-digit font, warning and
+    /// critical values in orange and red.
+    static func readoutTitle(_ items: [ReadoutItem]) -> NSAttributedString {
+        let title = NSMutableAttributedString()
+        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        let labelFont = NSFont.systemFont(ofSize: 9, weight: .semibold)
+        for (index, item) in items.enumerated() {
+            if index > 0 { title.append(NSAttributedString(string: "  ", attributes: [.font: valueFont])) }
+            if let label = item.label {
+                title.append(NSAttributedString(string: label + " ", attributes: [.font: labelFont, .baselineOffset: 1]))
+            }
+            var attributes: [NSAttributedString.Key: Any] = [.font: valueFont]
+            switch item.level {
+            case .warning: attributes[.foregroundColor] = NSColor.systemOrange
+            case .critical: attributes[.foregroundColor] = NSColor.systemRed
+            case .normal: break
+            }
+            title.append(NSAttributedString(string: item.value, attributes: attributes))
+        }
+        return title
+    }
+
+    /// False when macOS hides the menu-bar item: the menu bar is full, or the item would sit under the notch.
+    var isIconVisible: Bool {
+        guard statusItem.isVisible, let window = statusItem.button?.window else { return false }
+        guard window.occlusionState.contains(.visible) else { return false }
+        return NSScreen.screens.contains { $0.frame.intersects(window.frame) }
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
@@ -83,10 +142,56 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)
-        } else if let button = statusItem.button {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+        } else {
+            showPopover()
         }
+    }
+
+    private func showPopover() {
+        guard let button = statusItem.button else { return }
+        window?.close()
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    /// Opens MacPeek on a screen: under the menu-bar icon when it can be seen, otherwise in a window.
+    func show(_ route: Route = .launcher) {
+        if isIconVisible {
+            if !popover.isShown { showPopover() }
+        } else {
+            showWindow()
+        }
+        router.go(route)
+    }
+
+    /// MacPeek was launched again while running (from Finder, Spotlight or the Dock).
+    func reopen() { show(.launcher) }
+
+    private func showWindow() {
+        if popover.isShown { popover.performClose(nil) }
+        if let window {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 640), styleMask: [.titled, .closable],
+                              backing: .buffered, defer: false)
+        window.title = "MacPeek"
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: makeContent())
+        window.appearance = settings.appearance.nsAppearance
+        window.delegate = self
+        window.center()
+        self.window = window
+        router.popoverWillShow()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        router.popoverDidClose()
+        window = nil
     }
 
     private func showContextMenu() {
@@ -102,6 +207,12 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             }
             menu.addItem(.separator())
         }
+        if !monitor.recentAlerts.isEmpty {
+            menu.addItem(withTitle: "Recent Alerts…", action: #selector(openAlerts), keyEquivalent: "").target = self
+        }
+        if settings.historyEnabled {
+            menu.addItem(withTitle: "History…", action: #selector(openHistory), keyEquivalent: "").target = self
+        }
         menu.addItem(withTitle: "Refresh", action: #selector(refreshNow), keyEquivalent: "r").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit MacPeek", action: #selector(quit), keyEquivalent: "q").target = self
@@ -110,6 +221,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         statusItem.menu = nil
     }
 
+    @objc private func openAlerts() { show(.alerts) }
+    @objc private func openHistory() { show(.history) }
     @objc private func refreshNow() { registry.refreshSummaries() }
     @objc private func closeTunnel(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID else { return }

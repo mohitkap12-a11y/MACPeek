@@ -10,8 +10,13 @@
 - **Load average** (1, 5, 15 minutes).
 - **Temperature**: macOS's thermal state (`ProcessInfo.thermalState`). "High" and "Critical" mean macOS may be slowing the CPU
   to cool down. It is a state macOS reports, not a temperature reading.
+- **Temperatures**: the hottest and average reading for each part of the chip (CPU clusters, GPU, Neural Engine, SoC,
+  storage, battery), with **All sensors** for every sensor by name; **Fan** speeds against their range; and **Mac power
+  draw** (the SMC's whole-system power) where the Mac reports it. A Mac that shares no sensors shows one line saying so.
 - **Using the most CPU**: the 20 busiest processes over the last interval. 100 % is one core fully busy, as in Activity
-  Monitor, so a busy multi-threaded app can show more than 100 %.
+  Monitor, so a busy multi-threaded app can show more than 100 %. With **Group app helper processes** on (Settings ▸
+  Behavior, on by default) a browser's or Electron app's helpers are one row ("Google Chrome · 14 processes · 183 %") that
+  opens to list them; for Chromium browsers and Firefox it says where the browser shows which tab is busy.
 
 ## How it works
 - Per-core use comes from the difference between two `host_processor_info(PROCESSOR_CPU_LOAD_INFO)` readings. The tick
@@ -33,6 +38,18 @@ launcher ring (overall use, with the load average under it, or "running hot" and
 state) updates at the refresh interval while the launcher is on screen, from consecutive readings (two readings a third of
 a second apart when there is no recent one); it stops when you open a utility or close the menu. A launcher reading from the
 last 15 seconds is the baseline when CPUPeek opens, so overall use shows immediately.
+
+## Sensors
+- **Apple silicon temperatures** come from the HID event system's temperature services (`IOHIDEventSystemClient`, vendor
+  usage page 0xff00, usage 5): the interface Apple's own tools read. It is not documented, so MacPeek looks its functions
+  up at run time and shows nothing if any is missing. Sensor names ("pACC MTR Temp Sensor0", "GPU MTR Temp Sensor1",
+  "PMU tdie3") are grouped by what they name; unknown names go under Other. Readings below 1 °C or above 130 °C are dropped.
+- **Intel temperatures** are the SMC keys TC0P/TC0D/… (CPU), TG0P/TG0D (GPU), TM0P (memory), TH0P (drive), TB0T (battery),
+  TA0P (ambient), whichever exist.
+- **Fans** (`FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`) and **power** (`PSTR`) are read from `AppleSMC` through its user client,
+  read-only: MacPeek never writes to the SMC. Values are decoded by type (`flt `, `fpe2`, `sp78`, `ui8 `, `ui16`).
+- Not yet verified on real hardware: the decoding and classification are unit-tested, and the readers need a check on an
+  Apple silicon desktop (fans and `PSTR` power), an Intel Mac and a MacBook before 0.5.0 ships.
 
 ## Permissions
 None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they

@@ -16,6 +16,8 @@ struct MainPopoverView: View {
             case .remote: RemoteManagementView()
             case .about: AboutView()
             case .support: SupportView()
+            case .alerts: AlertsView()
+            case .history: HistoryView()
             }
         }
         .frame(width: 380, height: 640)

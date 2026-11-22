@@ -100,7 +100,10 @@ person MacPeek runs as, which a console uses for SSH), `cpu.topology`, `cpu.snap
 `network.extras` (proxy, VPN, Tailscale, remembered Wi-Fi networks), `dns.overrides` (`/etc/hosts`, `/etc/resolver`),
 `bluetooth.devices` (devices and battery levels, never addresses), `processes.origin` and `processes.openFiles` (both carry the
 process the console saw and are answered only while that PID still belongs to it, same start time), `containers.snapshot`,
-`gpu.snapshot` and `models.snapshot`. Container logs are not offered remotely. Actions are `ports.free`, `processes.quit` and
+`gpu.snapshot`, `models.snapshot`, `sensors.snapshot` (temperatures, fans and whole-Mac power), `vitals.history` (body
+`VitalsHistoryRequest { since, maximumCount }`, capped at 1,440 points: the Mac's own 24-hour history, unavailable while the
+person has history off) and `alerts.recent` (the alerts the Mac raised itself, newest first, unavailable while alerts are
+off). Container logs are not offered remotely. Actions are `ports.free`, `processes.quit` and
 `containers.action` (start, stop, restart, pause, resume or remove one container; the container ID must be 12–64 hex
 characters and the Mac re-lists it and refuses if it is gone, renamed or in the wrong state); they carry the row the console
 saw, which the Mac re-validates before acting, and need a role that may act with "Allow actions" on.
@@ -185,10 +188,15 @@ that account, with a trial or subscription in force. The code is `Sources/Remote
 - Denial of service: a peer on the local network can open and hold connections; the relay can drop or delay traffic.
   Neither can read or change anything, or connect a device the Mac does not trust.
 
-## Planned: history
+## History and alerts
 
-Not implemented; recorded here so the changes can be reviewed before they are built.
+Built (0.5.0): the Mac keeps 24 hours of CPU, memory, network, GPU, temperature and power on its own disk while the person
+has History on (Settings ▸ History, on by default), whether or not Remote management is on. `vitals.history` returns it to
+the account's devices: 10-second points for the last hour, one-minute points before that, merged evenly to the count asked
+for. `alerts.recent` returns the alerts the Mac raised (runaway process, memory growth, memory pressure, swap growth,
+sustained network traffic, heat), so a console can show what happened while it was not connected and pass them to its own
+alert destinations. Both are reads (a view-only device may ask), neither is sent anywhere unless a device asks, and both
+answer `unavailable` while the person has the feature turned off.
 
-- **History.** While Remote management is on, the Mac keeps 30 days of 30-second CPU, memory, disk and network points
-  (about 2.6 MB) on the Mac, and a new `history.range` request returns them to the account's devices as compact binary
-  chunks. Nothing is sent anywhere unless one of them asks for it.
+Still planned: a 30-day history kept by the Mac while Remote management is on (about 2.6 MB of 30-second points) with a
+`history.range` request returning compact binary chunks. Until then MacPeek Remote keeps its own 30-day history.
