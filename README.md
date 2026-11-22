@@ -44,6 +44,18 @@ is switched off does no work at all: no polling, no scanning, nothing in the lau
   verify the PID still owns the resource and is the same process (PID-reuse guard) → SIGTERM → verify
   exit and release → optional, explicit force kill (SIGKILL) after another re-check
 - Utilities refresh only while their screen is open
+- **Alerts** (on by default): a process stuck at high CPU, a process whose memory keeps growing, memory pressure, fast swap
+  growth, sustained network traffic and heat, in Notification Center and under the launcher's bell, each with its own
+  switch and threshold and **Don't Alert About This App**
+- **Menu-bar readout** (off by default): CPU, memory, network ↓↑, GPU and temperature next to the icon, in a readable
+  monospaced font, orange/red when they need attention
+- **24-hour history** (on by default, kept on this Mac): CPU, memory, network, GPU, temperature and power charts for the
+  last 1, 6 or 24 hours
+- **Temperatures, fans and power** in CPUPeek and GPUPeek, read-only, no administrator rights
+- **App helpers grouped**: browser tabs and Electron helpers listed under their app in CPUPeek and ProcessPeek, with where
+  the browser shows which tab is busy
+- If macOS hides the menu-bar icon (full menu bar, or the notch), MacPeek says so once and opens in a window when launched
+  again. Details: [docs/alerts-and-history.md](docs/alerts-and-history.md)
 - No account, no telemetry, no cloud. One third-party dependency: [Sparkle](https://sparkle-project.org) for in-app updates. The network traffic is a once-a-day check of GitHub for a new MacPeek release (switch it off in Settings) and checks you start yourself (NetPeek pings, DNSPeek lookups, UpdatePeek's macOS and npm checks). ModelPeek asks Ollama's and LM Studio's APIs on 127.0.0.1 while they run, which never leaves your Mac. Remote management, for the separate MacPeek Remote console, is off unless you turn it on
 
 ## Install
@@ -91,6 +103,11 @@ No account, no telemetry, no cloud. MacPeek reads local system information to sh
 transmits it. MacPeek asks GitHub about once a day whether a newer release exists (Settings → Check for updates automatically; update downloads are verified with an EdDSA signature). Otherwise the only network traffic is what you ask for: NetPeek's pings, DNSPeek's lookups and UpdatePeek's macOS and npm
 checks (Apple's update servers and the npm registry), each run only when you press the button. Each utility documents exactly what it reads (see Manage utilities).
 
+Alerts, the menu-bar readout and the 24-hour history are worked out on this Mac by one background monitor that runs only
+while one of them is on (a few cheap reads every 5 seconds, a process scan every 10); the history file stays in
+`~/Library/Application Support/MacPeek`. Temperatures, fans and power are read through interfaces Apple does not document,
+read-only.
+
 **Remote management** (Settings → Remote management) is off by default. While it is off MacPeek does not listen, does not
 advertise itself and connects nowhere. To manage this Mac from MacPeek Remote, turn it on and choose **Add to my
 account…**: sign in to your MacPeek Remote account in the browser, then approve the Mac in MacPeek Remote on your main
@@ -103,7 +120,8 @@ Remote management is on. The protocol is described in [docs/remote.md](docs/remo
 
 ## Roadmap
 Seventeen utilities are built (PortPeek, FileLockPeek, DisplayPeek, USBPeek, SleepPeek, MemoryPeek, CPUPeek, ProcessPeek, DiskPeek,
-EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek, GPUPeek, ContainerPeek, ModelPeek); BatteryPeek is next (it needs a capture from a MacBook), then global search, accessibility and localization
+EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek, GPUPeek, ContainerPeek, ModelPeek); 0.5.0 adds alerts, the menu-bar readout, 24-hour history, sensors and helper grouping. BatteryPeek is next (it needs a
+capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
 ## Contributing / License
