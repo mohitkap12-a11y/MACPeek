@@ -3,6 +3,12 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Fixed
+- **Remote management: a Mac set up from another Mac gets its own identity.** Migration Assistant and Time Machine
+  restores copied the old Mac's Remote management key, so MacPeek Remote saw both Macs as one and adding the new one
+  only refreshed the old one's entry. The key is now tied to the Mac's hardware: a copied key is replaced at launch,
+  the copied account membership is dropped, and a notification asks to add this Mac to the account again. Existing
+  Macs keep their key.
 
 ## [0.4.1] - 2026-11-21
 ### Added
