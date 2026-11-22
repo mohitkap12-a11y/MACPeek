@@ -55,6 +55,14 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let gpu: Operation = "gpu.snapshot"
     /// Local LLM runners and their loaded models (ModelPeek).
     public static let models: Operation = "models.snapshot"
+    /// Temperatures, fans and whole-Mac power (CPUPeek, GPUPeek). Answer: `SensorSnapshot`.
+    public static let sensors: Operation = "sensors.snapshot"
+    /// The Mac's own 24-hour history of CPU, memory, network, GPU, temperature and power. Body: `VitalsHistoryRequest`;
+    /// answer: `[VitalsPoint]`. Unavailable while the person has history turned off.
+    public static let vitalsHistory: Operation = "vitals.history"
+    /// The alerts the Mac raised itself (runaway processes, memory growth, pressure, swap, network, heat), newest first.
+    /// Answer: `[AlertEvent]`. Unavailable while the person has alerts turned off.
+    public static let alerts: Operation = "alerts.recent"
     public static let freePort: Operation = "ports.free"
     /// Starts, stops, restarts, pauses, resumes or removes one container. Body: `ContainerActionRequest`.
     public static let containerAction: Operation = "containers.action"
@@ -76,7 +84,8 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
                                             .dnsConfiguration, .dnsProbe, .networkExtras, .dnsOverrides, .bluetooth,
-                                            .processOrigin, .processOpenFiles, .containers, .images, .gpu, .models, .diskIO]
+                                            .processOrigin, .processOpenFiles, .containers, .images, .gpu, .models, .diskIO,
+                                            .sensors, .vitalsHistory, .alerts]
     public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction, .imageRemove, .containerRun]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceRevocations]
@@ -260,6 +269,17 @@ public struct DNSProbeRequest: Equatable, Codable, Sendable {
     public init(server: String, name: String) {
         self.server = server
         self.name = name
+    }
+}
+
+/// `vitals.history`: the points from `since` on, merged evenly to at most `maximumCount` (capped at 1,440 by the Mac).
+public struct VitalsHistoryRequest: Equatable, Codable, Sendable {
+    public let since: Date
+    public let maximumCount: Int
+
+    public init(since: Date, maximumCount: Int = 720) {
+        self.since = since
+        self.maximumCount = maximumCount
     }
 }
 
