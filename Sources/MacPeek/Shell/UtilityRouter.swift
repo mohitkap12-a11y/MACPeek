@@ -9,6 +9,8 @@ enum Route: Equatable {
     case remote
     case about
     case support
+    case alerts
+    case history
 }
 
 /// Navigation inside the single compact popover. It also drives utility lifecycle, so a utility

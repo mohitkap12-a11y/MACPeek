@@ -5,6 +5,7 @@ import AppKit
 import RemoteAgent
 import RemoteCrypto
 import RemoteProtocol
+import VitalsKit
 
 /// The app's side of Remote management. Off by default: until the person turns it on nothing is created, nothing
 /// listens and nothing is advertised. Turning it off stops the listener and ends every connection at once.
@@ -35,9 +36,12 @@ final class RemoteManagementController: ObservableObject {
     private var joinFlow: AccountJoinFlow?
     private var joinWork: Task<Void, Never>?
     private let notifications = NotificationService()
+    /// The Mac's own alerts, history and sensors, served to the account's devices.
+    private let vitals: VitalsMonitor?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, vitals: VitalsMonitor? = nil) {
         self.defaults = defaults
+        self.vitals = vitals
         isEnabled = defaults.bool(forKey: "remote.enabled")
         allowActions = defaults.bool(forKey: "remote.allowActions")
         allowFromAnywhere = defaults.bool(forKey: "remote.allowFromAnywhere")
@@ -143,7 +147,7 @@ final class RemoteManagementController: ObservableObject {
             let state = try self.state ?? makeState()
             self.state = state
             let settings = settings
-            let handler = self.handler ?? RequestHandler(readers: .system(), actions: .system(), agentVersion: Self.appVersion)
+            let handler = self.handler ?? RequestHandler(readers: makeReaders(), actions: .system(), agentVersion: Self.appVersion)
             self.handler = handler
             let listener = BonjourListener(state: state, handler: handler, name: Self.deviceName) { [weak self] status in
                 let controller = self
@@ -164,6 +168,29 @@ final class RemoteManagementController: ObservableObject {
             isEnabled = false
             defaults.set(false, forKey: "remote.enabled")
         }
+    }
+
+    /// The Kits' readers, plus what only the app knows: its history and alerts (while the person has them on) and the
+    /// sensor reader it already holds.
+    private func makeReaders() -> AgentReaders {
+        var readers = AgentReaders.system()
+        guard let vitals else { return readers }
+        let sensors = vitals.sensorReader
+        readers.sensors = { sensors.read() }
+        // The monitor lives as long as the app.
+        readers.vitalsHistory = { since, count in
+            try await MainActor.run {
+                guard vitals.historyEnabled else { throw RemoteError(.unavailable, "History is turned off on this Mac.") }
+                return vitals.history.points(since: since, maximumCount: count)
+            }
+        }
+        readers.alerts = {
+            try await MainActor.run {
+                guard vitals.alertsEnabled else { throw RemoteError(.unavailable, "Alerts are turned off on this Mac.") }
+                return vitals.recentAlerts
+            }
+        }
+        return readers
     }
 
     private func stop() {

@@ -2,6 +2,8 @@
 import Foundation
 import MacPeekCore
 import CPUPeekKit
+import SensorsKit
+import VitalsKit
 
 /// Observable state for CPUPeek. It samples CPU ticks and per-process CPU time on a timer, only while its screen is
 /// open. Leaving the screen stops the timer and discards the baseline, so returning never shows usage computed over
@@ -11,6 +13,10 @@ final class CPUStore: ObservableObject {
     @Published private(set) var usage: CPUUsage?
     @Published private(set) var snapshot: CPUSnapshot?
     @Published private(set) var processes: [ProcessCPURow] = []
+    /// The same processes with app helpers (browser tabs, Electron helpers) grouped under their app, busiest first.
+    @Published private(set) var processGroups: [ProcessGrouping.Group<ProcessCPURow>] = []
+    /// Temperatures, fans and power, read with every sample while the screen is open.
+    @Published private(set) var sensors: SensorSnapshot?
     @Published private(set) var topology: CPUTopology?
     @Published private(set) var isWaitingForSecondSample = true
     /// The process list needs its own second sample (after opening, or after a failed scan) and says so on its card.
@@ -23,6 +29,7 @@ final class CPUStore: ObservableObject {
 
     private let reader: CPUReading
     private let processReader: ProcessUsageReading
+    private let sensorReader: SensorReading?
     private let settings: AppSettings
     private var previousCores: [CoreTicks]?
     /// The launcher's latest CPU reading. When the screen opens soon after, it is the baseline, so CPU use shows at once.
@@ -31,9 +38,10 @@ final class CPUStore: ObservableObject {
     private var sampler = ProcessCPUSampler()
     private var pollTask: Task<Void, Never>?
 
-    init(reader: CPUReading, processReader: ProcessUsageReading, settings: AppSettings) {
+    init(reader: CPUReading, processReader: ProcessUsageReading, sensors: SensorReading? = nil, settings: AppSettings) {
         self.reader = reader
         self.processReader = processReader
+        self.sensorReader = sensors
         self.settings = settings
     }
 
@@ -73,6 +81,8 @@ final class CPUStore: ObservableObject {
         sampler = ProcessCPUSampler()
         usage = nil
         processes = []
+        processGroups = []
+        sensors = nil
         snapshot = nil
         error = nil
         processError = nil
@@ -134,16 +144,23 @@ final class CPUStore: ObservableObject {
                 flag.cancel()
             }
             guard !Task.isCancelled else { return }
-            processes = Array(sampler.ingest(result.usages, at: Date()).prefix(20))
+            let rows = sampler.ingest(result.usages, at: Date())
+            processes = Array(rows.prefix(20))
+            processGroups = Array(ProcessGrouping.group(rows, name: \.name, value: \.percent).prefix(20))
             processError = nil
             isMeasuringProcesses = sampler.isBaselineOnly
         } catch {
             if Task.isCancelled { return }
             sampler = ProcessCPUSampler()
             processes = []
+            processGroups = []
             processError = error.localizedDescription
             isMeasuringProcesses = true
             Log.cpuPeek.error("reading processes failed: \(error.localizedDescription, privacy: .public)")
+        }
+        if let sensorReader {
+            let reading = await Task.detached(priority: .utility) { sensorReader.read() }.value
+            if !Task.isCancelled { sensors = reading }
         }
         // Only overall CPU use gates the screen; the process card shows its own measuring and error states.
         isWaitingForSecondSample = usage == nil

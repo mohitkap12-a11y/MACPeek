@@ -67,7 +67,8 @@ public enum UtilityCatalog {
         summary: "Samples overall and per-core CPU use and the processes using the most CPU while it is open, and shows the load average and whether macOS reports it is slowing the CPU to cool down. Values are labelled as sampled, and sampling stops as soon as you leave it.",
         icon: "speedometer", category: .everyday, availability: .available,
         reads: ["Per-core CPU load (host_processor_info), the load average and macOS's thermal state, only while CPUPeek is open; the load average and thermal state once when the launcher opens",
-                "CPU time of processes your user can inspect (libproc), only while CPUPeek is open"],
+                "CPU time of processes your user can inspect (libproc), only while CPUPeek is open",
+                "Temperatures (the HID event system on Apple silicon, the SMC on Intel), fan speeds and whole-Mac power (the SMC, read-only), through interfaces Apple does not document, loaded only if present, only while CPUPeek is open"],
         permissions: ["None. Other users' processes, including some macOS services, are not listed."]
     )
     public static let fileLockPeek = UtilityInfo(
@@ -83,7 +84,7 @@ public enum UtilityCatalog {
         tagline: "Inspect a process and its relationships.",
         summary: "Shows how a process was launched, its parent, user, start time, command line, CPU and memory, the listening ports of your own processes, and its children. Ending a process is optional and uses the same safe-termination checks as PortPeek. Deliberately not an Activity Monitor replacement.",
         icon: "cpu", category: .developer, availability: .available,
-        reads: ["The process list (ps); a process's command line and listening ports only when you open it"],
+        reads: ["The process list (ps); a process's command line and listening ports only when you open it. Helper processes are grouped under their app by name (Settings ▸ Group app helper processes)"],
         permissions: ["None to inspect. Some details are unavailable for other users' processes, and you can terminate only processes your user owns."]
     )
     public static let diskPeek = UtilityInfo(
@@ -135,7 +136,8 @@ public enum UtilityCatalog {
         summary: "Shows how busy the GPU is and how much memory it is using, as its driver reports it, which processes have the GPU open and how much GPU time each used, and on Apple silicon the power the CPU, GPU and Neural Engine draw. macOS reports no Neural Engine utilization to apps, so its power draw is shown instead, labelled as such.",
         icon: "cpu.fill", category: .everyday, availability: .available,
         reads: ["GPU statistics and GPU clients from the I/O registry (ioreg), only while GPUPeek is open",
-                "On Apple silicon, macOS's energy counters (IOReport, an undocumented interface loaded only if present), only while GPUPeek is open"],
+                "On Apple silicon, macOS's energy counters (IOReport, an undocumented interface loaded only if present), only while GPUPeek is open",
+                "GPU and Neural Engine temperatures (the HID event system, undocumented, loaded only if present), only while GPUPeek is open"],
         permissions: ["None. No administrator rights are needed or asked for."]
     )
     public static let containerPeek = UtilityInfo(

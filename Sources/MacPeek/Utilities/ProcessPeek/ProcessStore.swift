@@ -2,6 +2,7 @@
 import Foundation
 import MacPeekCore
 import ProcessPeekKit
+import VitalsKit
 
 /// Observable state for ProcessPeek. Reads the process table while the screen is open, every `refreshInterval`
 /// seconds from Settings (nothing is read in the background), and loads the command line and listening ports only for the process the user opens.
@@ -65,6 +66,19 @@ final class ProcessStore: ObservableObject {
     }
 
     func isOwned(_ entry: ProcessEntry) -> Bool { entry.isOwned(by: currentUID) }
+
+    /// Whether the list groups app helpers (Settings ▸ Behavior). A search always lists processes one by one.
+    var isGrouping: Bool { settings.groupAppHelpers && query.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// `visible` with each app's helper processes under the app, in the list's order (a group sits where its first
+    /// process would).
+    var visibleGroups: [ProcessGroupItem] {
+        let rows = visible
+        let position = Dictionary(rows.enumerated().map { ($1.pid, $0) }, uniquingKeysWith: { first, _ in first })
+        return ProcessGrouping.group(rows, name: \.name, value: { Double($0.residentKB) })
+            .map { ProcessGroupItem(family: $0.family, entries: $0.items) }
+            .sorted { (position[$0.entries[0].pid] ?? 0) < (position[$1.entries[0].pid] ?? 0) }
+    }
 
     // MARK: Loading
 
@@ -281,5 +295,14 @@ final class ProcessStore: ObservableObject {
             if !Task.isCancelled { self?.banner = nil }
         }
     }
+}
+
+/// One row of ProcessPeek's grouped list: an app with its helper processes, or a process on its own.
+struct ProcessGroupItem: Identifiable {
+    let family: AppFamily?
+    let entries: [ProcessEntry]
+
+    var id: String { family.map { "app:" + $0.name } ?? "pid:\(entries.first?.pid ?? 0)" }
+    var residentKB: Int { entries.reduce(0) { $0 + $1.residentKB } }
 }
 #endif

@@ -18,17 +18,27 @@ import UpdatePeekKit
 import ContainerPeekKit
 import GPUPeekKit
 import ModelPeekKit
+import SensorsKit
+import VitalsKit
 
 @MainActor
 final class AppLifecycle: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController?
     private var remote: RemoteManagementController?
     private var remoteIntro: RemoteIntroController?
+    private var monitor: VitalsMonitor?
+    private var welcome: WelcomeController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = AppSettings()
         let updater = UpdaterService()
-        let remote = RemoteManagementController()
+        // One sensor reader (it holds the SMC connection and the HID client) for the monitor, CPUPeek, GPUPeek and the
+        // Remote agent.
+        let sensors = SystemSensorReader()
+        // Alerts, the 24-hour history and the menu-bar readout. It runs only while one of them is on.
+        let monitor = VitalsMonitor(settings: settings, sensorReader: sensors)
+        self.monitor = monitor
+        let remote = RemoteManagementController(vitals: monitor)
         self.remote = remote
 
         // Each utility builds its own services; the shell only sees `UtilityModule`s.
@@ -69,7 +79,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         let diskStore = DiskStore(reader: SystemDiskIOReader(usage: processUsageReader),
                                   volumeReader: SystemVolumeCapacityReader(), settings: settings)
         let memoryStore = MemoryStore(reader: SystemMemoryReader(), processReader: processUsageReader, settings: settings)
-        let cpuStore = CPUStore(reader: SystemCPUReader(), processReader: processUsageReader, settings: settings)
+        let cpuStore = CPUStore(reader: SystemCPUReader(), processReader: processUsageReader, sensors: sensors, settings: settings)
         let envStore = EnvStore(reader: SystemProcessEnvironmentReader())
 
         let dnsReader = SystemDNSReader()
@@ -90,7 +100,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
 
         // GPUPeek's power sampler subscribes to macOS's energy counters once; it is only sampled while GPUPeek is open.
         let gpuReader = SystemGPUReader(power: IOReportPowerSampler(), deviceFacts: MetalDeviceFactsReader())
-        let gpuStore = GPUStore(reader: gpuReader, settings: settings)
+        let gpuStore = GPUStore(reader: gpuReader, sensors: sensors, settings: settings)
         let containerStore = ContainerStore(reader: SystemContainerReader(usage: processUsageReader),
                                             controller: SystemContainerController(), settings: settings)
         // ModelPeek reads GPU clients without the power sampler: it only needs per-process GPU time.
@@ -120,9 +130,16 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         // The introduction to MacPeek Remote: the launcher's row opens it, and it opens by itself when due.
         let remoteIntro = RemoteIntroController(settings: settings)
         self.remoteIntro = remoteIntro
-        menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater,
-                                    remote: remote, remoteIntro: remoteIntro)
+        let menuBar = MenuBarController(router: router, registry: registry, settings: settings, updater: updater,
+                                        remote: remote, remoteIntro: remoteIntro, monitor: monitor)
+        self.menuBar = menuBar
+        monitor.notifier.onShow = { [weak menuBar] in menuBar?.show(.alerts) }
+        monitor.start()
         remoteIntro.start()
+        // The first launch opens MacPeek, and says so when macOS hides the icon (a full menu bar, or the notch).
+        let welcome = WelcomeController(menuBar: menuBar)
+        self.welcome = welcome
+        welcome.start()
         Self.installEditMenu()
         Log.app.info("MacPeek launched")
     }
@@ -147,5 +164,15 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    /// Launching MacPeek again while it runs opens it: under its icon, or in a window when the icon is hidden.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        menuBar?.reopen()
+        return false
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        monitor?.save()
+    }
 }
 #endif
