@@ -48,8 +48,8 @@ last 15 seconds is the baseline when CPUPeek opens, so overall use shows immedia
   TA0P (ambient), whichever exist.
 - **Fans** (`FNum`, `F<n>Ac`, `F<n>Mn`, `F<n>Mx`) and **power** (`PSTR`) are read from `AppleSMC` through its user client,
   read-only: MacPeek never writes to the SMC. Values are decoded by type (`flt `, `fpe2`, `sp78`, `ui8 `, `ui16`).
-- Verified on Apple silicon desktops; Intel and laptop sensor sets are inferred from the documented key scheme and the same
-  decoding, and are covered by unit tests of the decoding only.
+- Not yet verified on real hardware: the decoding and classification are unit-tested, and the readers need a check on an
+  Apple silicon desktop (fans and `PSTR` power), an Intel Mac and a MacBook before 0.5.0 ships.
 
 ## Permissions
 None. libproc refuses other users' processes, which include some macOS services (such as WindowServer and kernel_task), so they
