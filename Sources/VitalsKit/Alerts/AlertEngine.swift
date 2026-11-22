@@ -217,10 +217,15 @@ public struct AlertEngine: Sendable {
             for trigger in processTriggers(processes, now: now, settings: settings) {
                 condition(trigger.key, after: trigger.minutes, makeEvent: trigger.make)
             }
-        } else {
-            // No scan this tick: keep the process conditions as they are rather than clearing them.
+        } else if settings.needsProcesses {
+            // A scan was skipped this tick: keep the process conditions as they are rather than clearing them.
             for key in started.keys where key.hasPrefix("cpu/") || key.hasPrefix("leak/") { stillTrue.insert(key) }
+        } else {
+            // Both process rules are off, so nothing is scanned on purpose: drop their episodes and readings, so turning
+            // a rule back on starts its clock afresh.
+            footprints = [:]
         }
+        if !settings.leakEnabled { footprints = [:] }
 
         if settings.pressureEnabled, let pressure = observation.pressure {
             if pressure == .critical {

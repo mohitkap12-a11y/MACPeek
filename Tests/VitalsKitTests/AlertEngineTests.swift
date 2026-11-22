@@ -55,6 +55,20 @@ final class AlertEngineTests: XCTestCase {
         XCTAssertTrue(events.isEmpty)
     }
 
+    func testTurningProcessRulesOffForgetsTheirEpisodes() {
+        var engine = AlertEngine()
+        var off = AlertSettings()
+        off.runawayEnabled = false
+        off.leakEnabled = false
+        var events = engine.evaluate(AlertObservation(time: at(0), processes: [process(1, cpu: 99)]), settings: .default)
+        // Rules off: the monitor stops scanning and passes no processes.
+        events += engine.evaluate(AlertObservation(time: at(3), processes: nil), settings: off)
+        events += engine.evaluate(AlertObservation(time: at(5), processes: [process(1, cpu: 99)]), settings: .default)
+        XCTAssertTrue(events.isEmpty, "the clock restarted when the rules came back on")
+        events += engine.evaluate(AlertObservation(time: at(10), processes: [process(1, cpu: 99)]), settings: .default)
+        XCTAssertEqual(events.map(\.kind), [.runawayProcess])
+    }
+
     func testIgnoredProcessesNeverAlert() {
         var engine = AlertEngine()
         var settings = AlertSettings()
