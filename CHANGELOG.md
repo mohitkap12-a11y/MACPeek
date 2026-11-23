@@ -3,6 +3,10 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Fixed
+- The launcher's CPU, Memory and GPU rings now show the same reading as the menu-bar readout while it shows that
+  metric. They used to take their own reading a moment apart, so the two could differ by a point or two (CPU 11 % in the
+  menu bar, 12 % in the ring).
 
 ## [0.5.0] - 2026-11-23
 ### Added

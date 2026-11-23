@@ -16,6 +16,9 @@ final class UtilityRegistry: ObservableObject {
     private let defaults: UserDefaults
     /// Seconds between ring updates while the launcher is on screen (the refresh interval from Settings).
     var gaugeRefreshInterval: @MainActor () -> TimeInterval = { 2 }
+    /// A ring reading another sampler already took (the menu-bar readout's), by utility id. A ring with one shows it
+    /// instead of reading for itself, so the launcher and the menu bar never show two figures for the same thing.
+    var sharedGauge: @MainActor (String) -> LauncherGauge? = { _ in nil }
     /// Keeps the launcher rings live while the launcher is visible; nil otherwise.
     private var gaugeTask: Task<Void, Never>?
     /// In-flight launcher-summary tasks, so they can be cancelled when a utility is disabled or the popover closes.
@@ -84,12 +87,25 @@ final class UtilityRegistry: ObservableObject {
                 guard let self, !Task.isCancelled else { return }
                 for info in self.gaugeUtilities {
                     guard let module = self.module(for: info.id) else { continue }
-                    let gauge = await module.launcherGauge()
+                    let gauge = await self.gauge(info.id, module: module)
                     guard !Task.isCancelled else { return }
                     // A failed read keeps the last value rather than blanking the ring.
                     if let gauge, self.isEnabled(info.id) { self.gauges[info.id] = gauge }
                 }
             }
+        }
+    }
+
+    /// The shared reading when there is one, otherwise the module's own.
+    private func gauge(_ id: String, module: UtilityModule) async -> LauncherGauge? {
+        if let shared = sharedGauge(id) { return shared }
+        return await module.launcherGauge()
+    }
+
+    /// Shows the shared readings at once (the menu-bar readout just updated), so the rings change with it.
+    func applySharedGauges() {
+        for info in gaugeUtilities {
+            if let shared = sharedGauge(info.id) { gauges[info.id] = shared }
         }
     }
 
@@ -109,7 +125,7 @@ final class UtilityRegistry: ObservableObject {
         guard let module = module(for: id) else { return }
         summaryTasks[id] = Task { [weak self] in
             let summary = await module.launcherSummary()
-            let gauge = await module.launcherGauge()
+            let gauge = await self?.gauge(id, module: module)
             // Drop the result if we were cancelled or the utility was disabled while it ran.
             guard let self, !Task.isCancelled, self.isEnabled(id) else { return }
             self.summaries[id] = summary

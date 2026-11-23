@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import Combine
 import MacPeekCore
 import PortPeekKit
 import FileLockPeekKit
@@ -28,6 +29,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
     private var remoteIntro: RemoteIntroController?
     private var monitor: VitalsMonitor?
     private var welcome: WelcomeController?
+    private var observers: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let settings = AppSettings()
@@ -126,6 +128,23 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
             ModelPeekModule(store: modelStore),
         ])
         registry.gaugeRefreshInterval = { [weak settings] in settings?.refreshInterval ?? 2 }
+        // While the menu bar shows CPU, memory or GPU, their launcher rings show the menu bar's own reading, so the two
+        // never disagree (two readings over different moments differ by a point or two).
+        let sharedMetrics: [String: MenuBarMetric] = ["cpupeek": .cpu, "memorypeek": .memory, "gpupeek": .gpu]
+        let ringTints: [String: LauncherGauge.Tint] = ["cpupeek": .accent, "memorypeek": .amber, "gpupeek": .accent]
+        registry.sharedGauge = { [weak monitor] id in
+            guard let metric = sharedMetrics[id], let reading = monitor?.gaugeReading(for: metric) else { return nil }
+            return LauncherGauge(reading, tint: ringTints[id] ?? .accent)
+        }
+        // `$live` fires before the value is stored; the task runs after, so it reads the new reading.
+        monitor.$live
+            .sink { [weak monitor, weak registry, weak cpuStore] _ in
+                Task { @MainActor in
+                    if let live = monitor?.live, let cpu = live.cpu { cpuStore?.adoptBaseline(cpu.snapshot, at: live.time) }
+                    registry?.applySharedGauges()
+                }
+            }
+            .store(in: &observers)
         let router = UtilityRouter(registry: registry)
         // The introduction to MacPeek Remote: the launcher's row opens it, and it opens by itself when due.
         let remoteIntro = RemoteIntroController(settings: settings)

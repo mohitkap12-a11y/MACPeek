@@ -17,6 +17,8 @@ import VitalsKit
 @MainActor
 final class VitalsMonitor: ObservableObject {
     @Published private(set) var latest: VitalsSample?
+    /// The readings behind `latest`, kept whole so the launcher rings can show the very same figures (see `gaugeReading`).
+    @Published private(set) var live: LiveReadings?
     @Published private(set) var sensors: SensorSnapshot?
     /// Newest first, at most `alertLimit`. Kept across launches.
     @Published private(set) var recentAlerts: [AlertEvent] = []
@@ -47,7 +49,7 @@ final class VitalsMonitor: ObservableObject {
     private var traffic = TrafficSampler()
     private var previousCores: [CoreTicks]?
     private var lastProcessScan: Date?
-    private var lastGPU: (date: Date, value: Double?)?
+    private var lastGPU: (date: Date, gpu: GPUInfo?)?
     private var lastSave = Date()
     private var lastPrune = Date.distantPast
     private var task: Task<Void, Never>?
@@ -127,6 +129,7 @@ final class VitalsMonitor: ObservableObject {
         processSampler = ProcessCPUSampler()
         lastProcessScan = nil
         latest = nil
+        live = nil
         // Nothing was watched while stopped, so no condition may count time from before.
         engine = AlertEngine()
     }
@@ -163,7 +166,37 @@ final class VitalsMonitor: ObservableObject {
         var counters: [InterfaceCounters]?
         var processes: ProcessUsageSnapshot?
         var sensors: SensorSnapshot?
-        var gpu: Double??
+        var gpus: [GPUInfo]??
+    }
+
+    /// One tick's readings, whole: what the menu-bar figures were computed from.
+    struct LiveReadings {
+        var time: Date
+        var cpu: (usage: CPUUsage, snapshot: CPUSnapshot)?
+        var memory: MemoryStats?
+        /// The busiest GPU (the one the menu bar's figure is from), with when it was read.
+        var gpu: (date: Date, gpu: GPUInfo?)?
+    }
+
+    /// How long the launcher may show a monitor reading instead of taking its own.
+    static let sharedReadingAge: TimeInterval = 15
+
+    /// The launcher ring for a metric the menu bar shows, from the same reading as the menu bar, so the two always agree.
+    /// Nil when the menu bar doesn't show the metric or no recent reading has it: the ring then reads for itself.
+    func gaugeReading(for metric: MenuBarMetric) -> GaugeReading? {
+        guard settings.menuBarMetrics.contains(metric), let live,
+              Date().timeIntervalSince(live.time) < Self.sharedReadingAge else { return nil }
+        switch metric {
+        case .cpu:
+            return live.cpu.map { CPUAssessment.gaugeReading(usage: $0.usage, snapshot: $0.snapshot) }
+        case .memory:
+            return live.memory.flatMap(MemoryAssessment.gaugeReading)
+        case .gpu:
+            guard let gpu = live.gpu?.gpu else { return nil }
+            return GPUAssessment.gaugeReading(gpu)
+        case .network, .temperature:
+            return nil
+        }
     }
 
     private func tick() async {
@@ -186,16 +219,19 @@ final class VitalsMonitor: ObservableObject {
             if wantsProcesses { reading.processes = try? processReader.read() }
             if wantsSensors { reading.sensors = sensorReader.read() }
             if wantsGPU {
-                let gpus = try? await gpuReader.gpus()
-                reading.gpu = .some(gpus?.compactMap(\.deviceUtilization).max().map { $0 / 100 })
+                reading.gpus = .some(try? await gpuReader.gpus())
             }
             return reading
         }.value
         guard !Task.isCancelled else { return }
 
         var sample = VitalsSample(time: now)
+        var live = LiveReadings(time: now, memory: reading.memory)
         if let snapshot = reading.snapshot {
-            if let previous = previousCores { sample.cpu = CoreUsage.between(previous, snapshot.cores)?.total }
+            if let previous = previousCores, let usage = CoreUsage.between(previous, snapshot.cores) {
+                sample.cpu = usage.total
+                live.cpu = (usage, snapshot)
+            }
             previousCores = snapshot.cores
             sample.thermal = snapshot.thermal
         }
@@ -214,10 +250,13 @@ final class VitalsMonitor: ObservableObject {
             sample.temperature = sensors.headlineCelsius
             sample.power = sensors.systemWatts
         }
-        if let gpu = reading.gpu {
-            lastGPU = (now, gpu)
+        if let gpus = reading.gpus {
+            // The busiest GPU; nil when none reports utilization (never a made-up 0 %).
+            let busiest = gpus?.filter { $0.deviceUtilization != nil }.max { ($0.deviceUtilization ?? 0) < ($1.deviceUtilization ?? 0) }
+            lastGPU = (now, busiest ?? gpus?.first)
         }
-        sample.gpu = lastGPU?.value
+        sample.gpu = lastGPU?.gpu?.deviceUtilization.map { $0 / 100 }
+        live.gpu = lastGPU
 
         var observed: [ProcessObservation]?
         if let processes = reading.processes {
@@ -232,6 +271,7 @@ final class VitalsMonitor: ObservableObject {
             }
         }
 
+        self.live = live
         latest = sample
 
         if settings.historyEnabled {
