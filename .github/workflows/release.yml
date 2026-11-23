@@ -53,6 +53,14 @@ jobs:
         run: |
           test -n "$HOOK" || { echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. Without it the website cannot learn about this release. Create a Deploy Hook on the macpeek-web Worker in Cloudflare (Settings > Builds > Deploy Hooks, branch main) and save its URL as that secret."; exit 1; }
 
+      - name: Require release notes for stable releases
+        # The update window shows docs/release-notes/<tag>.md, so a stable release cannot ship without it.
+        if: ${{ env.CHANNEL == 'stable' }}
+        run: |
+          F="docs/release-notes/${GITHUB_REF_NAME}.md"
+          test -s "$F" || { echo "::error::$F is missing or empty. Sparkle's update window shows it as the release notes (docs/release.md)."; exit 1; }
+          ! grep -q ']]>' "$F" || { echo "::error::$F contains ']]>', which would end the appcast's CDATA block early."; exit 1; }
+
       - name: Require Sparkle keys
         env:
           SPARKLE_PRIVATE: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
@@ -130,7 +138,20 @@ jobs:
           [[ -n "$BUILD" && "$BUILD" != *-* ]] || { echo "::error::CFBundleVersion '$BUILD' is empty or has a hyphen; Sparkle would ignore what follows it."; exit 1; }
           TITLE="MacPeek"; [ "$CHANNEL" = beta ] && TITLE="MacPeek (preview)"
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/MacPeek-${VERSION}.dmg"
-          NOTES="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          FULL_NOTES="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${GITHUB_REF_NAME}"
+          # Release notes shown inside Sparkle's update window: the tag's own file, or for -beta.N / dry-run tags the
+          # file of the version they lead to. Embedded as markdown (no web page, works offline); the leading "# MacPeek X"
+          # heading is dropped because the window already names the version. No file (a beta before notes exist): no notes.
+          NOTES_FILE="docs/release-notes/${GITHUB_REF_NAME}.md"
+          [ -f "$NOTES_FILE" ] || NOTES_FILE="docs/release-notes/v${VERSION%%-*}.md"
+          DESCRIPTION=""
+          if [ -s "$NOTES_FILE" ]; then
+            ! grep -q ']]>' "$NOTES_FILE" || { echo "::error::$NOTES_FILE contains ']]>', which would end the CDATA block early."; exit 1; }
+            DESCRIPTION="<description sparkle:format=\"markdown\"><![CDATA[$(sed '1{/^# /d;}' "$NOTES_FILE")]]></description>"
+            echo "Release notes: $NOTES_FILE"
+          else
+            echo "::warning::No release notes file for $GITHUB_REF_NAME; the update window will show none."
+          fi
           cat > dist/appcast.xml <<XML
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -142,7 +163,8 @@ jobs:
                 <sparkle:version>${BUILD}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-                <sparkle:releaseNotesLink>${NOTES}</sparkle:releaseNotesLink>
+                ${DESCRIPTION}
+                <sparkle:fullReleaseNotesLink>${FULL_NOTES}</sparkle:fullReleaseNotesLink>
                 <enclosure url="${URL}" length="${LENGTH}" type="application/octet-stream" sparkle:edSignature="${SIG}"/>
               </item>
             </channel>
