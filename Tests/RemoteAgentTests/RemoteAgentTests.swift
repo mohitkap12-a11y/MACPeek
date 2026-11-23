@@ -1046,7 +1046,7 @@ final class AgentTunnelTests: XCTestCase {
                        "What the person allows, so a console on the relay knows to open a tunnel stream; this stream itself carries none")
         let relayRefusal = try await openTunnel(plain, port: 22).body(RemoteError.self)
         XCTAssertEqual(relayRefusal.code, .notPermitted)
-        XCTAssertTrue(relayRefusal.message.contains("Pro"))
+        XCTAssertTrue(relayRefusal.message.contains("Ultra"))
 
         let off = Harness(settings: RemoteSettings(isEnabled: true), tunnelDialer: dialer), offAccount = Account()
         try await join(off, offAccount)

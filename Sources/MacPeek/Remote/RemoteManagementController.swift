@@ -17,7 +17,7 @@ final class RemoteManagementController: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var allowActions: Bool
     @Published private(set) var allowFromAnywhere: Bool
-    /// "Allow tunnels" (Pro): off until the person turns it on, then SSH only until they choose more.
+    /// "Allow tunnels" (MacPeek Remote Pro and Ultra): off until the person turns it on, then SSH only until they choose more.
     @Published private(set) var tunnels: TunnelPolicy
     @Published private(set) var relayStatus: RelayClient.Status = .off
     /// "Add to my account" (AccountJoinFlow), shown in Settings while this Mac is in no account.

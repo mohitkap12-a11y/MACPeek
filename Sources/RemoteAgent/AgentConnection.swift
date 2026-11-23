@@ -186,7 +186,7 @@ public actor AgentConnection {
             return try await refuse(RemoteError(.notPermitted, "This device has view-only access to this Mac, so it cannot open tunnels."), port: port)
         }
         guard routeAllowsTunnels else {
-            return try await refuse(RemoteError(.notPermitted, "Tunnels through MacPeek's relay are part of MacPeek Remote Pro."), port: port)
+            return try await refuse(RemoteError(.notPermitted, "Tunnels through MacPeek's relay are part of MacPeek Remote Ultra."), port: port)
         }
         guard settings.tunnels.allows(port) else {
             let reason = settings.tunnels.isOn

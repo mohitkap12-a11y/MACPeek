@@ -188,7 +188,7 @@ private struct MacPeekRemoteSection: View {
 
     var body: some View {
         Section("MacPeek Remote") {
-            Text("A separate console app for all the Macs you look after: each one live, 30 days of history, alerts with notifications, every Peek and ⌘K search. With Pro, reach them from anywhere through an end-to-end encrypted relay, with SSH and port tunnels.")
+            Text("A separate console app for the Macs you look after, free for up to 3 on your network: each one live, alerts, every Peek and ⌘K search. Pro adds more Macs, 30 days of history, notifications, SSH and port tunnels; Ultra reaches them from anywhere through an end-to-end encrypted relay.")
                 .font(.caption).foregroundStyle(.secondary)
             Button("See what MacPeek Remote does…", action: open)
                 .help("Opens the introduction to MacPeek Remote")
@@ -196,7 +196,7 @@ private struct MacPeekRemoteSection: View {
     }
 }
 
-/// Settings ▸ Remote management ▸ Tunnels (Pro): which ports of this Mac the account's devices may reach through a
+/// Settings ▸ Remote management ▸ Tunnels (MacPeek Remote Pro and Ultra): which ports of this Mac the account's devices may reach through a
 /// tunnel, and the tunnels open now, each with Close.
 private struct TunnelsSection: View {
     @EnvironmentObject private var remote: RemoteManagementController
@@ -218,7 +218,7 @@ private struct TunnelsSection: View {
                     .onAppear { portsText = remote.tunnels.ports.map(String.init).joined(separator: ", ") }
                 if let portsProblem { Text(portsProblem).font(.caption).foregroundStyle(.orange) }
             }
-            Text("Lets your account's devices with View and act reach a port on this Mac, such as its SSH server or a dev server, as if it were on theirs: on the local network, or from anywhere with MacPeek Remote Pro. Tunnels only reach this Mac itself, never other computers on its network. Each one is shown here and in the menu bar while it is open, and recorded below.")
+            Text("Lets your account's devices with View and act reach a port on this Mac, such as its SSH server or a dev server, as if it were on theirs: on the local network with MacPeek Remote Pro, or from anywhere with Ultra. Tunnels only reach this Mac itself, never other computers on its network. Each one is shown here and in the menu bar while it is open, and recorded below.")
                 .font(.caption).foregroundStyle(.secondary)
             if remote.tunnels.allows(TunnelPolicy.sshPort) {
                 Text("SSH needs Remote Login on in System Settings ▸ General ▸ Sharing.")

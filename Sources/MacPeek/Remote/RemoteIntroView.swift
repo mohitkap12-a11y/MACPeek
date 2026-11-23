@@ -9,8 +9,8 @@ private struct RemoteIntroSlide: Identifiable {
     let symbol: String
     let title: String
     let text: String
-    /// Shown beside the title for a feature of MacPeek Remote Pro.
-    var pro = false
+    /// The plan shown beside the title for a feature of a paid plan of MacPeek Remote: "Pro" or "Ultra".
+    var plan: String? = nil
 
     /// The picture for the window's appearance, from the app bundle (scripts/build-app.sh copies Resources/RemoteIntro
     /// there). Nil when MacPeek runs outside a bundle (`swift run`): the slide then shows its symbol instead.
@@ -30,17 +30,19 @@ private struct RemoteIntroSlide: Identifiable {
                          text: "A live strip of CPU, GPU, memory and disk, then Overview, History, Peeks, Device and Management."),
         RemoteIntroSlide(id: "history", symbol: "chart.xyaxis.line",
                          title: "30 days of history",
-                         text: "When each Mac was reachable, and its CPU, GPU, memory, disk and network. Export it as CSV."),
+                         text: "When each Mac was reachable, and its CPU, GPU, memory, disk and network. Export it as CSV. The Free plan shows the last 24 hours.",
+                         plan: "Pro"),
         RemoteIntroSlide(id: "peeks", symbol: "eye",
                          title: "Every Peek, on another Mac",
                          text: "Ports, Processes, GPU, Containers, Models, Bluetooth and more, on a Mac you are not sitting at."),
         RemoteIntroSlide(id: "anywhere", symbol: "globe",
                          title: "Reach your Macs from anywhere",
                          text: "An end-to-end encrypted relay, no open ports. SSH in one click, or tunnel a port to localhost.",
-                         pro: true),
+                         plan: "Ultra"),
         RemoteIntroSlide(id: "alerts", symbol: "bell.badge",
                          title: "Alerts, with notifications",
-                         text: "High CPU, memory pressure, a full disk, heat or a Mac gone offline: a notification when it starts."),
+                         text: "High CPU, memory pressure, a full disk, heat or a Mac gone offline: a notification when it starts.",
+                         plan: "Pro"),
         RemoteIntroSlide(id: "search", symbol: "magnifyingglass",
                          title: "⌘K finds anything",
                          text: "Jump to a Mac, a screen or a Peek, or filter the fleet with cpu>80, port:3000, offline or group:home."),
@@ -147,7 +149,7 @@ struct RemoteIntroView: View {
 
     private var words: some View {
         VStack(spacing: 7) {
-            Text("NEW · PUBLIC BETA")
+            Text("NEW · FREE FOR 3 MACS")
                 .font(.system(size: 10.5, weight: .semibold))
                 .tracking(0.6)
                 .padding(.horizontal, 9)
@@ -158,15 +160,15 @@ struct RemoteIntroView: View {
                 Text(slides[index].title)
                     .font(.system(size: 21, weight: .bold))
                     .multilineTextAlignment(.center)
-                if slides[index].pro {
-                    Text("PRO")
+                if let plan = slides[index].plan {
+                    Text(plan.uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .tracking(0.4)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .foregroundStyle(PeekTheme.muted)
                         .overlay(Capsule().strokeBorder(PeekTheme.border))
-                        .help("Part of MacPeek Remote Pro. The free trial includes it.")
+                        .help("Part of MacPeek Remote \(plan)\(plan == "Pro" ? " and Ultra" : ""). MacPeek Remote is free for up to 3 Macs on your network.")
                 }
             }
             Text(slides[index].text)
@@ -174,7 +176,7 @@ struct RemoteIntroView: View {
                 .foregroundStyle(PeekTheme.muted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("MacPeek stays free on this Mac. MacPeek Remote is a separate console app for all the Macs you look after.")
+            Text("MacPeek stays free on this Mac. MacPeek Remote is a separate console app for the Macs you look after: free for up to 3 on your network.")
                 .font(.system(size: 12))
                 .foregroundStyle(PeekTheme.muted)
                 .multilineTextAlignment(.center)
