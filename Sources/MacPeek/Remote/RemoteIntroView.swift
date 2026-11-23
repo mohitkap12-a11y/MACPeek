@@ -127,7 +127,7 @@ struct RemoteIntroView: View {
 
     private var words: some View {
         VStack(spacing: 7) {
-            Text("NEW · PUBLIC BETA")
+            Text("NEW · FREE FOR 3 MACS")
                 .font(.system(size: 10.5, weight: .semibold))
                 .tracking(0.6)
                 .padding(.horizontal, 9)
@@ -142,7 +142,7 @@ struct RemoteIntroView: View {
                 .foregroundStyle(PeekTheme.muted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("MacPeek stays free on this Mac. MacPeek Remote is a separate console app for all the Macs you look after.")
+            Text("MacPeek stays free on this Mac. MacPeek Remote is a separate console app for the Macs you look after: free for up to 3 on your network.")
                 .font(.system(size: 12))
                 .foregroundStyle(PeekTheme.muted)
                 .multilineTextAlignment(.center)

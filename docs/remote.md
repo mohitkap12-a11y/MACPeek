@@ -130,7 +130,7 @@ and **Remove from account**. Every change is in the activity log.
 port on the Mac's own `127.0.0.1` as if it were on theirs: SSH, a dev server, a database. It is a fourth switch, off by
 default and separate from **Allow actions**: *Off*, *SSH only* (port 22, what turning it on suggests), *SSH and these
 ports*, or *Any port*. A tunnel never connects anywhere but `127.0.0.1`, so it cannot reach other computers on the Mac's
-network. It is part of MacPeek Remote Pro (macpeek-remote docs/PRO.md §5).
+network. Tunnels on the local network are part of MacPeek Remote Pro; through the relay, of Ultra (macpeek-remote docs/PLANS.md).
 
 - **Opening:** on an open session, the console sends `tunnel.open` with `{ "port": 22 }`. The Mac checks the device may
   act, the route carries tunnels (the local network does; a relay stream only when the relay opened it as a tunnel
