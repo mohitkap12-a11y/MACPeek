@@ -9,26 +9,47 @@ private struct RemoteIntroSlide: Identifiable {
     let symbol: String
     let title: String
     let text: String
+    /// Shown beside the title for a feature of MacPeek Remote Pro.
+    var pro = false
 
-    /// The picture, from the app bundle (scripts/build-app.sh copies Resources/RemoteIntro there). Nil when MacPeek
-    /// runs outside a bundle (`swift run`): the slide then shows its symbol instead.
-    var image: NSImage? {
-        Bundle.main.url(forResource: "RemoteIntro-\(id)", withExtension: "png").flatMap { NSImage(contentsOf: $0) }
+    /// The picture for the window's appearance, from the app bundle (scripts/build-app.sh copies Resources/RemoteIntro
+    /// there). Nil when MacPeek runs outside a bundle (`swift run`): the slide then shows its symbol instead.
+    func image(dark: Bool) -> NSImage? {
+        Bundle.main.url(forResource: "RemoteIntro-\(id)\(dark ? "-dark" : "")", withExtension: "heic")
+            .flatMap { NSImage(contentsOf: $0) }
     }
 
+    // Every feature named here is in MacPeek Remote's own source; the pictures are drawn from its redesign mockups
+    // (macpeek-remote docs/mockups/redesign/app.html), with sample Macs.
     static let all = [
         RemoteIntroSlide(id: "overview", symbol: "square.grid.2x2",
                          title: "Every Mac you look after, in one window",
-                         text: "CPU, memory, disk and network for each of your Macs, live, updated every second."),
-        RemoteIntroSlide(id: "dashboard", symbol: "gauge.medium",
+                         text: "CPU, memory and disk for each of your Macs, live. The ones that need a look say why."),
+        RemoteIntroSlide(id: "mac", symbol: "gauge.medium",
                          title: "Open a Mac. See everything, now.",
-                         text: "Each core, memory pressure, every disk, the network and the busiest processes."),
+                         text: "A live strip of CPU, GPU, memory and disk, then Overview, History, Peeks, Device and Management."),
         RemoteIntroSlide(id: "history", symbol: "chart.xyaxis.line",
                          title: "30 days of history",
-                         text: "CPU, memory, network and disk for every Mac, so you can see what happened while you were away."),
+                         text: "When each Mac was reachable, and its CPU, GPU, memory, disk and network. Export it as CSV."),
         RemoteIntroSlide(id: "peeks", symbol: "eye",
                          title: "Every Peek, on another Mac",
-                         text: "The Peeks you use here, on a Mac you are not sitting at: find what holds a port, and free it."),
+                         text: "Ports, Processes, GPU, Containers, Models, Bluetooth and more, on a Mac you are not sitting at."),
+        RemoteIntroSlide(id: "anywhere", symbol: "globe",
+                         title: "Reach your Macs from anywhere",
+                         text: "An end-to-end encrypted relay, no open ports. SSH in one click, or tunnel a port to localhost.",
+                         pro: true),
+        RemoteIntroSlide(id: "alerts", symbol: "bell.badge",
+                         title: "Alerts, with notifications",
+                         text: "High CPU, memory pressure, a full disk, heat or a Mac gone offline: a notification when it starts."),
+        RemoteIntroSlide(id: "search", symbol: "magnifyingglass",
+                         title: "⌘K finds anything",
+                         text: "Jump to a Mac, a screen or a Peek, or filter the fleet with cpu>80, port:3000, offline or group:home."),
+        RemoteIntroSlide(id: "groups", symbol: "folder",
+                         title: "Groups for your Macs",
+                         text: "Sort Macs into groups such as Studio, Build and Home, synced to your other devices."),
+        RemoteIntroSlide(id: "activity", symbol: "clock.arrow.circlepath",
+                         title: "Activity and Logs",
+                         text: "Each port freed, process quit and SSH opened, and how every connection was made and ended."),
     ]
 }
 
@@ -82,7 +103,6 @@ struct RemoteIntroView: View {
         .frame(width: Self.pictureSize.width, height: Self.pictureSize.height, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(PeekTheme.border))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
         .overlay(alignment: .leading) { arrow("chevron.left", label: "Previous picture") { go(to: index - 1) } }
         .overlay(alignment: .trailing) { arrow("chevron.right", label: "Next picture") { go(to: index + 1) } }
         .onHover { hovering = $0 }
@@ -134,9 +154,21 @@ struct RemoteIntroView: View {
                 .padding(.vertical, 3)
                 .foregroundStyle(PeekTheme.pillText)
                 .background(PeekTheme.pillBackground, in: Capsule())
-            Text(slides[index].title)
-                .font(.system(size: 21, weight: .bold))
-                .multilineTextAlignment(.center)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(slides[index].title)
+                    .font(.system(size: 21, weight: .bold))
+                    .multilineTextAlignment(.center)
+                if slides[index].pro {
+                    Text("PRO")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(0.4)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .foregroundStyle(PeekTheme.muted)
+                        .overlay(Capsule().strokeBorder(PeekTheme.border))
+                        .help("Part of MacPeek Remote Pro. The free trial includes it.")
+                }
+            }
             Text(slides[index].text)
                 .font(.system(size: 13.5))
                 .foregroundStyle(PeekTheme.muted)
@@ -183,9 +215,10 @@ struct RemoteIntroView: View {
 /// A slide's picture, or its symbol on a card when the picture is not in the bundle.
 private struct RemoteIntroPicture: View {
     let slide: RemoteIntroSlide
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        if let image = slide.image {
+        if let image = slide.image(dark: colorScheme == .dark) {
             Image(nsImage: image)
                 .resizable()
                 .interpolation(.high)

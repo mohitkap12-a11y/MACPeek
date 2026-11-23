@@ -99,7 +99,7 @@ struct SettingsView: View {
                         LabeledContent("MacPeek Remote", value: remote.isEnabled ? "On" : "Off")
                     }
                     .buttonStyle(.plain)
-                    Text("Off by default. Lets the devices of your MacPeek Remote account see this Mac, and act on it if you allow.")
+                    Text("Off by default. Lets MacPeek Remote, the console app for all your Macs, see this Mac from the devices of your account, and act on it if you allow.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
