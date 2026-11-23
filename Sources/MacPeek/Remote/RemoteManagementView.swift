@@ -9,6 +9,7 @@ import RemoteProtocol
 struct RemoteManagementView: View {
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var remote: RemoteManagementController
+    @EnvironmentObject private var intro: RemoteIntroController
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,6 +17,7 @@ struct RemoteManagementView: View {
                        onBack: { router.go(.settings) })
             Divider()
             Form {
+                MacPeekRemoteSection(open: intro.show)
                 Section {
                     Toggle("Allow MacPeek Remote to connect", isOn: Binding(get: { remote.isEnabled }, set: remote.setEnabled))
                     Text("When on, devices of the MacPeek Remote account you add this Mac to can reach it as \"\(RemoteManagementController.deviceName)\", over an end-to-end encrypted connection. Nobody else can read anything. When off, nothing listens and nothing is advertised.")
@@ -179,6 +181,21 @@ struct RemoteManagementView: View {
         }
     }
 }
+/// What MacPeek Remote is, at the top of Remote management: the console app this switch lets in, what it shows, and
+/// the introduction's pictures.
+private struct MacPeekRemoteSection: View {
+    let open: () -> Void
+
+    var body: some View {
+        Section("MacPeek Remote") {
+            Text("A separate console app for all the Macs you look after: each one live, 30 days of history, alerts with notifications, every Peek and ⌘K search. With Pro, reach them from anywhere through an end-to-end encrypted relay, with SSH and port tunnels.")
+                .font(.caption).foregroundStyle(.secondary)
+            Button("See what MacPeek Remote does…", action: open)
+                .help("Opens the introduction to MacPeek Remote")
+        }
+    }
+}
+
 /// Settings ▸ Remote management ▸ Tunnels (Pro): which ports of this Mac the account's devices may reach through a
 /// tunnel, and the tunnels open now, each with Close.
 private struct TunnelsSection: View {

@@ -72,7 +72,7 @@ else
   echo "warning: Resources/AppIcon.png missing — app will have the generic icon" >&2
 fi
 # The pictures of the MacPeek Remote introduction (Sources/MacPeek/Remote/RemoteIntroView.swift reads them from the bundle).
-cp Resources/RemoteIntro/RemoteIntro-*.png "$APP/Contents/Resources/"
+cp Resources/RemoteIntro/RemoteIntro-*.heic "$APP/Contents/Resources/"
 if [[ -n "${SIGN_IDENTITY:-}" && -z "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
   echo "error: SPARKLE_PUBLIC_ED_KEY is required for a signed/release build (see docs/release.md, Sparkle setup)" >&2
   exit 1
