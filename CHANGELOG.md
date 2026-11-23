@@ -3,6 +3,8 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-11-23
 ### Added
 - **Alerts**, on by default: a process stuck at high CPU (≥ 90 % of a core for 5 min), a process whose memory keeps
   growing (≥ 2 GB in 15 min without giving any back), memory pressure (critical at once, raised for 10 min), swap growing
