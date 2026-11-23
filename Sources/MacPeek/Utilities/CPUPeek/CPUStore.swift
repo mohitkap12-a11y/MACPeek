@@ -70,6 +70,12 @@ final class CPUStore: ObservableObject {
         return LauncherGauge(CPUAssessment.gaugeReading(usage: reading.usage, snapshot: reading.snapshot), tint: .accent)
     }
 
+    /// Another sampler's reading (the menu-bar readout's) taken just now: the baseline for the screen, as a launcher reading
+    /// would be, while the launcher ring shows that sampler's figure instead of reading for itself.
+    func adoptBaseline(_ snapshot: CPUSnapshot, at date: Date) {
+        launcherCores = (date, snapshot.cores)
+    }
+
     func startSampling() {
         stopSampling()
         // A launcher reading from a moment ago is a fine baseline: overall use appears with the first sample.
