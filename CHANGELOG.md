@@ -3,6 +3,14 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Changed
+- **Visual refresh across every screen.** One accent colour everywhere (toggles, sliders, buttons and links no longer
+  take the system accent), neutral utility icons, borderless header buttons, one card style, plain sentence-case
+  section labels, tabular digits for live values, and readable secondary text (nothing below 11 pt). Empty states have
+  one clear next action. Utilities is one grouped list, and Settings groups its sections with navigation rows
+  (Theme moved into General, privacy detail folded away). Settings and Remote management now look the same with Dark as
+  with System. The launcher's theme toggle is gone; Settings has the Theme picker.
+- Deleting history asks for confirmation.
 ### Fixed
 - The launcher's CPU, Memory and GPU rings now show the same reading as the menu-bar readout while it shows that
   metric. They used to take their own reading a moment apart, so the two could differ by a point or two (CPU 11 % in the

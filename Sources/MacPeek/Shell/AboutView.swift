@@ -27,7 +27,7 @@ struct AboutView: View {
                     Button { router.go(.support) } label: { Label("Support MacPeek", systemImage: "heart") }
                         .buttonStyle(.link)
                     Text("Open source under the MIT License. macOS is a trademark of Apple Inc.; MacPeek is not affiliated with Apple.")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)

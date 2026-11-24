@@ -11,9 +11,14 @@ struct UtilityManagerView: View {
             PeekHeader(title: "Utilities", subtitle: "Choose what appears in MacPeek", onBack: { router.back() })
             Divider()
             ScrollView {
-                VStack(spacing: 10) {
-                    ForEach(UtilityCatalog.all) { info in UtilityCard(info: info) }
+                VStack(spacing: 0) {
+                    ForEach(Array(UtilityCatalog.all.enumerated()), id: \.element.id) { index, info in
+                        if index > 0 { Rectangle().fill(PeekTheme.hairline).frame(height: 1).padding(.leading, 58) }
+                        UtilityCard(info: info)
+                    }
                 }
+                .background(PeekTheme.card, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(PeekTheme.border))
                 .padding(12)
             }
         }
@@ -44,23 +49,27 @@ private struct UtilityCard: View {
                 Toggle("Enable \(info.name)", isOn: enabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .tint(PeekTheme.accent)
                     .disabled(!info.isAvailable || registry.anyModule(for: info.id) == nil)
             }
-            DisclosureGroup("Learn more", isExpanded: $expanded) {
+            DisclosureGroup("Details", isExpanded: $expanded) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(info.question).font(.caption).italic().foregroundStyle(.secondary)
                     Text(info.summary).font(.caption)
                     bullets("What it reads", info.reads)
                     bullets("Access it needs", info.permissions)
                     Text("No account, no telemetry, nothing sent to MacPeek. Checks that use the network (NetPeek, DNSPeek, UpdatePeek) run only when you press a button.")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(.top, 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .font(.caption)
+            .padding(.leading, 46)
         }
-        .peekCard()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .accessibilityElement(children: .contain)
     }
 

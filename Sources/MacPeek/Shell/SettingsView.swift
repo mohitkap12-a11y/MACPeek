@@ -9,16 +9,20 @@ struct SettingsView: View {
     @EnvironmentObject private var updater: UpdaterService
     @EnvironmentObject private var remote: RemoteManagementController
     @EnvironmentObject private var monitor: VitalsMonitor
+    @EnvironmentObject private var registry: UtilityRegistry
+    @State private var confirmingClearHistory = false
 
     var body: some View {
         VStack(spacing: 0) {
             PeekHeader(title: "Settings", onBack: { router.back() })
             Divider()
             Form {
-                Section("Utilities") {
-                    Button("Manage utilities…") { router.go(.manage) }
-                }
                 Section("General") {
+                    SettingsNavRow(title: "Utilities", detail: "\(registry.selection.enabledCount) on") { router.go(.manage) }
+                    Picker("Theme", selection: $settings.appearance) {
+                        ForEach(AppearanceMode.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
                     Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: settings.setLaunchAtLogin))
                     if let error = settings.launchAtLoginError {
                         Text(error).font(.caption).foregroundStyle(.orange)
@@ -52,8 +56,8 @@ struct SettingsView: View {
                 Section("History") {
                     Toggle("Keep 24 hours of history", isOn: $settings.historyEnabled)
                     if settings.historyEnabled {
-                        Button("View history…") { router.go(.history) }
-                        Button("Delete history", role: .destructive) { monitor.clearHistory() }
+                        SettingsNavRow(title: "View history") { router.go(.history) }
+                        Button("Delete history…", role: .destructive) { confirmingClearHistory = true }
                     }
                     Text("CPU, memory, network, GPU, temperature and power, averaged every 10 seconds and kept on this Mac for a day. Turning it off deletes it.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -65,12 +69,6 @@ struct SettingsView: View {
                     Toggle("Show notification after kill", isOn: $settings.showNotifications)
                     Text("MacPeek always asks a process to quit gracefully first. Force kill is a separate, explicit step.")
                         .font(.caption).foregroundStyle(.secondary)
-                }
-                Section("Appearance") {
-                    Picker("Theme", selection: $settings.appearance) {
-                        ForEach(AppearanceMode.allCases) { Text($0.label).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
                 }
                 Section("Updates") {
                     if updater.isAvailable {
@@ -93,24 +91,55 @@ struct SettingsView: View {
                     }
                 }
                 Section("Remote management") {
-                    Button {
-                        router.go(.remote)
-                    } label: {
-                        LabeledContent("MacPeek Remote", value: remote.isEnabled ? "On" : "Off")
-                    }
-                    .buttonStyle(.plain)
+                    SettingsNavRow(title: "MacPeek Remote", detail: remote.isEnabled ? "On" : "Off") { router.go(.remote) }
                     Text("Off by default. Lets MacPeek Remote, the console app for all your Macs, see this Mac from the devices of your account, and act on it if you allow.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
+                    Text("No account, no telemetry. Everything MacPeek shows is worked out on this Mac.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup("Network use in detail") {
                     Text("Alerts, the menu-bar readings and history are worked out on this Mac and never sent anywhere, except to devices of this Mac's MacPeek Remote account if you turn Remote management on.")
                         .font(.caption).foregroundStyle(.secondary)
                     Text("No account, no telemetry, nothing sent to MacPeek. The only network use is the update check above (which you can turn off), checks you start yourself (NetPeek, DNSPeek, UpdatePeek) and, only if you turn it on, Remote management, which talks to MacPeek Remote's service to add this Mac to your account and lets your account's devices connect on the local network or through the relay.")
                         .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             .formStyle(.grouped)
+            // Use MacPeek's own background in every appearance; the system's grouped-form grey differs between System and Dark.
+            .scrollContentBackground(.hidden)
+            .background(PeekTheme.ground)
         }
+        .confirmationDialog("Delete the last 24 hours of history?", isPresented: $confirmingClearHistory, titleVisibility: .visible) {
+            Button("Delete history", role: .destructive) { monitor.clearHistory() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This can't be undone. MacPeek starts collecting again straight away.")
+        }
+    }
+}
+
+/// A row that opens another screen: label, optional value, chevron. Replaces a grey bordered button.
+private struct SettingsNavRow: View {
+    let title: String
+    var detail: String? = nil
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer(minLength: 8)
+                if let detail { Text(detail).foregroundStyle(PeekTheme.muted).monospacedDigit() }
+                Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -156,7 +185,7 @@ private struct AlertSettingsSection: View {
                     }
                     Button("Alert about every app again") { settings.alertSettings.ignoredProcesses = [] }
                 }
-                Button("Recent alerts…") { router.go(.alerts) }
+                SettingsNavRow(title: "Recent alerts") { router.go(.alerts) }
             }
             Text("Alerts appear in Notification Center and under the bell in MacPeek. The same alert is not repeated within an hour. Checking costs a few cheap readings every 5 seconds and a process scan every 10.")
                 .font(.caption).foregroundStyle(.secondary)

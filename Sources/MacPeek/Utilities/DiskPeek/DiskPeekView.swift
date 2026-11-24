@@ -39,7 +39,7 @@ private struct StorageSection: View {
                 if let main = store.volumes.first { MainVolumeCard(volume: main) }
                 ForEach(store.volumes.dropFirst().prefix(3)) { volume in VolumeRow(volume: volume) }
                 if store.volumes.count > 4 {
-                    Text("\(store.volumes.count - 4) more drives are not shown.").font(.caption2).foregroundStyle(PeekTheme.muted)
+                    Text("\(store.volumes.count - 4) more drives are not shown.").font(.caption).foregroundStyle(PeekTheme.muted)
                 }
             }
         }

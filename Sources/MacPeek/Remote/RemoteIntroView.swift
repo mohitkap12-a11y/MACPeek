@@ -247,12 +247,7 @@ struct RemoteIntroRow: View {
     var body: some View {
         Button { intro.show() } label: {
             HStack(spacing: 10) {
-                Image(systemName: "display.2")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(PeekTheme.accent)
-                    .frame(width: 30, height: 30)
-                    .background(PeekTheme.pillBackground, in: RoundedRectangle(cornerRadius: 8))
-                    .accessibilityHidden(true)
+                IconTile(symbol: "display.2")
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
                         Text("MacPeek Remote").font(.system(size: 13, weight: .medium))

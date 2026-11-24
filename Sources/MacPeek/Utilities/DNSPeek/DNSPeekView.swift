@@ -82,7 +82,7 @@ private struct ServersCard: View {
             } else {
                 ForEach(Array(configuration.activeServers.enumerated()), id: \.offset) { index, server in
                     HStack(spacing: 6) {
-                        Text("\(index + 1)").font(.caption2.monospacedDigit()).foregroundStyle(.tertiary).frame(width: 14)
+                        Text("\(index + 1)").font(.caption.monospacedDigit()).foregroundStyle(PeekTheme.muted).frame(width: 14)
                         Text(server).font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
                         CopyButton(text: server, label: "Copy \(server)")
                     }
@@ -114,7 +114,7 @@ private struct LookupCard: View {
             }
             .controlSize(.small)
             Text("Sends DNS queries for this name to your resolver and to each server above. Nothing else is sent.")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption).foregroundStyle(PeekTheme.muted)
             ForEach(store.lookupExplanation, id: \.self) { line in
                 Label(line, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
             }
@@ -123,19 +123,19 @@ private struct LookupCard: View {
             if let error = store.lookupError { Text(error).font(.caption).foregroundStyle(.orange) }
             if let lookup = store.lookup {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Through macOS (what apps use)").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    Text("Through macOS (what apps use)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     if lookup.addresses.isEmpty {
                         Text("No answer for \(lookup.name).").font(.caption)
                     } else {
                         ForEach(lookup.addresses, id: \.self) { Text($0).font(.system(size: 11, design: .monospaced)).textSelection(.enabled) }
                         Text("about \(lookup.elapsedMilliseconds) ms, includes starting the tool and may come from a cache")
-                            .font(.caption2).foregroundStyle(.tertiary)
+                            .font(.caption).foregroundStyle(PeekTheme.muted)
                     }
                 }
             }
             if !store.probes.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Each server, asked directly").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    Text("Each server, asked directly").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     ForEach(store.probes) { probe in ProbeRow(probe: probe) }
                 }
             }
@@ -158,7 +158,7 @@ private struct ProbeRow: View {
             case .timedOut:
                 StatusBadge(text: "No response", tone: .warning)
             case .unavailable(let reason):
-                Text(reason).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
         }
         .accessibilityElement(children: .combine)
@@ -177,16 +177,16 @@ private struct OtherResolvers: View {
                     ForEach(domain) { resolver in
                         VStack(alignment: .leading, spacing: 0) {
                             Text(resolver.domain ?? "").font(.caption.weight(.medium))
-                            Text(resolver.nameservers.joined(separator: ", ")).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                            Text(resolver.nameservers.joined(separator: ", ")).font(.caption.monospaced()).foregroundStyle(.secondary)
                         }
                     }
                     if !multicast.isEmpty {
                         Text("\(multicast.count) multicast DNS (mDNS) zones, such as .local, are answered on your local network, not by a server.")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     if !configuration.scopedResolvers.isEmpty {
                         Text("\(configuration.scopedResolvers.count) scoped resolver\(configuration.scopedResolvers.count == 1 ? "" : "s") for queries bound to one interface.")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,7 +211,7 @@ private struct OverridesCard: View {
             HostsSection(entries: overrides.customHostsEntries, note: overrides.hostsNote)
             ResolverSection(files: overrides.resolverFiles, note: overrides.resolverNote)
             Text("The system resolver checks /etc/hosts first, and sends names under a /etc/resolver domain to that file's servers. Command-line tools such as dig and nslookup ignore both.")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption).foregroundStyle(PeekTheme.muted)
         }
         .peekCard()
     }
@@ -241,7 +241,7 @@ private struct HostsRow: View {
             Text(entry.address).font(.caption.monospaced()).frame(width: 120, alignment: .leading)
             Text(entry.names.joined(separator: " ")).font(.caption.monospaced()).textSelection(.enabled)
             Spacer()
-            Text("line \(entry.line)").font(.caption2).foregroundStyle(.tertiary)
+            Text("line \(entry.line)").font(.caption).foregroundStyle(PeekTheme.muted)
         }
     }
 }
@@ -275,7 +275,7 @@ private struct ResolverRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("*.\(file.domain)").font(.caption.monospaced().weight(.medium))
-            Text(detail).font(.caption2).foregroundStyle(.secondary)
+            Text(detail).font(.caption).foregroundStyle(.secondary)
         }
     }
 }

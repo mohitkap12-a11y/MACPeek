@@ -48,6 +48,9 @@ struct RemoteManagementView: View {
                 }
             }
             .formStyle(.grouped)
+            // Use MacPeek's own background in every appearance; the system's grouped-form grey differs between System and Dark.
+            .scrollContentBackground(.hidden)
+            .background(PeekTheme.ground)
         }
     }
 
@@ -172,7 +175,7 @@ struct RemoteManagementView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.event).font(.caption)
                     Text("\(entry.actor) · \(entry.outcome) · \(entry.date.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             if !snapshot.log.isIntact {

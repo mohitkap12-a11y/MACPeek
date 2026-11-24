@@ -128,7 +128,7 @@ private struct BlockerCard: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(finding.basis == .verified ? "Reported by macOS" : "Likely (inference)")
-                            .font(.caption2.weight(.semibold))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Text(finding.text).font(.caption).textSelection(.enabled)
                     }
@@ -211,12 +211,12 @@ private struct HistoryList: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             if !history.wakeRequests.isEmpty {
-                Text("Scheduled wake requests when the log last recorded them").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                Text("Scheduled wake requests when the log last recorded them").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 ForEach(history.wakeRequests) { request in
                     VStack(alignment: .leading, spacing: 0) {
                         Text("\(request.process) · \(request.request)").font(.caption)
                         Text(Self.detail(of: request))
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
                 }
             }
@@ -228,10 +228,10 @@ private struct HistoryList: View {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 4) {
                             StatusBadge(text: event.kind.rawValue, tone: event.kind == .sleep ? .neutral : .info)
-                            if let source = event.powerSource { Text(source).font(.caption2).foregroundStyle(.secondary) }
+                            if let source = event.powerSource { Text(source).font(.caption).foregroundStyle(.secondary) }
                         }
                         if let reason = event.reason {
-                            Text(reason).font(.caption2).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
+                            Text(reason).font(.caption).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                         }
                     }
                     Spacer(minLength: 0)

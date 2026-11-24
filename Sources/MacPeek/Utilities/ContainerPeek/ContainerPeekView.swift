@@ -86,7 +86,7 @@ private struct EngineSection: View {
                 } else if containers.isEmpty {
                     Text("No containers match.").font(.caption).foregroundStyle(.secondary)
                 }
-                if let note = engine.statsNote { Text(note).font(.caption2).foregroundStyle(.orange) }
+                if let note = engine.statsNote { Text(note).font(.caption).foregroundStyle(.orange) }
                 VStack(spacing: 0) {
                     ForEach(containers) { container in
                         ContainerRow(container: container, engine: engine.kind)
@@ -131,7 +131,7 @@ private struct ContainerRow: View {
                 if let stats = container.stats {
                     VStack(alignment: .trailing, spacing: 0) {
                         if let cpu = stats.cpuPercent { Text(String(format: "%.1f%% CPU", cpu)).font(.caption.monospacedDigit()) }
-                        if let memory = stats.memoryUsedBytes { Text(ByteCountText.memory(memory)).font(.caption2.monospacedDigit()).foregroundStyle(.secondary) }
+                        if let memory = stats.memoryUsedBytes { Text(ByteCountText.memory(memory)).font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
                     }
                 }
                 StatusBadge(text: container.state.label, tone: tone)
@@ -238,7 +238,7 @@ private struct ContainerRow: View {
                 }
                 .frame(maxHeight: 160)
                 Text("Logs can contain secrets. They are shown here only and never saved or logged.")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(PeekTheme.muted)
             }
         }
     }
@@ -278,11 +278,11 @@ private struct VMSection: View {
                         }
                     }
                     Text("What macOS counts for the processes that run VMs (including Docker Desktop's, OrbStack's and Colima's), whichever tool started them. CPU is percent of one core, sampled.")
-                        .font(.caption2).foregroundStyle(.tertiary)
+                        .font(.caption).foregroundStyle(PeekTheme.muted)
                 }
                 .peekCard()
             }
-            ForEach(snapshot.notes, id: \.self) { note in Text(note).font(.caption2).foregroundStyle(.orange) }
+            ForEach(snapshot.notes, id: \.self) { note in Text(note).font(.caption).foregroundStyle(.orange) }
         }
     }
 

@@ -106,7 +106,7 @@ private struct WiFiCard: View {
                     KeyValueRows(rows: rows(wifi))
                     if wifi.networkName == nil {
                         Text("macOS hides the network name from apps that do not have Location access. MacPeek does not ask for it.")
-                            .font(.caption2).foregroundStyle(.tertiary)
+                            .font(.caption).foregroundStyle(PeekTheme.muted)
                     }
                 } else {
                     Text("Wi-Fi is not connected to a network.").font(.caption).foregroundStyle(.secondary)
@@ -145,7 +145,7 @@ private struct ChecksCard: View {
                     .disabled(store.isChecking || !snapshot.hasDefaultRoute)
             }
             Text("Sends three pings to your router and to up to three of your DNS servers (IPv4 only). DNS servers are often outside your home network, such as a public resolver, so those pings do leave it.")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption).foregroundStyle(PeekTheme.muted)
             if let error = store.checksError { Text(error).font(.caption).foregroundStyle(.orange) }
             ForEach(Array(store.findings.enumerated()), id: \.offset) { _, finding in
                 HStack(alignment: .top, spacing: 6) {
@@ -155,7 +155,7 @@ private struct ChecksCard: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(finding.basis == .verified ? "Measured or reported" : "Likely (inference)")
-                            .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                            .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         Text(finding.text).font(.caption).textSelection(.enabled)
                     }
                 }
@@ -177,7 +177,7 @@ private struct OtherInterfaces: View {
                         VStack(alignment: .leading, spacing: 0) {
                             Text("\(interface.displayName) (\(interface.name))").font(.caption.weight(.medium))
                             Text((interface.ipv4Addresses + interface.ipv6Addresses).joined(separator: ", "))
-                                .font(.caption2.monospaced()).foregroundStyle(.secondary)
+                                .font(.caption.monospaced()).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -205,7 +205,7 @@ private struct ExtrasCard: View {
                 }
                 KeyValueRows(rows: rows(extras))
                 if let proxy = extras.proxy, proxy.isAnyEnabled, !proxy.exceptions.isEmpty {
-                    Text("Bypassed: " + proxy.exceptions.joined(separator: ", ")).font(.caption2).foregroundStyle(.secondary).lineLimit(3)
+                    Text("Bypassed: " + proxy.exceptions.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                 }
                 if !extras.vpns.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
@@ -225,7 +225,7 @@ private struct ExtrasCard: View {
                             ForEach(Array(networks.enumerated()), id: \.offset) { index, name in
                                 Text("\(index + 1). \(name)").font(.caption).textSelection(.enabled)
                             }
-                            Text("Most preferred first. macOS joins the first one in range.").font(.caption2).foregroundStyle(.tertiary)
+                            Text("Most preferred first. macOS joins the first one in range.").font(.caption).foregroundStyle(PeekTheme.muted)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 4)

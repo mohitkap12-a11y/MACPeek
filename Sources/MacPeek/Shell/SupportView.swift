@@ -46,7 +46,7 @@ struct SupportView: View {
                 Image(systemName: symbol).font(.system(size: 16)).frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.system(size: 13, weight: .semibold))
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.secondary)

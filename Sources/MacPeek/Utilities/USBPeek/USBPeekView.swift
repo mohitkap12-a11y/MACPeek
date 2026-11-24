@@ -48,7 +48,7 @@ struct USBPeekView: View {
         let idle = snapshot.buses.count - populated.count
         if idle > 0 {
             Text("\(idle) other USB controller\(idle == 1 ? "" : "s") with nothing connected")
-                .font(.caption).foregroundStyle(.tertiary)
+                .font(.caption).foregroundStyle(PeekTheme.muted)
                 .padding(.horizontal, 12).padding(.vertical, 6)
         }
 
@@ -72,7 +72,7 @@ struct USBPeekView: View {
             ForEach(report.connected) { device in BluetoothRow(device: device) }
             if !report.paired.isEmpty {
                 Text("Paired, not connected: " + report.paired.map(\.name).joined(separator: ", "))
-                    .font(.caption).foregroundStyle(.tertiary).lineLimit(3)
+                    .font(.caption).foregroundStyle(PeekTheme.muted).lineLimit(3)
                     .padding(.horizontal, 12).padding(.vertical, 6)
             }
         } else {
@@ -111,7 +111,7 @@ private struct SectionHeader: View {
     var body: some View {
         HStack(spacing: 6) {
             Text(title).font(.caption.weight(.semibold))
-            if let detail { Text(detail).font(.caption2).foregroundStyle(.tertiary).lineLimit(1) }
+            if let detail { Text(detail).font(.caption).foregroundStyle(PeekTheme.muted).lineLimit(1) }
             Spacer()
         }
         .padding(.horizontal, 12)

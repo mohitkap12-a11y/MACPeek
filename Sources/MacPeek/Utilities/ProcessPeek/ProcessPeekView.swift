@@ -296,10 +296,10 @@ private struct ProcessDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Label(origin.summary, systemImage: "arrow.triangle.branch").font(.caption)
                 if let path = origin.details?.plistPath {
-                    Text(path).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(path).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 if origin.details?.keepAlive == true {
-                    Text("launchd keeps this job alive: ending the process starts it again.").font(.caption2).foregroundStyle(.orange)
+                    Text("launchd keeps this job alive: ending the process starts it again.").font(.caption).foregroundStyle(.orange)
                 }
             }
         }
@@ -340,9 +340,9 @@ private struct ProcessDetailView: View {
                     StatusBadge(text: advice.headline, tone: advice.level == .likelySafe ? .good : (advice.level == .caution ? .warning : .neutral))
                 }
                 ForEach(advice.reasons, id: \.self) { reason in
-                    Text("• " + reason).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text("• " + reason).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Text("Inference from what MacPeek can see, not a guarantee.").font(.caption2).foregroundStyle(.tertiary)
+                Text("Inference from what MacPeek can see, not a guarantee.").font(.caption).foregroundStyle(PeekTheme.muted)
             }
         }
     }
@@ -355,7 +355,7 @@ private struct ProcessDetailView: View {
             }
             Text(entry.executable).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
             Text("As the process was launched. It can be a relative path or a name the process chose, not always the binary's real location.")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption).foregroundStyle(PeekTheme.muted)
         }
     }
 
@@ -374,7 +374,7 @@ private struct ProcessDetailView: View {
                 if let line = details.commandLine {
                     Text(line).font(.caption.monospaced()).textSelection(.enabled).lineLimit(6)
                     Text("Command lines can contain secrets passed as arguments. It is shown here only and never logged.")
-                        .font(.caption2).foregroundStyle(.tertiary)
+                        .font(.caption).foregroundStyle(PeekTheme.muted)
                 } else {
                     Text("Not available (the process may have exited).").font(.caption).foregroundStyle(.secondary)
                 }
@@ -411,7 +411,7 @@ private struct ProcessDetailView: View {
                         Button("\(child.name) (PID \(child.pid))") { store.jump(to: child.pid) }
                             .buttonStyle(.link).font(.caption)
                     }
-                    if kids.count > 12 { Text("and \(kids.count - 12) more").font(.caption2).foregroundStyle(.tertiary) }
+                    if kids.count > 12 { Text("and \(kids.count - 12) more").font(.caption).foregroundStyle(PeekTheme.muted) }
                 }
             }
         }

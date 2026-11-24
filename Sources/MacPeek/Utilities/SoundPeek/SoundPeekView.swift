@@ -101,7 +101,7 @@ private struct DirectionSection: View {
             Text(direction.label.uppercased()).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .accessibilityAddTraits(.isHeader)
             if devices.isEmpty {
-                Text("No \(direction.label.lowercased()) devices").font(.caption).foregroundStyle(.tertiary)
+                Text("No \(direction.label.lowercased()) devices").font(.caption).foregroundStyle(PeekTheme.muted)
             }
             ForEach(devices) { device in
                 DeviceCard(device: device, name: names[device.id] ?? device.name, direction: direction,
@@ -161,12 +161,12 @@ private struct DeviceCard: View {
             get: { store.displayedVolume(device, direction: direction) },
             set: { store.setVolume($0, device: device, direction: direction) })
         return HStack(spacing: 8) {
-            Image(systemName: "speaker.fill").font(.caption2).foregroundStyle(.secondary).accessibilityHidden(true)
+            Image(systemName: "speaker.fill").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
             Slider(value: value, in: 0...1)
                 .controlSize(.small)
                 .accessibilityLabel("Volume for \(name)")
                 .accessibilityValue("\(Int((store.displayedVolume(device, direction: direction) * 100).rounded())) percent")
-            Image(systemName: "speaker.wave.3.fill").font(.caption2).foregroundStyle(.secondary).accessibilityHidden(true)
+            Image(systemName: "speaker.wave.3.fill").font(.caption).foregroundStyle(.secondary).accessibilityHidden(true)
             Text("\(Int((store.displayedVolume(device, direction: direction) * 100).rounded()))%")
                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 .frame(width: 36, alignment: .trailing)

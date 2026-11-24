@@ -73,13 +73,13 @@ private struct RunnerCard: View {
                             tone: runner.models.isEmpty ? .neutral : .info)
             }
             ForEach(runner.models) { model in ModelRow(model: model) }
-            if let note = runner.note { Text(note).font(.caption2).foregroundStyle(.secondary) }
+            if let note = runner.note { Text(note).font(.caption).foregroundStyle(.secondary) }
             DisclosureGroup("Processes (\(runner.processes.count))", isExpanded: $showProcesses) {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(runner.processes) { process in
                         HStack {
                             Text("\(process.name) · \(process.role)").font(.caption).lineLimit(1)
-                            Text("PID \(process.pid)").font(.caption2).foregroundStyle(.secondary)
+                            Text("PID \(process.pid)").font(.caption).foregroundStyle(.secondary)
                             Spacer()
                             Text(process.memoryFootprintBytes.map(ByteCountText.memory) ?? "—").font(.caption.monospacedDigit())
                         }
@@ -112,7 +112,7 @@ private struct ModelRow: View {
                 if let split = model.processorSplit { StatusBadge(text: split, tone: .info) }
             }
             let details = detailText
-            if !details.isEmpty { Text(details).font(.caption2).foregroundStyle(.secondary) }
+            if !details.isEmpty { Text(details).font(.caption).foregroundStyle(.secondary) }
         }
         .padding(8)
         .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
