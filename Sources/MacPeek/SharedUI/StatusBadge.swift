@@ -11,13 +11,13 @@ struct StatusBadge: View {
         case .neutral: return .secondary
         case .good: return .green
         case .warning: return .orange
-        case .info: return .accentColor
+        case .info: return PeekTheme.accent
         }
     }
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(color)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)

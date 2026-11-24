@@ -23,7 +23,7 @@ struct CPUPeekView: View {
                 ProgressView().controlSize(.small)
                 Text("Taking a first sample…").font(.caption).foregroundStyle(PeekTheme.muted)
                 Text("CPU use appears after the second sample, a couple of seconds from now.")
-                    .font(.caption2).foregroundStyle(PeekTheme.muted)
+                    .font(.caption).foregroundStyle(PeekTheme.muted)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let usage = store.usage {

@@ -64,11 +64,11 @@ struct FileHolderRowView: View {
                 ForEach(Array(holder.files.prefix(8).enumerated()), id: \.offset) { _, file in
                     VStack(alignment: .leading, spacing: 0) {
                         Text(file.path).font(.system(size: 11, design: .monospaced)).lineLimit(1).truncationMode(.middle)
-                        Text(describe(file)).font(.caption2).foregroundStyle(.secondary)
+                        Text(describe(file)).font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 if holder.files.count > 8 {
-                    Text("and \(holder.files.count - 8) more").font(.caption2).foregroundStyle(.secondary)
+                    Text("and \(holder.files.count - 8) more").font(.caption).foregroundStyle(.secondary)
                 }
             }
 

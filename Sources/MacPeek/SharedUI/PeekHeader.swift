@@ -27,7 +27,7 @@ struct PeekHeader<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(title).font(.system(size: 14, weight: .semibold))
                 if let subtitle {
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .accessibilityElement(children: .combine)

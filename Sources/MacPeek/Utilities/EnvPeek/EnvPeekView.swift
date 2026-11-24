@@ -85,7 +85,7 @@ struct EnvPeekView: View {
             Spacer()
             Text("Values stay on screen and are never logged")
         }
-        .font(.caption2)
+        .font(.caption)
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -168,11 +168,11 @@ private struct PathEntries: View {
         VStack(alignment: .leading, spacing: 3) {
             ForEach(entries) { entry in
                 HStack(alignment: .top, spacing: 6) {
-                    Text("\(entry.index + 1)").font(.caption2.monospacedDigit()).foregroundStyle(.tertiary).frame(width: 18, alignment: .trailing)
+                    Text("\(entry.index + 1)").font(.caption.monospacedDigit()).foregroundStyle(PeekTheme.muted).frame(width: 18, alignment: .trailing)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(entry.path.isEmpty ? "(empty)" : entry.path).font(.system(size: 11, design: .monospaced)).lineLimit(2)
                         if !entry.notes.isEmpty {
-                            Text(entry.notes.joined(separator: " · ")).font(.caption2).foregroundStyle(.orange)
+                            Text(entry.notes.joined(separator: " · ")).font(.caption).foregroundStyle(.orange)
                         }
                     }
                 }

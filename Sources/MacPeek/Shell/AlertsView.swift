@@ -23,7 +23,8 @@ struct AlertsView: View {
                            actionTitle: "Turn on alerts", action: { settings.alertsEnabled = true })
             } else if monitor.recentAlerts.isEmpty {
                 EmptyState(symbol: "checkmark.circle", title: "Nothing to report",
-                           message: "MacPeek watches for processes stuck at high CPU, memory that keeps growing, memory pressure, swap, sustained network traffic and heat, and tells you here and in Notification Center.")
+                           message: "MacPeek watches for processes stuck at high CPU, memory that keeps growing, memory pressure, swap, sustained network traffic and heat, and tells you here and in Notification Center.",
+                           actionTitle: "Alert settings", action: { router.go(.settings) })
             } else {
                 ScrollView {
                     VStack(spacing: 8) {

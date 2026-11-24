@@ -14,7 +14,7 @@ struct PeekRow: View {
                 IconTile(symbol: icon)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).font(.system(size: 13, weight: .medium))
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(subtitle).font(.caption).monospacedDigit().foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
@@ -58,9 +58,9 @@ struct IconTile: View {
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: size * 0.5, weight: .medium))
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(Color.primary.opacity(0.78))
             .frame(width: size, height: size)
-            .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: size * 0.28))
+            .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: size * 0.28))
             .accessibilityHidden(true)
     }
 }

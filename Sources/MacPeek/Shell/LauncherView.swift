@@ -11,7 +11,6 @@ struct LauncherView: View {
     @EnvironmentObject private var router: UtilityRouter
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var monitor: VitalsMonitor
-    @Environment(\.colorScheme) private var colorScheme
     @State private var query = ""
 
     /// The listed utilities that match the search, in catalog order.
@@ -72,10 +71,8 @@ struct LauncherView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(PeekTheme.accent)
-                .frame(width: 32, height: 32)
-                .themedCard(radius: 9, padding: 0)
                 .accessibilityHidden(true)
             Text("MacPeek").font(.system(size: 17, weight: .semibold))
             Spacer()
@@ -85,10 +82,6 @@ struct LauncherView: View {
             HeaderButton(symbol: monitor.hasUnseenAlerts ? "bell.badge" : "bell",
                          label: monitor.hasUnseenAlerts ? "Alerts, new" : "Alerts",
                          tint: monitor.hasUnseenAlerts ? PeekTheme.red : nil) { router.go(.alerts) }
-            HeaderButton(symbol: colorScheme == .dark ? "sun.max" : "moon",
-                         label: colorScheme == .dark ? "Switch to light appearance" : "Switch to dark appearance") {
-                settings.appearance = colorScheme == .dark ? .light : .dark
-            }
             HeaderButton(symbol: "gearshape", label: "Settings") { router.go(.settings) }
         }
         .padding(.horizontal, 14)
@@ -100,14 +93,12 @@ struct LauncherView: View {
         HStack {
             Button("Manage utilities") { router.go(.manage) }
             Spacer()
-            Text("\(registry.selection.enabledCount) of \(registry.selection.availableCount) on")
-            Spacer()
             Button { router.go(.support) } label: { Label("Support", systemImage: "heart") }
                 .help("Support MacPeek")
             Button("About") { router.go(.about) }
         }
         .buttonStyle(.borderless)
-        .font(.caption)
+        .font(.system(size: 12))
         .foregroundStyle(PeekTheme.muted)
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
@@ -120,17 +111,19 @@ private struct HeaderButton: View {
     let label: String
     var tint: Color? = nil
     let action: () -> Void
+    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(tint ?? Color.primary)
+                .foregroundStyle(tint ?? PeekTheme.muted)
                 .frame(width: 32, height: 32)
-                .themedCard(radius: 9, padding: 0)
+                .background(Color.primary.opacity(hovering ? 0.08 : 0), in: RoundedRectangle(cornerRadius: 8))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
         .help(label)
         .accessibilityLabel(label)
     }
@@ -161,7 +154,7 @@ private struct GaugeTile: View {
                     Text(gauge?.value ?? "–").font(.system(size: compact ? 13 : 15, weight: .semibold)).monospacedDigit()
                 }
                 .frame(width: compact ? 54 : 70, height: compact ? 54 : 70)
-                Text(title).font(.system(size: compact ? 12.5 : 14, weight: .medium))
+                Text(title).font(.system(size: compact ? 12.5 : 14, weight: .semibold))
                 Text(gauge?.caption ?? " ")
                     .font(.system(size: compact ? 9.5 : 11.5, design: .monospaced))
                     .foregroundStyle(PeekTheme.muted)

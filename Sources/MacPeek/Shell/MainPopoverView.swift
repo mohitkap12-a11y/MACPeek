@@ -23,6 +23,7 @@ struct MainPopoverView: View {
         .frame(width: 380, height: 640)
         .background(Color.peekBackground)
         .preferredColorScheme(settings.appearance.colorScheme)
+        .tint(PeekTheme.accent)
         .animation(.easeOut(duration: 0.12), value: router.route)
     }
 }

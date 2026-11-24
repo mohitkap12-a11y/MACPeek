@@ -53,12 +53,11 @@ struct SectionLabel: View {
 
     var body: some View {
         HStack {
-            Text(text.uppercased())
+            Text(text)
             Spacer(minLength: 4)
-            if let trailing { Text(trailing.uppercased()) }
+            if let trailing { Text(trailing).monospacedDigit() }
         }
-        .font(.system(size: 10.5, weight: .semibold))
-        .tracking(0.6)
+        .font(.system(size: 11.5, weight: .semibold))
         .foregroundStyle(PeekTheme.muted)
         .accessibilityAddTraits(.isHeader)
     }
@@ -70,7 +69,7 @@ struct SampledPill: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10.5, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .foregroundStyle(PeekTheme.pillText)

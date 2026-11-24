@@ -131,7 +131,7 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
         // While the menu bar shows CPU, memory or GPU, their launcher rings show the menu bar's own reading, so the two
         // never disagree (two readings over different moments differ by a point or two).
         let sharedMetrics: [String: MenuBarMetric] = ["cpupeek": .cpu, "memorypeek": .memory, "gpupeek": .gpu]
-        let ringTints: [String: LauncherGauge.Tint] = ["cpupeek": .accent, "memorypeek": .amber, "gpupeek": .accent]
+        let ringTints: [String: LauncherGauge.Tint] = ["cpupeek": .accent, "memorypeek": .accent, "gpupeek": .accent]
         registry.sharedGauge = { [weak monitor] id in
             guard let metric = sharedMetrics[id], let reading = monitor?.gaugeReading(for: metric) else { return nil }
             return LauncherGauge(reading, tint: ringTints[id] ?? .accent)

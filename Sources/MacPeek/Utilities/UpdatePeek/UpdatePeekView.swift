@@ -17,12 +17,12 @@ struct UpdatePeekView: View {
                 PackageManagerCard(source: .npm, state: store.npm) { store.checkNpm() }
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Other apps", systemImage: "questionmark.app").font(.caption.weight(.semibold))
-                    Text(UpdateStatusService.otherAppsNotice).font(.caption2).foregroundStyle(.secondary)
+                    Text(UpdateStatusService.otherAppsNotice).font(.caption).foregroundStyle(.secondary)
                 }
                 .peekCard()
                 .accessibilityElement(children: .combine)
                 Text("MacPeek never installs macOS or Homebrew updates, and updates an npm package only when you press Update and confirm. Check now and npm's Check contact a server; nothing runs until you press a button.")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                    .font(.caption).foregroundStyle(PeekTheme.muted)
             }
             .padding(12)
         }
@@ -63,7 +63,7 @@ private struct MacOSCard: View {
                 if state == .checking { ProgressView().controlSize(.small) }
             }
             .controlSize(.small)
-            Text(UpdateStatusService.osUpdateNotice).font(.caption2).foregroundStyle(.tertiary)
+            Text(UpdateStatusService.osUpdateNotice).font(.caption).foregroundStyle(PeekTheme.muted)
         }
         .peekCard()
         .accessibilityElement(children: .contain)
@@ -92,7 +92,7 @@ private struct MacOSCard: View {
             Text("Asking Apple's update servers… this can take a minute.").font(.caption).foregroundStyle(.secondary)
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-            Text("Press Check now to try again.").font(.caption2).foregroundStyle(.secondary)
+            Text("Press Check now to try again.").font(.caption).foregroundStyle(.secondary)
         case .known(let report):
             if report.updates.isEmpty {
                 Text("macOS reports no new software available.").font(.caption)
@@ -104,7 +104,7 @@ private struct MacOSCard: View {
                     Divider().opacity(0.4)
                 }
             }
-            Text(sourceNote(report)).font(.caption2).foregroundStyle(.secondary)
+            Text(sourceNote(report)).font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -129,7 +129,7 @@ private struct MacOSUpdateRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(update.name).font(.system(size: 12, weight: .medium)).lineLimit(2)
                 if let version = update.version {
-                    Text("Version \(version)").font(.caption2).foregroundStyle(.secondary)
+                    Text("Version \(version)").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 4)
@@ -198,7 +198,7 @@ private struct PackageManagerCard: View {
                 Text(source.waiting).font(.caption).foregroundStyle(.secondary)
             case .failed(let message, let retryable):
                 Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-                if retryable { Text("Press Check to try again.").font(.caption2).foregroundStyle(.secondary) }
+                if retryable { Text("Press Check to try again.").font(.caption).foregroundStyle(.secondary) }
             case .checked(let report):
                 Report(source: source, report: report)
             }
@@ -232,7 +232,7 @@ private struct Report: View {
                 }
             }
             Text(source.sourceNote(checkedAt: report.checkedAt.formatted(date: .omitted, time: .standard)))
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 }
@@ -251,12 +251,12 @@ private struct PackageRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(package.name).font(.system(size: 12, weight: .medium)).lineLimit(1)
                     Text("\(package.kind.label) · \(package.installedLabel) → \(package.currentVersion)")
-                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 4)
                 if isUpdating {
                     ProgressView().controlSize(.small)
-                    Text("Updating…").font(.caption2).foregroundStyle(.secondary)
+                    Text("Updating…").font(.caption).foregroundStyle(.secondary)
                 } else {
                     StatusBadge(text: "Update available", tone: .warning)
                     if UpdateActions.canUpdateInMacPeek(package, among: known) {
@@ -277,7 +277,7 @@ private struct PackageRow: View {
                     CopyButton(text: command, label: "Copy the sudo command to update \(package.name)")
                 }
                 Text("It installs the package's scripts with administrator rights, so use it only for packages you trust. Fixing npm's folder permissions, or using a Node install your user owns, avoids needing it.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.secondary)
             }
             if confirming {
                 KillConfirmationView(
