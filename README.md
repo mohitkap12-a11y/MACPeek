@@ -140,5 +140,41 @@ EnvPeek, NetPeek, DNSPeek, SoundPeek, UpdatePeek, GPUPeek, ContainerPeek, ModelP
 capture from a MacBook), then global search, accessibility and localization
 polish → signed releases.
 
+## MacPeek Remote
+MacPeek watches one Mac. **MacPeek Remote** is the companion console for all of them: a Mac app that shows every Mac you
+look after in one window, with the same Peeks, live. It talks to the agent that is already inside MacPeek (off by
+default, see [Privacy](#privacy)), so there is nothing else to install on the managed Macs.
+
+<p align="center">
+  <img src="docs/remote/demo.gif" alt="MacPeek Remote: fleet overview, per-Mac history, live GPUPeek and MemoryPeek" width="760">
+</p>
+
+- **Fleet overview**: every Mac, its CPU, memory, disk, network and uptime, and whether anything needs attention
+- **Live Peeks, per Mac**: CPUPeek, GPUPeek, MemoryPeek, DiskPeek, NetPeek, DNSPeek, PortPeek, ProcessPeek and more, refreshed every second
+- **History**: reachability and CPU, GPU, memory, disk, network and disk-activity charts, from live to 1 month, with CSV export
+- **Alerts**: CPU, temperature, memory pressure, disk full and a Mac going offline, with thresholds you set
+- **Actions with the same safety checks as on the Mac**: quit a process or free a port, with confirmation, behind a separate *Allow actions* switch on each Mac
+- **SSH and port tunnels** to a Mac, and **Mac groups** to organise a fleet
+- **End-to-end encrypted** between your devices and your Macs; Remote keeps an activity log of what you did
+
+| Overview | History | GPUPeek | MemoryPeek |
+|---|---|---|---|
+| <img src="docs/remote/overview.png" width="200" alt="MacPeek Remote overview"> | <img src="docs/remote/history.png" width="200" alt="Per-Mac history"> | <img src="docs/remote/gpupeek.png" width="200" alt="GPUPeek in Remote"> | <img src="docs/remote/memorypeek.png" width="200" alt="MemoryPeek in Remote"> |
+
+### Plans
+Every account starts on **Free**: no card and no end date.
+
+| | **Free** | **Pro** | **Ultra** |
+|---|---|---|---|
+| Price | $0 | $6/month or $48/year | $12/month or $96/year |
+| Macs | 3 | 5 included, then $1/month each | 5 included, then $2/month each |
+| Reach | Local network | Local network | Local network and from anywhere (relay) |
+| History in the console | Last 24 hours | 30 days | 30 days |
+| Alerts | In the app | In the app and notifications | In the app and notifications |
+| SSH and port tunnels | | Local network | Local network and through the relay |
+
+MacPeek itself stays free, open source and account-free; only the Remote console has plans. Prices are those in the
+Remote plan as of November 2026 and may change. Details: [docs/remote.md](docs/remote.md) and [macpeekapp.com](https://www.macpeekapp.com).
+
 ## Contributing / License
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Licensed under the [MIT License](LICENSE).
