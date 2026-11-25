@@ -8,7 +8,23 @@ inspecting and understanding the things macOS makes unnecessarily difficult to s
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/mohitkap12-a11y)
 
-> Screenshot/GIF: add `docs/screenshot.png` after the first build.
+<p align="center">
+  <img src="docs/demo.gif" alt="MacPeek menu-bar launcher: CPUPeek, MemoryPeek, GPUPeek, 24-hour history, Manage utilities and Settings" width="406">
+</p>
+
+## Screenshots
+
+| Launcher | CPUPeek | MemoryPeek |
+|---|---|---|
+| <img src="docs/screenshots/launcher.png" width="260" alt="Launcher"> | <img src="docs/screenshots/cpupeek.png" width="260" alt="CPUPeek"> | <img src="docs/screenshots/memorypeek.png" width="260" alt="MemoryPeek"> |
+
+| GPUPeek | 24-hour history | Manage utilities |
+|---|---|---|
+| <img src="docs/screenshots/gpupeek.png" width="260" alt="GPUPeek"> | <img src="docs/screenshots/history.png" width="260" alt="24-hour history"> | <img src="docs/screenshots/manage-utilities.png" width="260" alt="Manage utilities"> |
+
+| Settings | Light mode |
+|---|---|
+| <img src="docs/screenshots/settings.png" width="260" alt="Settings"> | <img src="docs/screenshots/launcher-light.png" width="260" alt="Launcher in light mode"> |
 
 ## Utilities
 
