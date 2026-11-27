@@ -31,6 +31,10 @@ struct RemoteManagementView: View {
                         Toggle("Allow actions", isOn: Binding(get: { remote.allowActions }, set: remote.setAllowActions))
                         Text("Lets your account's devices free ports, quit processes and manage containers, with the same safety checks as on this Mac. Off until you turn it on. Every action is recorded below.")
                             .font(.caption).foregroundStyle(.secondary)
+                        Toggle("Allow installs", isOn: Binding(get: { remote.allowInstalls }, set: remote.setAllowInstalls))
+                            .disabled(!remote.allowActions && !remote.allowInstalls)
+                        Text("Lets your account's devices install Homebrew packages, Ollama models and container images on this Mac in batches. Installs run as you and never use an administrator password. Needs \"Allow actions\". Every install is recorded below.")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     if let membership = snapshot.membership {
                         accountSection(membership, snapshot: snapshot)

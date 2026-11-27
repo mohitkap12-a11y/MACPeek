@@ -7,6 +7,7 @@ import DNSPeekKit
 import RemoteCrypto
 import RemoteProtocol
 @testable import RemoteAgent
+import BatchKit
 
 // MARK: Fakes
 
@@ -100,9 +101,10 @@ private final class Harness {
     let macIdentity = DeviceIdentity(name: "Studio")
 
     init(settings: RemoteSettings = RemoteSettings(isEnabled: true, allowActions: true),
-         tunnelDialer: TunnelDialing = UnavailableTunnelDialer()) {
+         tunnelDialer: TunnelDialing = UnavailableTunnelDialer(), batches: BatchRunner = BatchRunner(installer: InstantInstaller())) {
         state = AgentState(identity: macIdentity, store: store, settings: settings)
-        handler = RequestHandler(readers: readers(), actions: actions(counter), agentVersion: "0.3.0", tunnelDialer: tunnelDialer)
+        handler = RequestHandler(readers: readers(), actions: actions(counter), agentVersion: "0.3.0", tunnelDialer: tunnelDialer,
+                                 batches: batches)
     }
 
     func connect(allowsTunnels: Bool = true, viaRelay: Bool = false) async -> (AgentConnection, Outbox) {
@@ -332,6 +334,49 @@ final class AgentSessionTests: XCTestCase {
         XCTAssertEqual(entries.last?.outcome, "Done")
         let refused = await viewOnly.state.log.entries.last
         XCTAssertEqual(refused?.outcome, "Refused: This device has view-only access to this Mac.")
+    }
+
+    func testBatchesNeedTheRoleAndBothSwitches() async throws {
+        let plan = BatchPlan(id: "batch-1", name: "Dev box", items: [BatchItem(kind: .brewFormula, name: "uv")])
+        let start = try Envelope.request(.batchStart, body: plan)
+
+        // Preflight is a read: allowed even while installs are off.
+        let off = Harness(), offAccount = Account()
+        try await join(off, offAccount)
+        let offDevice = try await accountDevice(off, offAccount)
+        let checks = try unwrapped(try await offDevice.send(try Envelope.request(.batchPreflight, body: plan))).body([BatchItemCheck].self)
+        XCTAssertEqual(checks.map(\.verdict), [.ready])
+        let capabilities = try unwrapped(try await offDevice.send(.request(.capabilities))).body(Capabilities.self)
+        XCTAssertEqual(capabilities.installsAllowed, false)
+        let refused = try unwrapped(try await offDevice.send(start)).body(RemoteError.self)
+        XCTAssertEqual(refused.code, .actionsDisabled)
+        XCTAssertEqual(refused.message, "Installs are turned off on this Mac.")
+
+        let viewOnly = Harness(settings: RemoteSettings(isEnabled: true, allowActions: true, allowInstalls: true)), viewAccount = Account()
+        try await join(viewOnly, viewAccount, roleCap: .viewOnly)
+        let viewer = try await accountDevice(viewOnly, viewAccount)
+        let viewerCode = try unwrapped(try await viewer.send(start)).body(RemoteError.self).code
+        XCTAssertEqual(viewerCode, .notPermitted)
+
+        let runner = BatchRunner(installer: InstantInstaller())
+        let allowed = Harness(settings: RemoteSettings(isEnabled: true, allowActions: true, allowInstalls: true), batches: runner)
+        let allowedAccount = Account()
+        try await join(allowed, allowedAccount)
+        let device = try await accountDevice(allowed, allowedAccount)
+        let started = try unwrapped(try await device.send(start)).body(BatchStatus.self)
+        XCTAssertEqual(started.id, "batch-1")
+        XCTAssertEqual(started.startedBy, "Laptop")
+        await runner.idle()
+        let status = try unwrapped(try await device.send(try Envelope.request(.batchStatus, body: BatchStatusRequest(id: "batch-1"))))
+            .body([BatchStatus].self)
+        XCTAssertEqual(status.first?.phase, .finished)
+        XCTAssertEqual(status.first?.items.first?.phase, .done)
+
+        // The start and each item are in the Mac's activity log, attributed to the device.
+        try await eventually("the item is logged") { await allowed.state.log.entries.last?.event.hasPrefix("Install") == true }
+        let events = await allowed.state.log.entries.suffix(2).map { "\($0.actor): \($0.event) → \($0.outcome)" }
+        XCTAssertEqual(events, ["Laptop: Start batch “Dev box” (1 item) → Started",
+                                "Laptop: Install Homebrew uv (batch “Dev box”) → Done"])
     }
 
     func testReplayedFrameEndsTheSession() async throws {
@@ -1091,4 +1136,10 @@ final class AgentTunnelTests: XCTestCase {
         let events = await harness.state.log.entries.map(\.event)
         XCTAssertTrue(events.contains("Set Allow tunnels to Off"))
     }
+}
+
+/// Installs everything at once, without running anything.
+private struct InstantInstaller: BatchInstalling {
+    func check(_ items: [BatchItem]) async -> [BatchItemCheck] { items.map { BatchItemCheck(item: $0, verdict: .ready) } }
+    func install(_ item: BatchItem, progress: @escaping @Sendable (Double?, String?) async -> Void) async -> BatchInstallResult { .done }
 }

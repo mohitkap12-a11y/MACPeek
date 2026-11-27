@@ -148,6 +148,38 @@ network. Tunnels on the local network are part of MacPeek Remote Pro; through th
 - `agent.capabilities` lists `tunnel.open`, and `tunnels`: what this console may reach (`off` for a viewer), the same
   on every route. Through the relay each tunnel opens its own tunnel stream; a plain stream's `tunnel.open` is refused.
 
+## Batches
+
+**Allow installs** (Settings ▸ Remote management ▸ Permissions) lets devices of the account with View and act install
+software on the Mac in batches. It is off by default and needs **Allow actions** too. Version 1 installs only what needs
+no administrator password, and runs every tool as the person MacPeek runs as: never `sudo`, never a shell, input closed so
+nothing can wait for a password.
+
+| Item | What the Mac runs |
+|---|---|
+| Homebrew formula | `brew install --formula <name>`, then `brew services start <name>` when asked (e.g. Ollama) |
+| Homebrew cask | `brew install --cask <name>`; a cask that needs an administrator password fails with an explanation |
+| Ollama model | `POST /api/pull` to the Mac's own Ollama on `127.0.0.1:11434`, with progress |
+| Container image | `docker pull <reference>` (or Podman) |
+
+Homebrew runs with `HOMEBREW_NO_AUTO_UPDATE`, `HOMEBREW_NO_ANALYTICS`, `HOMEBREW_NO_ENV_HINTS` and
+`HOMEBREW_NO_INSTALL_CLEANUP`. Every name is checked before a command is built (`BatchValidation`): it must start with a
+letter or digit, so it can never be read as an option. A batch holds at most 20 items.
+
+| Operation | Kind | Body → answer |
+|---|---|---|
+| `batch.preflight` | read | `BatchPlan` → `[BatchItemCheck]`: ready, already installed, or blocked with the reason (tool missing, Ollama not running, not enough memory, not enough disk with 5 GB kept free). Installs nothing |
+| `batch.status` | read | `BatchStatusRequest { id? }` → `[BatchStatus]`: the last 20 batches, or one |
+| `batch.start` | action | `BatchPlan` → `BatchStatus`. Answers at once; the console follows it with `batch.status`. Starting the same id again returns the batch already known |
+| `batch.cancel` | action | `BatchStatusRequest { id }` → `[BatchStatus]`: stops the item running now and starts no more |
+
+Batches run one at a time, in the order they arrive; each item is checked again just before it runs. The start, and each
+item's outcome (done, skipped with the reason, failed, cancelled), are in the activity log, attributed to the device.
+`agent.capabilities` lists the operations and `installsAllowed` for this console. A refusal because the switch is off is
+`actionsDisabled` with the message "Installs are turned off on this Mac.", so older consoles understand it. Downloads come
+from Homebrew, Ollama's registry or the image registry directly, on every route: the relay carries only the requests
+and answers.
+
 ## Activity log
 `~/Library/Application Support/MacPeek/Remote/activity-log.json` (mode 0600), newest 500 entries. Each entry stores the
 SHA-256 of its fields and the previous entry's hash, so an edited, removed or reordered entry is shown as tampered. It

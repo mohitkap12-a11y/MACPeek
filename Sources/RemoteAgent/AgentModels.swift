@@ -14,23 +14,30 @@ public struct RemoteSettings: Equatable, Codable, Sendable {
     /// "Allow tunnels": which ports of this Mac's `127.0.0.1` devices of the account (with View and act) may open a
     /// tunnel to. Off by default and separate from `allowActions`; turning it on starts with SSH only.
     public var tunnels: TunnelPolicy
+    /// "Allow installs": devices of the account (with View and act) may install Homebrew packages, Ollama models and
+    /// container images in batches. Off by default and needs `allowActions` too. Never uses an administrator password.
+    public var allowInstalls: Bool
 
-    public init(isEnabled: Bool = false, allowActions: Bool = false, allowFromAnywhere: Bool = false, tunnels: TunnelPolicy = .off) {
+    public init(isEnabled: Bool = false, allowActions: Bool = false, allowFromAnywhere: Bool = false, tunnels: TunnelPolicy = .off,
+                allowInstalls: Bool = false) {
         self.isEnabled = isEnabled
         self.allowActions = allowActions
         self.allowFromAnywhere = allowFromAnywhere
         self.tunnels = tunnels
+        self.allowInstalls = allowInstalls
     }
 
-    private enum CodingKeys: String, CodingKey { case isEnabled, allowActions, allowFromAnywhere, tunnels }
+    private enum CodingKeys: String, CodingKey { case isEnabled, allowActions, allowFromAnywhere, tunnels, allowInstalls }
 
-    // Settings saved before the relay existed have no allowFromAnywhere, and before tunnels no tunnels: both stay off.
+    // Settings saved before the relay existed have no allowFromAnywhere, before tunnels no tunnels, and before batches no
+    // allowInstalls: all stay off.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
         allowActions = try container.decode(Bool.self, forKey: .allowActions)
         allowFromAnywhere = try container.decodeIfPresent(Bool.self, forKey: .allowFromAnywhere) ?? false
         tunnels = try container.decodeIfPresent(TunnelPolicy.self, forKey: .tunnels) ?? .off
+        allowInstalls = try container.decodeIfPresent(Bool.self, forKey: .allowInstalls) ?? false
     }
 }
 

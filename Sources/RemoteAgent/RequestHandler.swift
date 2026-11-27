@@ -15,6 +15,7 @@ import ModelPeekKit
 import RemoteProtocol
 import VitalsKit
 import SensorsKit
+import BatchKit
 
 /// Where the agent's answers come from. `system()` uses the same readers as MacPeek's own utilities; tests pass fakes.
 public struct AgentReaders: Sendable {
@@ -192,13 +193,16 @@ public struct RequestHandler: Sendable {
     let agentVersion: String
     /// Connects tunnels to this Mac's 127.0.0.1 (`tunnel.open`, answered by `AgentConnection`).
     let tunnelDialer: TunnelDialing
+    /// Installs batches (`batch.*`), one at a time, shared by every console.
+    let batches: BatchRunner
 
     public init(readers: AgentReaders, actions: AgentActions, agentVersion: String,
-                tunnelDialer: TunnelDialing = RequestHandler.systemTunnelDialer) {
+                tunnelDialer: TunnelDialing = RequestHandler.systemTunnelDialer, batches: BatchRunner = BatchRunner()) {
         self.readers = readers
         self.actions = actions
         self.agentVersion = agentVersion
         self.tunnelDialer = tunnelDialer
+        self.batches = batches
     }
 
     /// Network.framework on macOS; none where it is missing.
@@ -210,7 +214,9 @@ public struct RequestHandler: Sendable {
         #endif
     }
 
-    public func handle(_ request: Envelope, from console: PairedConsole, settings: RemoteSettings) async
+    /// `log` writes to the activity log later, for what finishes after the answer (each item of a batch).
+    public func handle(_ request: Envelope, from console: PairedConsole, settings: RemoteSettings,
+                       log: @escaping BatchRunner.Log = { _, _ in }) async
         -> (response: Envelope, record: ActionRecord?) {
         guard request.version == RemoteProtocolVersion.current else {
             return (request.failure(RemoteError(.unsupportedVersion, "This Mac speaks protocol version \(RemoteProtocolVersion.current).")), nil)
@@ -219,7 +225,7 @@ public struct RequestHandler: Sendable {
             return (request.failure(RemoteError(.invalidPayload, "Only requests are accepted.")), nil)
         }
         if request.operation.isAction {
-            return await act(request, console: console, settings: settings)
+            return await act(request, console: console, settings: settings, log: log)
         }
         do {
             return (try await read(request, console: console, settings: settings), nil)
@@ -238,7 +244,8 @@ public struct RequestHandler: Sendable {
                                                      device: readers.device(),
                                                      operations: Operation.reads + Operation.actions + Operation.workspace + Operation.tunnels,
                                                      actionsAllowed: settings.allowActions && console.role.mayAct,
-                                                     tunnels: console.role.mayAct ? settings.tunnels : .off))
+                                                     tunnels: console.role.mayAct ? settings.tunnels : .off,
+                                                     installsAllowed: settings.allowActions && settings.allowInstalls && console.role.mayAct))
         case .deviceInfo: return try request.response(readers.device())
         case .cpuTopology: return try request.response(readers.cpuTopology())
         case .cpuSnapshot: return try request.response(try readers.cpuSnapshot())
@@ -274,6 +281,13 @@ public struct RequestHandler: Sendable {
             let count = min(max(body.maximumCount, 1), 1_440)
             return try request.response(try await readers.vitalsHistory(body.since, count))
         case .alerts: return try request.response(try await readers.alerts())
+        case .batchPreflight:
+            let plan = try request.body(BatchPlan.self)
+            if let problem = BatchValidation.problem(with: plan) { throw RemoteError(.invalidPayload, problem) }
+            return try request.response(await batches.check(plan))
+        case .batchStatus:
+            let body = try request.body(BatchStatusRequest.self)
+            return try request.response(await batches.status(id: body.id))
         case .processOrigin, .processOpenFiles:
             let body = try request.body(ProcessRequest.self)
             // Answer only about the process the console saw: the PID must still belong to it (same start time).
@@ -291,7 +305,8 @@ public struct RequestHandler: Sendable {
         }
     }
 
-    private func act(_ request: Envelope, console: PairedConsole, settings: RemoteSettings) async -> (response: Envelope, record: ActionRecord?) {
+    private func act(_ request: Envelope, console: PairedConsole, settings: RemoteSettings,
+                     log: @escaping BatchRunner.Log) async -> (response: Envelope, record: ActionRecord?) {
         let event: String
         do {
             switch request.operation {
@@ -358,6 +373,31 @@ public struct RequestHandler: Sendable {
                 case .failed(let reason): outcome = "Failed: \(reason)"
                 }
                 return (try request.response(ContainerRunResponse(result: result)), ActionRecord(event: event, outcome: outcome))
+            case .batchStart:
+                let plan = try request.body(BatchPlan.self)
+                event = "Start batch “\(plan.name)” (\(plan.items.count) \(plan.items.count == 1 ? "item" : "items"))"
+                if let refusal = refusal(console: console, settings: settings) ?? installRefusal(settings) {
+                    return (request.failure(refusal), ActionRecord(event: event, outcome: "Refused: \(refusal.message)"))
+                }
+                if let problem = BatchValidation.problem(with: plan) {
+                    return (request.failure(RemoteError(.invalidPayload, problem)), ActionRecord(event: event, outcome: "Refused: \(problem)"))
+                }
+                // Logged before the batch starts, so the log never shows an item before its batch.
+                await log(event, "Started")
+                let status = await batches.start(plan, by: console.identity.name, log: log)
+                return (try request.response(status), nil)
+            case .batchCancel:
+                let body = try request.body(BatchStatusRequest.self)
+                guard let id = body.id else { throw RemoteError(.invalidPayload, "Say which batch to stop.") }
+                let known = await batches.status(id: id).first
+                event = "Stop batch “\(known?.name ?? id)”"
+                if let refusal = refusal(console: console, settings: settings) {
+                    return (request.failure(refusal), ActionRecord(event: event, outcome: "Refused: \(refusal.message)"))
+                }
+                guard let status = await batches.cancel(id: id) else {
+                    return (request.failure(RemoteError(.unavailable, "This Mac has no batch with that id.")), nil)
+                }
+                return (try request.response([status]), ActionRecord(event: event, outcome: "Done"))
             default:
                 return (request.failure(RemoteError(.unknownOperation, "This Mac does not know \(request.operation.rawValue).")), nil)
             }
@@ -372,6 +412,11 @@ public struct RequestHandler: Sendable {
         guard console.role.mayAct else { return RemoteError(.notPermitted, "This device has view-only access to this Mac.") }
         guard settings.allowActions else { return RemoteError(.actionsDisabled, "Actions are turned off on this Mac.") }
         return nil
+    }
+
+    /// Installing needs "Allow installs" on top of "Allow actions". Older consoles know only `actionsDisabled`.
+    private func installRefusal(_ settings: RemoteSettings) -> RemoteError? {
+        settings.allowInstalls ? nil : RemoteError(.actionsDisabled, "Installs are turned off on this Mac.")
     }
 
     static func outcome(_ result: ContainerActionResult) -> String {

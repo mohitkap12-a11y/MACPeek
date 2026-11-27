@@ -31,7 +31,10 @@ credit reporters who want it once a fix ships (responsible disclosure).
   user may signal. It never prompts for, stores or requests administrator rights. When npm is refused permission to
   update a global package, UpdatePeek only **shows** a `sudo npm install -g <name>@latest` command to copy into
   Terminal; it never runs `sudo`, and the password is typed in Terminal, never into MacPeek.
-- **Installs only on explicit confirmation.** UpdatePeek never installs macOS or Homebrew updates. It runs
+- **Installs only on explicit confirmation.** UpdatePeek never installs macOS or Homebrew updates. **Allow installs**
+  (Remote management, off by default, needs **Allow actions**) lets the account's devices install Homebrew packages,
+  Ollama models and container images in batches: run as your user, never with `sudo` or a shell, every name strictly
+  validated, every install recorded in the activity log ([docs/remote.md](docs/remote.md#batches)). It runs
   `npm install -g <name>@latest` only for one package you pressed **Update** on and confirmed, with a strictly validated
   package name (so it cannot become an option or a second argument). Installing runs the package's own install scripts,
   as it would in Terminal.

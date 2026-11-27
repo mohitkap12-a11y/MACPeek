@@ -17,6 +17,8 @@ final class RemoteManagementController: ObservableObject {
     @Published private(set) var isEnabled: Bool
     @Published private(set) var allowActions: Bool
     @Published private(set) var allowFromAnywhere: Bool
+    /// "Allow installs": batches of Homebrew packages, Ollama models and container images from the account's devices.
+    @Published private(set) var allowInstalls: Bool
     /// "Allow tunnels" (MacPeek Remote Pro and Ultra): off until the person turns it on, then SSH only until they choose more.
     @Published private(set) var tunnels: TunnelPolicy
     @Published private(set) var relayStatus: RelayClient.Status = .off
@@ -45,12 +47,14 @@ final class RemoteManagementController: ObservableObject {
         isEnabled = defaults.bool(forKey: "remote.enabled")
         allowActions = defaults.bool(forKey: "remote.allowActions")
         allowFromAnywhere = defaults.bool(forKey: "remote.allowFromAnywhere")
+        allowInstalls = defaults.bool(forKey: "remote.allowInstalls")
         tunnels = defaults.data(forKey: "remote.tunnels").flatMap { try? JSONDecoder().decode(TunnelPolicy.self, from: $0) } ?? .off
         if isEnabled { start() }
     }
 
     var settings: RemoteSettings {
-        RemoteSettings(isEnabled: isEnabled, allowActions: allowActions, allowFromAnywhere: allowFromAnywhere, tunnels: tunnels)
+        RemoteSettings(isEnabled: isEnabled, allowActions: allowActions, allowFromAnywhere: allowFromAnywhere, tunnels: tunnels,
+                       allowInstalls: allowInstalls)
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -63,6 +67,14 @@ final class RemoteManagementController: ObservableObject {
     func setAllowActions(_ allow: Bool) {
         allowActions = allow
         defaults.set(allow, forKey: "remote.allowActions")
+        let settings = settings
+        Task { await state?.update(settings) }
+    }
+
+    func setAllowInstalls(_ allow: Bool) {
+        guard allow != allowInstalls else { return }
+        allowInstalls = allow
+        defaults.set(allow, forKey: "remote.allowInstalls")
         let settings = settings
         Task { await state?.update(settings) }
     }
