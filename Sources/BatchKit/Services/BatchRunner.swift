@@ -81,7 +81,6 @@ public actor BatchRunner {
     private func run(_ id: String) async {
         guard let (plan, log) = plans[id], index(of: id) != nil else { return }
         update(id) { $0.phase = .running }
-        let checks = await installer.check(plan.items)
         for (position, item) in plan.items.enumerated() {
             if cancelled.contains(id) {
                 update(id) { status in
@@ -89,7 +88,8 @@ public actor BatchRunner {
                 }
                 break
             }
-            let check = position < checks.count ? checks[position] : BatchItemCheck(item: item, verdict: .ready)
+            // Checked right before it runs: earlier items may have used disk space or installed what this needs.
+            let check = await installer.recheck(item)
             switch check.verdict {
             case .installed:
                 setItem(id, position, .skipped, detail: "Already installed")

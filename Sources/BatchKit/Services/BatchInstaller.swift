@@ -6,8 +6,16 @@ public protocol BatchInstalling: Sendable {
     /// Whether each item can be installed here, in order. An item may count on earlier ones (Ollama started by a
     /// Homebrew item before its models).
     func check(_ items: [BatchItem]) async -> [BatchItemCheck]
+    /// Checks one item again just before it installs, against the Mac as it is now (free disk shrinks as a batch runs).
+    func recheck(_ item: BatchItem) async -> BatchItemCheck
     /// Installs one item that `check` found ready.
     func install(_ item: BatchItem, progress: @escaping @Sendable (Double?, String?) async -> Void) async -> BatchInstallResult
+}
+
+public extension BatchInstalling {
+    func recheck(_ item: BatchItem) async -> BatchItemCheck {
+        await check([item]).first ?? BatchItemCheck(item: item, verdict: .ready)
+    }
 }
 
 public enum BatchInstallResult: Equatable, Sendable {
@@ -83,6 +91,21 @@ public struct SystemBatchInstaller: BatchInstalling {
     // MARK: Check
 
     public func check(_ items: [BatchItem]) async -> [BatchItemCheck] {
+        await check(items, ollamaMayStart: false)
+    }
+
+    /// Just before installing, Ollama may still be starting from an earlier item: installing waits for it, so only the
+    /// Mac's resources and what is already installed decide.
+    public func recheck(_ item: BatchItem) async -> BatchItemCheck {
+        await check([item], ollamaMayStart: true).first ?? BatchItemCheck(item: item, verdict: .ready)
+    }
+
+    /// Whether `bytes` fit in `free` with `diskMargin` left over, without overflowing on any value a console sends.
+    static func fits(_ bytes: UInt64, in free: UInt64) -> Bool {
+        free >= diskMargin && free - diskMargin >= bytes
+    }
+
+    private func check(_ items: [BatchItem], ollamaMayStart: Bool) async -> [BatchItemCheck] {
         var results: [BatchItemCheck] = []
         var freeDisk = environment.freeDiskBytes()
         let memory = environment.memoryBytes()
@@ -113,7 +136,7 @@ public struct SystemBatchInstaller: BatchInstalling {
                 let startedEarlier = results.contains {
                     $0.item.kind == .brewFormula && $0.item.name == "ollama" && $0.item.startService && $0.verdict != .blocked
                 }
-                guard ollamaRunning == true || startedEarlier else {
+                guard ollamaRunning == true || startedEarlier || ollamaMayStart else {
                     verdict = BatchItemCheck(item: item, verdict: .blocked,
                                              reason: "Ollama isn't running. Add Homebrew “ollama” with Start as a service before it.")
                     break
@@ -130,7 +153,7 @@ public struct SystemBatchInstaller: BatchInstalling {
                 verdict = BatchItemCheck(item: item, verdict: output?.status == 0 ? .installed : .ready)
             }
             if verdict.verdict == .ready, item.requirements.diskBytes > 0, let free = freeDisk {
-                guard free >= item.requirements.diskBytes + Self.diskMargin else {
+                guard Self.fits(item.requirements.diskBytes, in: free) else {
                     results.append(BatchItemCheck(item: item, verdict: .blocked,
                                                   reason: "Needs \(Self.gb(item.requirements.diskBytes)) of disk space; \(Self.gb(free)) is free."))
                     continue

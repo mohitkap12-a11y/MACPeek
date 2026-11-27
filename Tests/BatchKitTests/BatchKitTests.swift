@@ -160,6 +160,29 @@ final class BatchInstallerTests: XCTestCase {
         XCTAssertEqual(three.last?.verdict, .blocked)
     }
 
+    func testHugeRequirementsAreBlockedNotACrash() async {
+        let checks = await installer(RuleRunner([])).check([
+            BatchItem(kind: .ollamaModel, name: "a:1", requirements: BatchRequirements(diskBytes: .max)),
+            BatchItem(kind: .ollamaModel, name: "b:1", requirements: BatchRequirements(memoryBytes: .max)),
+        ])
+        XCTAssertEqual(checks.map(\.verdict), [.blocked, .blocked])
+        XCTAssertFalse(SystemBatchInstaller.fits(1, in: 1_000))
+        XCTAssertTrue(SystemBatchInstaller.fits(1, in: SystemBatchInstaller.diskMargin + 1))
+    }
+
+    func testRecheckUsesTheDiskFreeNowAndLetsOllamaStillBeStarting() async {
+        let disk = Counter(400 * gb)
+        let env = BatchEnvironment(brew: environment().brew, docker: environment().docker, podman: environment().podman,
+                                   memoryBytes: { 64 * gb }, freeDiskBytes: { disk.value })
+        let item = BatchItem(kind: .ollamaModel, name: "llama3.3:70b", requirements: BatchRequirements(diskBytes: 43 * gb))
+        let subject = installer(RuleRunner([]), ollama: FakeOllama(running: false), env: env)
+        let first = await subject.recheck(item)
+        XCTAssertEqual(first.verdict, .ready)
+        disk.value = 20 * gb
+        let second = await subject.recheck(item)
+        XCTAssertEqual(second.verdict, .blocked)
+    }
+
     func testBrewRunsDirectlyWithoutAutoUpdateAndStartsTheService() async {
         let runner = RuleRunner([(["install"], ok), (["services", "start"], ok)])
         let result = await installer(runner).install(BatchItem(kind: .brewFormula, name: "ollama", startService: true)) { _, _ in }
@@ -353,5 +376,15 @@ final class BatchRunnerTests: XCTestCase {
         status.items[1].phase = .running
         status.items[1].progress = 0.5
         XCTAssertEqual(status.progress, 0.75)
+    }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value: UInt64
+    init(_ value: UInt64) { _value = value }
+    var value: UInt64 {
+        get { lock.lock(); defer { lock.unlock() }; return _value }
+        set { lock.lock(); _value = newValue; lock.unlock() }
     }
 }
