@@ -3,6 +3,8 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-11-28
 ### Changed
 - **Visual refresh across every screen.** One accent colour everywhere (toggles, sliders, buttons and links no longer
   take the system accent), neutral utility icons, borderless header buttons, one card style, plain sentence-case
@@ -11,12 +13,8 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   (Theme moved into General, privacy detail folded away). Settings and Remote management now look the same with Dark as
   with System. The launcher's theme toggle is gone; Settings has the Theme picker.
 - Deleting history asks for confirmation.
-### Fixed
-- The launcher's CPU, Memory and GPU rings now show the same reading as the menu-bar readout while it shows that
-  metric. They used to take their own reading a moment apart, so the two could differ by a point or two (CPU 11 % in the
-  menu bar, 12 % in the ring).
+- - CI runs once per pull request, when it is marked **Ready for review** (and on later pushes), not on drafts.
 
-## [0.5.0] - 2026-11-23
 ### Added
 - **Alerts**, on by default: a process stuck at high CPU (≥ 90 % of a core for 5 min), a process whose memory keeps
   growing (≥ 2 GB in 15 min without giving any back), memory pressure (critical at once, raised for 10 min), swap growing
@@ -43,10 +41,10 @@ All notable changes are documented here. Format based on [Keep a Changelog](http
   alerts the Mac raised) for MacPeek Remote. All three are reads; history and alerts are unavailable while the person has
   them off.
 
-### Changed
-- CI runs once per pull request, when it is marked **Ready for review** (and on later pushes), not on drafts.
-
 ### Fixed
+- The launcher's CPU, Memory and GPU rings now show the same reading as the menu-bar readout while it shows that
+  metric. They used to take their own reading a moment apart, so the two could differ by a point or two (CPU 11 % in the
+  menu bar, 12 % in the ring).
 - **Remote management: a Mac set up from another Mac gets its own identity.** Migration Assistant and Time Machine
   restores copied the old Mac's Remote management key, so MacPeek Remote saw both Macs as one and adding the new one
   only refreshed the old one's entry. The key is now tied to the Mac's hardware: a copied key is replaced at launch,
