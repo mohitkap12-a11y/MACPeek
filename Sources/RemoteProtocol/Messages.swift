@@ -4,6 +4,7 @@ import PortPeekKit
 import ProcessPeekKit
 import ContainerPeekKit
 import RemoteCrypto
+import BatchKit
 
 /// What a MacPeek Remote console and a Mac's agent say to each other. Version 2 (accounts) only adds: the envelope
 /// stays at version 1, so older consoles and agents keep talking, and an agent that speaks version 2 lists the
@@ -80,13 +81,24 @@ public struct Operation: RawRepresentable, Hashable, Codable, Sendable, Expressi
     /// Turns this connection into a tunnel to a TCP port on the Mac's own `127.0.0.1` (Pro, macpeek-remote docs/PRO.md §5).
     /// Body: `TunnelOpenRequest`. After its answer the connection carries only that port's bytes (`TunnelFraming`).
     public static let tunnelOpen: Operation = "tunnel.open"
+    /// Whether each item of a batch can be installed on this Mac (Homebrew, Ollama, container images). Body: `BatchPlan`;
+    /// answer: `[BatchItemCheck]`. Reads only: nothing is installed.
+    public static let batchPreflight: Operation = "batch.preflight"
+    /// The batches this Mac ran recently, or one of them. Body: `BatchStatusRequest`; answer: `[BatchStatus]`.
+    public static let batchStatus: Operation = "batch.status"
+    /// Starts installing a batch; answers at once with its `BatchStatus`. Body: `BatchPlan`. Gated by "Allow actions"
+    /// and "Allow installs".
+    public static let batchStart: Operation = "batch.start"
+    /// Stops a batch. Body: `BatchStatusRequest` with an id; answer: `[BatchStatus]`.
+    public static let batchCancel: Operation = "batch.cancel"
 
     public static let reads: [Operation] = [.capabilities, .deviceInfo, .cpuTopology, .cpuSnapshot, .memoryStats, .processUsage,
                                             .diskVolumes, .networkCounters, .networkSnapshot, .ports, .processes, .sleep,
                                             .dnsConfiguration, .dnsProbe, .networkExtras, .dnsOverrides, .bluetooth,
                                             .processOrigin, .processOpenFiles, .containers, .images, .gpu, .models, .diskIO,
-                                            .sensors, .vitalsHistory, .alerts]
-    public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction, .imageRemove, .containerRun]
+                                            .sensors, .vitalsHistory, .alerts, .batchPreflight, .batchStatus]
+    public static let actions: [Operation] = [.freePort, .quitProcess, .containerAction, .imageRemove, .containerRun,
+                                              .batchStart, .batchCancel]
     /// Account operations: answered by the agent itself, not gated by "Allow actions".
     public static let workspace: [Operation] = [.workspaceStatus, .workspaceRevocations]
     /// Answered by the connection itself, which becomes the tunnel; gated by "Allow tunnels", not "Allow actions".
@@ -173,15 +185,19 @@ public struct Capabilities: Equatable, Codable, Sendable {
     /// The same on every route: through the relay each tunnel is its own tunnel stream, which the relay opens only for
     /// Pro and the trial. Nil from a MacPeek without tunnels.
     public let tunnels: TunnelPolicy?
+    /// Whether this console may start batches right now: it may act, and the person at the Mac allows actions and
+    /// installs. Nil from a MacPeek without batches.
+    public let installsAllowed: Bool?
 
     public init(protocolVersion: Int = RemoteProtocolVersion.current, agentVersion: String, device: DeviceInfo,
-                operations: [Operation], actionsAllowed: Bool, tunnels: TunnelPolicy? = nil) {
+                operations: [Operation], actionsAllowed: Bool, tunnels: TunnelPolicy? = nil, installsAllowed: Bool? = nil) {
         self.protocolVersion = protocolVersion
         self.agentVersion = agentVersion
         self.device = device
         self.operations = operations
         self.actionsAllowed = actionsAllowed
         self.tunnels = tunnels
+        self.installsAllowed = installsAllowed
     }
 }
 
@@ -258,6 +274,15 @@ public struct TunnelOpenResponse: Equatable, Codable, Sendable {
 public enum TunnelFraming {
     /// The most bytes of the stream in one frame.
     public static let chunkSize = 32 * 1024
+}
+
+/// `batch.status` and `batch.cancel`: one batch by its id, or (status only) every batch the Mac keeps when nil.
+public struct BatchStatusRequest: Equatable, Codable, Sendable {
+    public let id: String?
+
+    public init(id: String? = nil) {
+        self.id = id
+    }
 }
 
 /// `dns.probe`: which of the Mac's DNS servers to ask, and for which name. The Mac only asks servers in its own

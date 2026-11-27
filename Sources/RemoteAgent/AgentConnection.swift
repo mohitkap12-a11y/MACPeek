@@ -142,7 +142,10 @@ public actor AgentConnection {
                request.version == RemoteProtocolVersion.current {
                 response = await state.handleWorkspace(request, from: device)
             } else {
-                let (answer, record) = await handler.handle(request, from: device, settings: settings)
+                let state = self.state
+                let (answer, record) = await handler.handle(request, from: device, settings: settings) { event, outcome in
+                    await state.recordAction(by: device, event: event, outcome: outcome)
+                }
                 if let record { await state.recordAction(by: device, event: record.event, outcome: record.outcome) }
                 response = answer
             }

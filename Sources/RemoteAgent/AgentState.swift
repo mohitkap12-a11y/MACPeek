@@ -65,6 +65,7 @@ public actor AgentState {
         guard newSettings != settings else { return }
         let wasEnabled = settings.isEnabled
         let wasAnywhere = settings.allowFromAnywhere
+        let wasInstalls = settings.allowInstalls
         let oldTunnels = settings.tunnels
         settings = newSettings
         if !newSettings.isEnabled {
@@ -78,6 +79,10 @@ public actor AgentState {
             record(actor: Self.localActor, fingerprint: nil,
                    event: newSettings.allowFromAnywhere ? "Turned Allow from anywhere on" : "Turned Allow from anywhere off",
                    outcome: "Done")
+        }
+        if wasInstalls != newSettings.allowInstalls {
+            record(actor: Self.localActor, fingerprint: nil,
+                   event: newSettings.allowInstalls ? "Turned Allow installs on" : "Turned Allow installs off", outcome: "Done")
         }
         if oldTunnels != newSettings.tunnels {
             record(actor: Self.localActor, fingerprint: nil, event: "Set Allow tunnels to \(Self.describe(newSettings.tunnels))", outcome: "Done")

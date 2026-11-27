@@ -8,6 +8,7 @@ import PackageDescription
 //                permissions, command execution, utility catalog + enable/disable selection)
 //   <Name>Kit    one UI-free library per utility (models, parsers, services) — unit-testable anywhere
 //   RemoteCrypto    pairing (code + matching words), device identities and the encrypted session for MacPeek Remote
+//   BatchKit        installs Homebrew packages, Ollama models and container images in batches sent from MacPeek Remote
 //   RemoteProtocol  the messages a MacPeek Remote console and agent exchange
 //   RemoteAgent     serves the Kits to paired consoles; off unless Remote management is switched on
 //   MacPeek      the menu-bar app: shell (launcher/router/settings), SharedUI and per-utility views
@@ -63,6 +64,7 @@ let package = Package(
         .library(name: "VitalsKit", targets: ["VitalsKit"]),
         .library(name: "SensorsKit", targets: ["SensorsKit"]),
         .library(name: "RemoteCrypto", targets: ["RemoteCrypto"]),
+        .library(name: "BatchKit", targets: ["BatchKit"]),
         .library(name: "RemoteProtocol", targets: ["RemoteProtocol"]),
         .library(name: "RemoteAgent", targets: ["RemoteAgent"]),
     ],
@@ -92,13 +94,15 @@ let package = Package(
         .target(name: "VitalsKit", dependencies: ["MacPeekCore", "MemoryPeekKit", "CPUPeekKit"], path: "Sources/VitalsKit"),
         // Temperatures, fans and power (HID event system and SMC, read-only). Decoding is tested anywhere.
         .target(name: "SensorsKit", path: "Sources/SensorsKit"),
-        .target(name: "RemoteProtocol", dependencies: ["RemoteCrypto", "MacPeekCore", "PortPeekKit", "ProcessPeekKit", "ContainerPeekKit"],
+        .target(name: "BatchKit", dependencies: ["MacPeekCore"], path: "Sources/BatchKit"),
+        .target(name: "RemoteProtocol", dependencies: ["RemoteCrypto", "MacPeekCore", "PortPeekKit", "ProcessPeekKit", "ContainerPeekKit",
+                                                       "BatchKit"],
                 path: "Sources/RemoteProtocol"),
         .target(
             name: "RemoteAgent",
             dependencies: ["RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit", "DiskPeekKit",
                            "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit", "USBPeekKit",
-                           "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit"],
+                           "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit", "BatchKit"],
             path: "Sources/RemoteAgent"
         ),
         // SwiftUI/AppKit app. macOS only (files are guarded with #if os(macOS)).
@@ -187,6 +191,7 @@ let package = Package(
         .testTarget(name: "VitalsKitTests", dependencies: ["VitalsKit", "MemoryPeekKit", "CPUPeekKit", "MacPeekCore"],
                     path: "Tests/VitalsKitTests"),
         .testTarget(name: "SensorsKitTests", dependencies: ["SensorsKit"], path: "Tests/SensorsKitTests"),
+        .testTarget(name: "BatchKitTests", dependencies: ["BatchKit", "MacPeekCore"], path: "Tests/BatchKitTests"),
         .testTarget(name: "RemoteCryptoTests", dependencies: ["RemoteCrypto"], path: "Tests/RemoteCryptoTests"),
         .testTarget(name: "RemoteProtocolTests", dependencies: ["RemoteProtocol", "RemoteCrypto", "MacPeekCore", "PortPeekKit",
                                                        "ProcessPeekKit"], path: "Tests/RemoteProtocolTests"),
@@ -194,7 +199,7 @@ let package = Package(
             name: "RemoteAgentTests",
             dependencies: ["RemoteAgent", "RemoteCrypto", "RemoteProtocol", "MacPeekCore", "CPUPeekKit", "MemoryPeekKit",
                            "DiskPeekKit", "NetPeekKit", "PortPeekKit", "ProcessPeekKit", "SleepPeekKit", "DNSPeekKit",
-                           "USBPeekKit", "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit"],
+                           "USBPeekKit", "ContainerPeekKit", "GPUPeekKit", "ModelPeekKit", "VitalsKit", "SensorsKit", "BatchKit"],
             path: "Tests/RemoteAgentTests"
         ),
     ]

@@ -3,6 +3,12 @@
 All notable changes are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
+### Added
+- **Batches from MacPeek Remote** (`BatchKit`, `batch.*` operations): with the new **Allow installs** switch on (off by
+  default, needs Allow actions), devices of the Mac's account can install Homebrew formulae and casks, Ollama models and
+  container images in one batch, on the local network or through the relay. Each item is checked first (tool missing,
+  already installed, not enough memory or disk), runs as you without an administrator password, reports progress
+  (Ollama downloads in percent), and is recorded in the activity log.
 
 ## [0.5.0] - 2026-11-28
 ### Changed
